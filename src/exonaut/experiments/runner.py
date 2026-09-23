@@ -28,8 +28,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..baselines import BASELINES
-from ..environment import EnvConfig, SwarmEnv
+from ..multiagent.baselines import BASELINES
+from ..multiagent.swarm_env import EnvConfig, SwarmEnv
 
 RESULTS_DIR = Path(__file__).resolve().parents[3] / "data" / "results"
 
@@ -50,7 +50,7 @@ def build_policy(spec: str):
     if spec.startswith("rl:"):
         model_path = spec[3:]
         if spec not in _POLICY_CACHE:
-            from ..rl.rl_policy import RLPolicy  # deferred: heavy torch import
+            from ..multiagent.rl.rl_policy import RLPolicy  # deferred: heavy torch import
             _POLICY_CACHE[spec] = RLPolicy(model_path)
         return _POLICY_CACHE[spec]
 

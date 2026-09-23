@@ -2,8 +2,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from lunar_swarm.experiments.runner import RESULTS_DIR
-from lunar_swarm.experiments.stats import (
+from exonaut.experiments.runner import RESULTS_DIR
+from exonaut.experiments.stats import (
     paired_comparisons,
     repeated_measures_anova,
     summarize,

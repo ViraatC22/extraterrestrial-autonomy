@@ -5,7 +5,7 @@ The paper's results are only meaningful if a trial is fully determined by
 """
 import pandas as pd
 
-from lunar_swarm.experiments.runner import run_sweep, run_trial
+from exonaut.experiments.runner import run_sweep, run_trial
 
 BASE = dict(terrain_size=32, max_steps=60)
 
@@ -27,7 +27,7 @@ def test_different_seeds_give_different_terrain_outcomes():
 
 def test_all_algorithms_see_identical_terrain_for_a_given_seed():
     """The basis for the paired/blocked statistical analysis."""
-    from lunar_swarm.environment import EnvConfig, SwarmEnv
+    from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
 
     envs = [SwarmEnv(EnvConfig(seed=7, terrain_size=32, n_rovers=3)) for _ in range(3)]
     reference = envs[0].terrain

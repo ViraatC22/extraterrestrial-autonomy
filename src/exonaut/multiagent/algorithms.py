@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .baselines import BASELINES
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODELS_DIR = PROJECT_ROOT / "models"
 
 BASELINE_SPECS = list(BASELINES.keys())

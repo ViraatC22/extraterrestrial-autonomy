@@ -9,7 +9,7 @@ import pytest
 from statsmodels.stats.anova import AnovaRM
 from statsmodels.stats.multitest import multipletests
 
-from lunar_swarm.experiments.stats import (
+from exonaut.experiments.stats import (
     holm_bonferroni,
     paired_comparisons,
     repeated_measures_anova,

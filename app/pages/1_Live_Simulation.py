@@ -3,10 +3,10 @@ import time
 import pandas as pd
 import streamlit as st
 
-from lunar_swarm.algorithms import available_algorithm_specs, display_name
-from lunar_swarm.environment import EnvConfig, SwarmEnv
-from lunar_swarm.experiments.runner import build_policy
-from lunar_swarm.viz.render import render_env
+from exonaut.experiments.runner import build_policy
+from exonaut.multiagent.algorithms import available_algorithm_specs, display_name
+from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
+from exonaut.viz.render import render_env
 
 st.set_page_config(page_title="Live Simulation", page_icon="🛰️", layout="wide")
 st.title("Live Simulation")

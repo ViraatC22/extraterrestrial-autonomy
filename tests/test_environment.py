@@ -1,7 +1,7 @@
 import pytest
 
-from lunar_swarm.environment import EnvConfig, SwarmEnv
-from lunar_swarm.rover import STAY_ACTION
+from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
+from exonaut.multiagent.rover import STAY_ACTION
 
 
 def make_env(**overrides):
@@ -52,7 +52,7 @@ def test_episode_terminates_within_max_steps():
 def test_energy_spent_is_cumulative_not_battery_deficit():
     """Solar recharge means end-of-episode battery level understates energy
     expenditure; energy_spent must track the true cumulative draw."""
-    from lunar_swarm.baselines import frontier_policy
+    from exonaut.multiagent.baselines import frontier_policy
 
     env = make_env(n_rovers=2, max_steps=60)
     while not env.done:
@@ -72,7 +72,7 @@ def test_energy_spent_is_cumulative_not_battery_deficit():
 
 
 def test_energy_spent_matches_action_costs():
-    from lunar_swarm.rover import DIAGONAL_COST, IDLE_COST, MOVE_COST, STAY_ACTION
+    from exonaut.multiagent.rover import DIAGONAL_COST, IDLE_COST, MOVE_COST, STAY_ACTION
 
     env = make_env(n_rovers=1, max_steps=50)
     rover = env.rovers[0]

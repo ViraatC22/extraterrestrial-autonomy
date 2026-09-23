@@ -1,7 +1,7 @@
 import numpy as np
 
-from lunar_swarm.environment import EnvConfig
-from lunar_swarm.rl.policy_env import OBS_DIM, SingleRoverTrainingEnv
+from exonaut.multiagent.swarm_env import EnvConfig
+from exonaut.multiagent.rl.policy_env import OBS_DIM, SingleRoverTrainingEnv
 
 
 def test_reset_and_step_shapes():

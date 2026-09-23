@@ -1,6 +1,6 @@
 import numpy as np
 
-from lunar_swarm.terrain import generate_terrain
+from exonaut.environments.terrain_legacy import generate_terrain
 
 
 def test_reproducible_with_same_seed():

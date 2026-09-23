@@ -1,3 +1,9 @@
-"""Lunar Swarm Nav: simulation of decentralized multi-rover exploration
-under communication, energy, and hazard constraints modeled on real lunar
-surface missions (e.g. NASA's CADRE)."""
+"""EXONAUT planetary autonomy research platform.
+
+The primary experiment studies adaptive risk-aware autonomy for a single
+robot operating under terrain, energy, and hardware uncertainty. The
+historical multi-rover lunar-swarm experiment is retained under
+``exonaut.multiagent`` so its published artifacts remain reproducible.
+"""
+
+__version__ = "0.1.0"

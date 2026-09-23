@@ -1,7 +1,7 @@
 import streamlit as st
 
-from lunar_swarm.algorithms import available_algorithm_specs, display_name
-from lunar_swarm.experiments.runner import run_sweep
+from exonaut.experiments.runner import run_sweep
+from exonaut.multiagent.algorithms import available_algorithm_specs, display_name
 
 st.set_page_config(page_title="Run Experiments", page_icon="🧪", layout="wide")
 st.title("Run Experiments")

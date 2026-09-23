@@ -1,7 +1,7 @@
 import pytest
 
-from lunar_swarm.baselines import BASELINES
-from lunar_swarm.environment import EnvConfig, SwarmEnv
+from exonaut.multiagent.baselines import BASELINES
+from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
 
 
 @pytest.mark.parametrize("name", list(BASELINES.keys()))

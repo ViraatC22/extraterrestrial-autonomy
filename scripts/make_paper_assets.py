@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from lunar_swarm.experiments.stats import (
+from exonaut.experiments.stats import (
     paired_comparisons,
     repeated_measures_anova,
     summarize,
@@ -309,7 +309,7 @@ def figure_terrain_example(path: Path):
     """Illustrative terrain panel - regenerated from a fixed seed so the
     figure in the paper always matches the code."""
     _style()
-    from lunar_swarm.terrain import generate_terrain
+    from exonaut.environments.terrain_legacy import generate_terrain
 
     terrain = generate_terrain(size=48, seed=1, n_craters=6, max_slope_deg=25.0)
     fig, axes = plt.subplots(1, 3, figsize=(6.6, 2.3))

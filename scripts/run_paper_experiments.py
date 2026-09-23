@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import time
 
-from lunar_swarm.algorithms import available_algorithm_specs
-from lunar_swarm.experiments.runner import run_sweep
+from exonaut.multiagent.algorithms import available_algorithm_specs
+from exonaut.experiments.runner import run_sweep
 
 # Held fixed across the main sweep; matches the RL training configuration
 # so no algorithm is evaluated outside the regime it was built for.

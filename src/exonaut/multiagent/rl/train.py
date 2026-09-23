@@ -2,7 +2,7 @@
 
 Run from the project root (with the venv active):
 
-    python -m lunar_swarm.rl.train --timesteps 300000
+    python -m exonaut.multiagent.rl.train --timesteps 300000
 
 On a laptop CPU, ~300k timesteps takes roughly 20-40 minutes depending on
 terrain size and rover count; a smaller --timesteps is fine for iterating.
@@ -24,7 +24,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from ..swarm_env import EnvConfig
 from .policy_env import SingleRoverTrainingEnv
 
-MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
+MODELS_DIR = Path(__file__).resolve().parents[4] / "models"
 
 
 def train(
