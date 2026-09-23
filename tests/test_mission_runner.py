@@ -6,7 +6,6 @@ from exonaut.experiments.mission_runner import (
     run_mission_trial,
 )
 
-
 FAST = {"size": 24, "n_targets": 2, "max_steps": 50}
 MOON = ExperimentCondition("moon_test", "test", "moon")
 
@@ -35,6 +34,7 @@ def test_sweep_is_matched_and_deterministic():
     # Assert against the protocol rather than hardcoded numbers, so the test
     # follows the quarantine instead of pinning seeds that may be retired.
     from exonaut.experiments.protocol import load_splits
+
     expected = list(load_splits().get(MOON.split)[:2])
     assert sorted(a["seed"].unique().tolist()) == expected
 

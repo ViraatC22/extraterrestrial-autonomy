@@ -8,6 +8,7 @@ Each rover sums three forces computed from its own known-map:
 
 The resulting vector is converted to the nearest discrete action.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -31,34 +32,40 @@ def potential_field_policy(env, rover_id: int) -> int:
     frontiers = rover.frontier_cells(env.terrain)
     if frontiers:
         frontiers.sort(key=lambda cell: (cell[0] - rr) ** 2 + (cell[1] - rc) ** 2)
-        for (r, c) in frontiers[:FRONTIER_SAMPLE]:
+        for r, c in frontiers[:FRONTIER_SAMPLE]:
             dr, dc = r - rr, c - rc
-            dist = max((dr ** 2 + dc ** 2) ** 0.5, 1e-6)
-            fx += ATTRACT_GAIN * dr / dist ** 1.5
-            fy += ATTRACT_GAIN * dc / dist ** 1.5
+            dist = max((dr**2 + dc**2) ** 0.5, 1e-6)
+            fx += ATTRACT_GAIN * dr / dist**1.5
+            fy += ATTRACT_GAIN * dc / dist**1.5
 
     # Only repel from teammates this rover could actually locate - ones it can
     # see, or ones reachable over the mesh. Using every rover's true position
     # would make dispersion immune to the communication radius under study.
     for other in observable_teammates(env, rover):
         dr, dc = other.row - rr, other.col - rc
-        dist = (dr ** 2 + dc ** 2) ** 0.5
+        dist = (dr**2 + dc**2) ** 0.5
         if 0 < dist <= ROVER_REPEL_RADIUS:
-            fx -= ROVER_REPEL_GAIN * dr / dist ** 3
-            fy -= ROVER_REPEL_GAIN * dc / dist ** 3
+            fx -= ROVER_REPEL_GAIN * dr / dist**3
+            fy -= ROVER_REPEL_GAIN * dc / dist**3
 
     terrain = env.terrain
-    r0, r1 = max(0, rover.row - int(HAZARD_REPEL_RADIUS)), min(terrain.size, rover.row + int(HAZARD_REPEL_RADIUS) + 1)
-    c0, c1 = max(0, rover.col - int(HAZARD_REPEL_RADIUS)), min(terrain.size, rover.col + int(HAZARD_REPEL_RADIUS) + 1)
+    r0, r1 = (
+        max(0, rover.row - int(HAZARD_REPEL_RADIUS)),
+        min(terrain.size, rover.row + int(HAZARD_REPEL_RADIUS) + 1),
+    )
+    c0, c1 = (
+        max(0, rover.col - int(HAZARD_REPEL_RADIUS)),
+        min(terrain.size, rover.col + int(HAZARD_REPEL_RADIUS) + 1),
+    )
     hazard_local = terrain.hazard_mask[r0:r1, c0:c1]
     if hazard_local.any():
         hr, hc = np.nonzero(hazard_local)
-        for hry, hcx in zip(hr + r0, hc + c0):
+        for hry, hcx in zip(hr + r0, hc + c0, strict=False):
             dr, dc = float(hry) - rr, float(hcx) - rc
-            dist = (dr ** 2 + dc ** 2) ** 0.5
+            dist = (dr**2 + dc**2) ** 0.5
             if 0 < dist <= HAZARD_REPEL_RADIUS:
-                fx -= HAZARD_REPEL_GAIN * dr / dist ** 3
-                fy -= HAZARD_REPEL_GAIN * dc / dist ** 3
+                fx -= HAZARD_REPEL_GAIN * dr / dist**3
+                fy -= HAZARD_REPEL_GAIN * dc / dist**3
 
     if fx == 0.0 and fy == 0.0:
         return STAY_ACTION

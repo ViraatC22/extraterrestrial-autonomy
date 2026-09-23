@@ -5,6 +5,7 @@ Algorithms are referred to by short string specs ("frontier",
 recorded verbatim in the results CSV - every row states exactly which
 policy, and for RL exactly which checkpoint, produced it.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

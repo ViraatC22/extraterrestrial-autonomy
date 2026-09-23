@@ -22,6 +22,7 @@ As with the lunar module, these values are chosen to create the qualitative
 regimes the experiment needs and are not calibrated against measured Martian
 geotechnical data.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -43,10 +44,10 @@ MARS_GRAVITY = 3.72  # m/s^2
 # the ordering of classes is not simply shifted, it is re-ranked.
 MARS_CLASS_PARAMS = {
     TerrainClass.SMOOTH_REGOLITH: TerrainClassParams(0.12, 0.06, 1.10, "smooth drift"),
-    TerrainClass.ROCKY:           TerrainClassParams(0.14, 0.06, 1.30, "rock field"),
-    TerrainClass.LOOSE_FINES:     TerrainClassParams(0.62, 0.18, 2.40, "drift sand"),
-    TerrainClass.BEDROCK:         TerrainClassParams(0.06, 0.03, 1.00, "bedrock"),
-    TerrainClass.RIM_TALUS:       TerrainClassParams(0.26, 0.10, 1.60, "crater ejecta"),
+    TerrainClass.ROCKY: TerrainClassParams(0.14, 0.06, 1.30, "rock field"),
+    TerrainClass.LOOSE_FINES: TerrainClassParams(0.62, 0.18, 2.40, "drift sand"),
+    TerrainClass.BEDROCK: TerrainClassParams(0.06, 0.03, 1.00, "bedrock"),
+    TerrainClass.RIM_TALUS: TerrainClassParams(0.26, 0.10, 1.60, "crater ejecta"),
 }
 
 
@@ -77,8 +78,9 @@ def generate_mars_terrain(
         radius = rng.uniform(size * 0.05, size * 0.13)
         depth = rng.uniform(1.0, 4.5)
         stamp_crater(elevation, cy, cx, radius, depth)
-        craters.append({"row": int(cy), "col": int(cx),
-                        "radius": float(radius), "depth": float(depth)})
+        craters.append(
+            {"row": int(cy), "col": int(cx), "radius": float(radius), "depth": float(depth)}
+        )
 
     slope = derive_slope(elevation)
     roughness = multi_octave_noise(size, rng, octaves=5)
@@ -118,7 +120,11 @@ def generate_mars_terrain(
         class_params=dict(MARS_CLASS_PARAMS),
         gravity=MARS_GRAVITY,
         seed=seed,
-        metadata={"craters": craters, "max_slope_deg": max_slope_deg,
-                  "wind_angle": float(wind_angle), "opacity": opacity,
-                  "n_classes": N_TERRAIN_CLASSES},
+        metadata={
+            "craters": craters,
+            "max_slope_deg": max_slope_deg,
+            "wind_angle": float(wind_angle),
+            "opacity": opacity,
+            "n_classes": N_TERRAIN_CLASSES,
+        },
     )

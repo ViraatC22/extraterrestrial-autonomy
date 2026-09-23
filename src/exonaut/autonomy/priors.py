@@ -19,6 +19,7 @@ supposed to handle.
 Calibrated priors are cached to data/processed/ so every run uses the same
 numbers, and the cache records which seeds produced it.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,8 +39,9 @@ PRIOR_VARIANCE_INFLATION = 4.0
 MIN_PRIOR_VARIANCE = 0.004
 
 
-def calibrate_prior(body: str, seeds, size: int = 64, samples_per_seed: int = 400,
-                    rng_seed: int = 12345) -> dict:
+def calibrate_prior(
+    body: str, seeds, size: int = 64, samples_per_seed: int = 400, rng_seed: int = 12345
+) -> dict:
     """Estimate per-class slip statistics by sampling noisy measurements.
 
     Samples are drawn the way the robot would get them - one noisy slip
@@ -55,17 +57,16 @@ def calibrate_prior(body: str, seeds, size: int = 64, samples_per_seed: int = 40
         terrain = make_environment(body, seed=int(seed), size=size)
         rows = rng.integers(0, size, samples_per_seed)
         cols = rng.integers(0, size, samples_per_seed)
-        for r, c in zip(rows, cols):
+        for r, c in zip(rows, cols, strict=False):
             if terrain.hazard[r, c]:
                 continue
             klass = int(terrain.terrain_class[r, c])
             mean, dispersion = terrain.true_slip_distribution(int(r), int(c))
             # subtract the slope contribution: the prior is about the class
             slope_adjusted = mean - 0.01 * float(terrain.slope[r, c])
-            sample = float(np.clip(
-                rng.normal(slope_adjusted, max(dispersion, 1e-6)), 0.0, 1.0))
+            sample = float(np.clip(rng.normal(slope_adjusted, max(dispersion, 1e-6)), 0.0, 1.0))
             sums[klass] += sample
-            sum_squares[klass] += sample ** 2
+            sum_squares[klass] += sample**2
             counts[klass] += 1
 
     means, aleatoric, variances = {}, {}, {}
@@ -79,12 +80,11 @@ def calibrate_prior(body: str, seeds, size: int = 64, samples_per_seed: int = 40
             aleatoric[klass] = 0.15
             continue
         mean = sums[klass] / n
-        variance = max(sum_squares[klass] / n - mean ** 2, 1e-6)
+        variance = max(sum_squares[klass] / n - mean**2, 1e-6)
         means[klass] = float(mean)
         aleatoric[klass] = float(np.sqrt(variance))
         # uncertainty in the *mean*, inflated for site-to-site variation
-        variances[klass] = float(max(
-            PRIOR_VARIANCE_INFLATION * variance / n, MIN_PRIOR_VARIANCE))
+        variances[klass] = float(max(PRIOR_VARIANCE_INFLATION * variance / n, MIN_PRIOR_VARIANCE))
 
     return {
         "body": body,

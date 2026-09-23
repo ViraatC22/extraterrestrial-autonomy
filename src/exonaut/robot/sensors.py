@@ -17,6 +17,7 @@ and the distinction matters for the science:
 That asymmetry is the entire reason online adaptation has something to do:
 the only way to learn true terrain behaviour is to go and drive on it.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,16 +30,15 @@ from ..environments.base import N_TERRAIN_CLASSES, TerrainField
 @dataclass
 class SensorSuite:
     sensing_radius: int = 6
-    slope_noise_deg: float = 1.2        # at zero range; grows with distance
+    slope_noise_deg: float = 1.2  # at zero range; grows with distance
     roughness_noise: float = 0.05
-    class_confusion: float = 0.12       # P(misclassify) at zero range
-    degradation: float = 0.0            # 0 = healthy, 1 = useless (fault state)
+    class_confusion: float = 0.12  # P(misclassify) at zero range
+    degradation: float = 0.0  # 0 = healthy, 1 = useless (fault state)
 
     def effective_radius(self) -> int:
         return max(1, int(round(self.sensing_radius * (1.0 - self.degradation))))
 
-    def observe(self, terrain: TerrainField, row: int, col: int,
-                rng: np.random.Generator) -> dict:
+    def observe(self, terrain: TerrainField, row: int, col: int, rng: np.random.Generator) -> dict:
         """Return noisy observations of every cell within sensing range.
 
         Keys are (row, col); values are dicts of estimated properties plus
@@ -68,17 +68,23 @@ class SensorSuite:
 
                 observations[(r, c)] = {
                     "slope": float(max(0.0, terrain.slope[r, c] + rng.normal(0, sigma_slope))),
-                    "roughness": float(np.clip(
-                        terrain.roughness[r, c] + rng.normal(0, sigma_rough), 0.0, 1.0)),
+                    "roughness": float(
+                        np.clip(terrain.roughness[r, c] + rng.normal(0, sigma_rough), 0.0, 1.0)
+                    ),
                     "terrain_class": observed_class,
-                    "illumination": float(np.clip(
-                        terrain.illumination[r, c] + rng.normal(0, 0.05 * range_factor),
-                        0.0, 1.0)),
+                    "illumination": float(
+                        np.clip(
+                            terrain.illumination[r, c] + rng.normal(0, 0.05 * range_factor),
+                            0.0,
+                            1.0,
+                        )
+                    ),
                     # Hazards are detected geometrically and are reliable close
                     # in, unreliable far out - a missed hazard at range is a
                     # real failure mode for this kind of robot.
-                    "hazard": bool(terrain.hazard[r, c]) if rng.random() > 0.05 * range_factor
-                              else bool(not terrain.hazard[r, c]),
+                    "hazard": bool(terrain.hazard[r, c])
+                    if rng.random() > 0.05 * range_factor
+                    else bool(not terrain.hazard[r, c]),
                     "range": dist,
                 }
         return observations

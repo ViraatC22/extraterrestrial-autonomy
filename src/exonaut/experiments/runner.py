@@ -19,6 +19,7 @@ Policies are identified by short strings ("frontier", "rl:models/x.zip")
 rather than by live objects so they can cross a process boundary; each
 worker builds (and caches) its own policy instance.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -51,6 +52,7 @@ def build_policy(spec: str):
         model_path = spec[3:]
         if spec not in _POLICY_CACHE:
             from ..multiagent.rl.rl_policy import RLPolicy  # deferred: heavy torch import
+
             _POLICY_CACHE[spec] = RLPolicy(model_path)
         return _POLICY_CACHE[spec]
 
@@ -96,8 +98,10 @@ def run_sweep(
         for comm_radius, n_rovers, failure_rate in conditions:
             for seed in range(n_seeds):
                 env_kwargs = {
-                    **base_kwargs, "comm_radius": comm_radius,
-                    "n_rovers": n_rovers, "failure_rate": failure_rate,
+                    **base_kwargs,
+                    "comm_radius": comm_radius,
+                    "n_rovers": n_rovers,
+                    "failure_rate": failure_rate,
                 }
                 jobs.append((algorithm, env_kwargs, seed))
 
@@ -125,7 +129,11 @@ def run_sweep(
     df = pd.DataFrame(rows)
     # Deterministic row order regardless of completion order, so the saved
     # CSV is byte-stable across runs.
-    sort_cols = [c for c in ["algorithm", "comm_radius", "n_rovers", "failure_rate", "seed"] if c in df.columns]
+    sort_cols = [
+        c
+        for c in ["algorithm", "comm_radius", "n_rovers", "failure_rate", "seed"]
+        if c in df.columns
+    ]
     df = df.sort_values(sort_cols).reset_index(drop=True)
 
     if save_as:

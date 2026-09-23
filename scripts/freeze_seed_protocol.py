@@ -11,10 +11,10 @@ nothing.
 
     python scripts/freeze_seed_protocol.py
 """
+
 from __future__ import annotations
 
 from exonaut.experiments.protocol import build_splits, splits_path, write_splits
-
 
 NOTE = (
     "Frozen before the adaptive planner (ARBP) was implemented and before any "
@@ -28,8 +28,10 @@ def main() -> None:
     path = splits_path()
     if path.exists():
         print(f"{path} already exists - the protocol is already frozen.")
-        print("Refusing to regenerate. Delete it deliberately only if you "
-              "intend to invalidate every result produced so far.")
+        print(
+            "Refusing to regenerate. Delete it deliberately only if you "
+            "intend to invalidate every result produced so far."
+        )
         return
 
     splits = build_splits(note=NOTE)

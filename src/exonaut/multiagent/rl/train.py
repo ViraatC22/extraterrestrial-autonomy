@@ -9,12 +9,12 @@ terrain size and rover count; a smaller --timesteps is fine for iterating.
 The resulting model is saved to models/<out-name>.zip and is what
 rl_policy.RLPolicy loads for evaluation/deployment.
 """
+
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
 import json
+from pathlib import Path
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
@@ -38,8 +38,11 @@ def train(
     out_name: str = "ppo_lunar_swarm",
 ) -> Path:
     env_kwargs = dict(
-        n_rovers=n_rovers, terrain_size=terrain_size,
-        comm_radius=comm_radius, max_steps=max_steps, seed=seed,
+        n_rovers=n_rovers,
+        terrain_size=terrain_size,
+        comm_radius=comm_radius,
+        max_steps=max_steps,
+        seed=seed,
     )
 
     def _make():
@@ -49,12 +52,20 @@ def train(
     # collection actually uses multiple cores (DummyVecEnv, the default,
     # steps them sequentially in one process).
     vec_env = make_vec_env(
-        _make, n_envs=n_envs, seed=seed,
+        _make,
+        n_envs=n_envs,
+        seed=seed,
         vec_env_cls=SubprocVecEnv if n_envs > 1 else None,
     )
     model = PPO(
-        "MlpPolicy", vec_env, verbose=1, n_steps=512, batch_size=512,
-        gamma=0.995, learning_rate=3e-4, seed=seed,
+        "MlpPolicy",
+        vec_env,
+        verbose=1,
+        n_steps=512,
+        batch_size=512,
+        gamma=0.995,
+        learning_rate=3e-4,
+        seed=seed,
         policy_kwargs=dict(net_arch=[128, 128]),
     )
     model.learn(total_timesteps=total_timesteps)
@@ -66,10 +77,17 @@ def train(
     # Record exactly what produced this checkpoint, so the training setup
     # reported in the paper can be traced back to the artifact.
     meta = {
-        "total_timesteps": total_timesteps, "n_envs": n_envs, "seed": seed,
-        "env": env_kwargs, "algorithm": "PPO", "policy": "MlpPolicy",
-        "net_arch": [128, 128], "n_steps": 512, "batch_size": 512,
-        "gamma": 0.995, "learning_rate": 3e-4,
+        "total_timesteps": total_timesteps,
+        "n_envs": n_envs,
+        "seed": seed,
+        "env": env_kwargs,
+        "algorithm": "PPO",
+        "policy": "MlpPolicy",
+        "net_arch": [128, 128],
+        "n_steps": 512,
+        "batch_size": 512,
+        "gamma": 0.995,
+        "learning_rate": 3e-4,
         "teammate_policy_during_training": "frontier",
     }
     (MODELS_DIR / f"{out_name}_training_config.json").write_text(json.dumps(meta, indent=2))
@@ -89,9 +107,14 @@ def _cli() -> None:
     parser.add_argument("--out-name", type=str, default="ppo_lunar_swarm")
     args = parser.parse_args()
     train(
-        total_timesteps=args.timesteps, n_envs=args.n_envs, n_rovers=args.n_rovers,
-        terrain_size=args.terrain_size, comm_radius=args.comm_radius,
-        max_steps=args.max_steps, seed=args.seed, out_name=args.out_name,
+        total_timesteps=args.timesteps,
+        n_envs=args.n_envs,
+        n_rovers=args.n_rovers,
+        terrain_size=args.terrain_size,
+        comm_radius=args.comm_radius,
+        max_steps=args.max_steps,
+        seed=args.seed,
+        out_name=args.out_name,
     )
 
 

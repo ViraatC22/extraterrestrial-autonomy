@@ -3,6 +3,7 @@
 These are the numbers the paper reports, so the hand-written routines are
 checked against statsmodels rather than trusted on inspection.
 """
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -23,19 +24,23 @@ def _block_design(n_blocks=20, effects=(0.0, 0.7, 1.4), noise=0.5, seed=0):
     rows = []
     for b in range(n_blocks):
         for idx, effect in enumerate(effects):
-            rows.append({
-                "algorithm": f"algo{idx}",
-                "seed": b,
-                "comm_radius": 10,
-                "final_coverage": 5.0 + effect + block_effect[b] + rng.normal(0, noise),
-            })
+            rows.append(
+                {
+                    "algorithm": f"algo{idx}",
+                    "seed": b,
+                    "comm_radius": 10,
+                    "final_coverage": 5.0 + effect + block_effect[b] + rng.normal(0, noise),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def test_repeated_measures_anova_matches_statsmodels():
     df = _block_design()
     mine = repeated_measures_anova(df, "final_coverage")
-    ref = AnovaRM(df, depvar="final_coverage", subject="seed", within=["algorithm"]).fit().anova_table
+    ref = (
+        AnovaRM(df, depvar="final_coverage", subject="seed", within=["algorithm"]).fit().anova_table
+    )
     assert np.isclose(mine["f_stat"], ref["F Value"].iloc[0])
     assert np.isclose(mine["p_value"], ref["Pr > F"].iloc[0])
     assert mine["df_treatment"] == int(ref["Num DF"].iloc[0])

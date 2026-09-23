@@ -3,7 +3,9 @@ import streamlit as st
 st.set_page_config(page_title="Lunar Swarm Nav", page_icon="🌑", layout="wide")
 
 st.title("🌑 Lunar Swarm Nav")
-st.subheader("Decentralized vs. learned swarm coordination for communication-constrained lunar surface exploration")
+st.subheader(
+    "Decentralized vs. learned swarm coordination for communication-constrained lunar surface exploration"
+)
 
 st.markdown(
     """

@@ -17,6 +17,7 @@ whether the model learns, because both share this same objective.
 The weights are tuned on validation seeds only (see docs/PREREGISTRATION.md);
 the values here are the outcome of that tuning and are frozen thereafter.
 """
+
 from __future__ import annotations
 
 from ..autonomy import risk
@@ -44,10 +45,12 @@ class RiskAwarePlanner(Planner):
         energy = world_model.expected_energy(row, col, distance, self.gravity)
         cell_risk = risk.cell_risk(world_model, row, col)
         epistemic, _ = world_model.slip_uncertainty(row, col)
-        return (w["distance"] * distance
-                + w["energy"] * energy
-                + w["risk"] * cell_risk
-                + w["uncertainty"] * epistemic)
+        return (
+            w["distance"] * distance
+            + w["energy"] * energy
+            + w["risk"] * cell_risk
+            + w["uncertainty"] * epistemic
+        )
 
     def min_step_cost(self) -> float:
         # distance term alone is a valid lower bound: every other term is

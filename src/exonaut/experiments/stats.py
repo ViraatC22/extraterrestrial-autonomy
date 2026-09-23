@@ -17,6 +17,7 @@ Reported per comparison:
   - Cohen's d_z (paired effect size)
   - Holm-Bonferroni adjusted p-values across the family of comparisons
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -27,10 +28,21 @@ from scipy import stats
 # algorithm, the random seed, and the measured outcomes).
 CONDITION_COLS = [
     # EXONAUT single-rover experiment
-    "condition", "body", "prior_body", "terrain_uncertainty", "fault_rate",
-    "comm_delay", "sensor_noise_scale", "risk_budget", "size", "n_targets",
+    "condition",
+    "body",
+    "prior_body",
+    "terrain_uncertainty",
+    "fault_rate",
+    "comm_delay",
+    "sensor_noise_scale",
+    "risk_budget",
+    "size",
+    "n_targets",
     # Historical multi-rover experiment
-    "comm_radius", "n_rovers", "failure_rate", "terrain_size",
+    "comm_radius",
+    "n_rovers",
+    "failure_rate",
+    "terrain_size",
     # Shared
     "max_steps",
 ]
@@ -56,11 +68,17 @@ def summarize(
         else:
             half = 0.0
         key_tuple = key if isinstance(key, tuple) else (key,)
-        row = dict(zip(group_cols, key_tuple))
-        row.update({
-            "mean": mean, "sd": sd, "n": n, "se": se,
-            "ci95_low": mean - half, "ci95_high": mean + half,
-        })
+        row = dict(zip(group_cols, key_tuple, strict=False))
+        row.update(
+            {
+                "mean": mean,
+                "sd": sd,
+                "n": n,
+                "se": se,
+                "ci95_low": mean - half,
+                "ci95_high": mean + half,
+            }
+        )
         rows.append(row)
     return pd.DataFrame(rows).sort_values(list(group_cols)).reset_index(drop=True)
 
@@ -132,15 +150,23 @@ def paired_comparisons(
 
             cohens_dz = mean_diff / sd_diff if sd_diff > 0 else 0.0
 
-            rows.append({
-                "algorithm_a": a, "algorithm_b": b, "n_pairs": n,
-                "mean_a": float(pair[a].mean()), "mean_b": float(pair[b].mean()),
-                "mean_diff": mean_diff,
-                "ci95_low": mean_diff - half, "ci95_high": mean_diff + half,
-                "t_stat": float(t_stat), "p_paired_t": float(p_t),
-                "wilcoxon_stat": float(w_stat), "p_wilcoxon": float(p_w),
-                "cohens_dz": float(cohens_dz),
-            })
+            rows.append(
+                {
+                    "algorithm_a": a,
+                    "algorithm_b": b,
+                    "n_pairs": n,
+                    "mean_a": float(pair[a].mean()),
+                    "mean_b": float(pair[b].mean()),
+                    "mean_diff": mean_diff,
+                    "ci95_low": mean_diff - half,
+                    "ci95_high": mean_diff + half,
+                    "t_stat": float(t_stat),
+                    "p_paired_t": float(p_t),
+                    "wilcoxon_stat": float(w_stat),
+                    "p_wilcoxon": float(p_w),
+                    "cohens_dz": float(cohens_dz),
+                }
+            )
 
     out = pd.DataFrame(rows)
     if out.empty:
@@ -214,11 +240,13 @@ def two_way_anova(
     work.columns = ["y", "fa", "fb"]
     model = ols("y ~ C(fa) * C(fb)", data=work).fit()
     table = sm.stats.anova_lm(model, typ=2)
-    table = table.rename(index={
-        "C(fa)": factor_a,
-        "C(fb)": factor_b,
-        "C(fa):C(fb)": f"{factor_a} x {factor_b} (interaction)",
-    })
+    table = table.rename(
+        index={
+            "C(fa)": factor_a,
+            "C(fb)": factor_b,
+            "C(fa):C(fb)": f"{factor_a} x {factor_b} (interaction)",
+        }
+    )
     # partial eta^2 = SS_effect / (SS_effect + SS_residual)
     ss_resid = float(table.loc["Residual", "sum_sq"])
     table["partial_eta_sq"] = table["sum_sq"] / (table["sum_sq"] + ss_resid)

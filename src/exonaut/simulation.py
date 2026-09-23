@@ -18,9 +18,10 @@ before receiving a relaxed instruction. Every such episode is counted as a
 human intervention, which is itself a headline metric - an autonomy system
 that succeeds only by phoning home constantly has not really succeeded.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
@@ -54,19 +55,19 @@ class MissionConfig:
     energy_reserve_fraction: float = 0.25
     sensing_radius: int = 6
     sensor_noise_scale: float = 1.0
-    terrain_uncertainty: float = 1.0   # multiplies true slip dispersion
+    terrain_uncertainty: float = 1.0  # multiplies true slip dispersion
     # None = size the power system for the body, the way a real mission would
     # (a Mars rover is built with a Mars-appropriate battery). What transfers
     # between bodies in this study is the autonomy stack, not the hardware;
     # leaving one fixed battery would mean the Mars condition measured an
     # undersized vehicle rather than a decision-making strategy.
     battery_capacity: float | None = None
-    fault_rate: float = 0.0            # expected faults per mission
-    comm_delay: int = 0                # steps lost per intervention request
-    replan_interval: int = 10          # forced replan cadence
-    solar_rate: float = 2.0            # Wh harvested per step at full sun
+    fault_rate: float = 0.0  # expected faults per mission
+    comm_delay: int = 0  # steps lost per intervention request
+    replan_interval: int = 10  # forced replan cadence
+    solar_rate: float = 2.0  # Wh harvested per step at full sun
     resume_charge_fraction: float = 0.6  # battery level that starts a new sortie
-    prior_body: str = "moon"           # body the world-model prior came from
+    prior_body: str = "moon"  # body the world-model prior came from
     max_slope_deg: float = 25.0
 
     def to_dict(self) -> dict:
@@ -101,8 +102,11 @@ class MissionResult:
     history: list = field(default_factory=list)
 
     def to_row(self) -> dict:
-        row = {k: v for k, v in self.__dict__.items()
-               if k not in ("config", "history", "belief_snapshot")}
+        row = {
+            k: v
+            for k, v in self.__dict__.items()
+            if k not in ("config", "history", "belief_snapshot")
+        }
         row.update(self.config)
         row["seed"] = self.seed
         return row
@@ -116,26 +120,31 @@ def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
     # lunar energy beliefs and update only through permitted observations.
     prior_params = TRUE_CLASS_PARAMS[config.prior_body]
     energy_multipliers = {
-        int(klass): params.energy_multiplier
-        for klass, params in prior_params.items()
+        int(klass): params.energy_multiplier for klass, params in prior_params.items()
     }
-    return cls(size=config.size, class_prior=prior["means"],
-               aleatoric_sd=prior["aleatoric_sd"],
-               energy_multipliers=energy_multipliers)
+    return cls(
+        size=config.size,
+        class_prior=prior["means"],
+        aleatoric_sd=prior["aleatoric_sd"],
+        energy_multipliers=energy_multipliers,
+    )
 
 
 def _make_planner(name: str, config: MissionConfig, gravity: float):
     from .planners import make_planner
+
     return make_planner(name, max_slope_deg=config.max_slope_deg, gravity=gravity)
 
 
-def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
-                collect_history: bool = False) -> MissionResult:
+def run_mission(
+    config: MissionConfig, seed: int, prior: dict | None = None, collect_history: bool = False
+) -> MissionResult:
     from .autonomy.priors import default_prior
 
     rng = np.random.default_rng(seed)
-    terrain = make_environment(config.body, seed=seed, size=config.size,
-                               max_slope_deg=config.max_slope_deg)
+    terrain = make_environment(
+        config.body, seed=seed, size=config.size, max_slope_deg=config.max_slope_deg
+    )
 
     # Inflate the true slip dispersion if the condition calls for a noisier
     # world. Applied to the terrain itself, so every planner faces it.
@@ -153,11 +162,15 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
     capacity = config.battery_capacity
     if capacity is None:
         from .robot.power import REFERENCE_GRAVITY
+
         capacity = BASE_BATTERY_CAPACITY * (terrain.gravity / REFERENCE_GRAVITY)
 
     mission = generate_mission(
-        terrain, rng, n_targets=config.n_targets,
-        risk_budget=config.risk_budget, max_steps=config.max_steps,
+        terrain,
+        rng,
+        n_targets=config.n_targets,
+        risk_budget=config.risk_budget,
+        max_steps=config.max_steps,
         energy_reserve=config.energy_reserve_fraction * capacity,
     )
 
@@ -166,10 +179,10 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
     world_model = build_world_model(config, prior, adaptive=planner.adaptive)
 
     rover = Rover(
-        row=mission.home[0], col=mission.home[1],
+        row=mission.home[0],
+        col=mission.home[1],
         max_slope_deg=config.max_slope_deg,
-        power=PowerSystem(capacity=capacity, charge=capacity,
-                          solar_rate=config.solar_rate),
+        power=PowerSystem(capacity=capacity, charge=capacity, solar_rate=config.solar_rate),
         sensors=SensorSuite(
             sensing_radius=config.sensing_radius,
             slope_noise_deg=1.2 * config.sensor_noise_scale,
@@ -198,8 +211,7 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
         rover.apply_faults(faults, step)
 
         if not rover.operational:
-            termination = (TERMINATION_IMMOBILIZED if rover.immobilized
-                           else TERMINATION_ENERGY)
+            termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
             break
 
         world_model.ingest_observations(rover.sense(terrain, rng))
@@ -212,13 +224,12 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
             continue
 
         need_plan = (
-            not path
-            or path_index >= len(path)
-            or step % max(config.replan_interval, 1) == 0
+            not path or path_index >= len(path) or step % max(config.replan_interval, 1) == 0
         )
         if need_plan:
             objective = manager.select_objective(
-                rover.pos, rover.power.charge,
+                rover.pos,
+                rover.power.charge,
                 charge_fraction=rover.power.fraction,
                 solar_efficiency=rover.power.solar_efficiency,
                 solar_rate=rover.power.solar_rate,
@@ -284,22 +295,29 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
             break
 
         if collect_history:
-            history.append({
-                "step": step, "row": rover.row, "col": rover.col,
-                "charge": rover.power.charge,
-                "science": mission.collected_value,
-                "slip": outcome["slip"],
-            })
+            history.append(
+                {
+                    "step": step,
+                    "row": rover.row,
+                    "col": rover.col,
+                    "charge": rover.power.charge,
+                    "science": mission.collected_value,
+                    "slip": outcome["slip"],
+                }
+            )
 
         if not rover.operational:
-            termination = (TERMINATION_IMMOBILIZED if rover.immobilized
-                           else TERMINATION_ENERGY)
+            termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
             break
 
     at_home = rover.pos == mission.home
     objectives_resolved = not mission.remaining
-    success = bool(rover.operational and at_home and objectives_resolved and
-                   termination in (TERMINATION_SUCCESS, TERMINATION_TIMEOUT))
+    success = bool(
+        rover.operational
+        and at_home
+        and objectives_resolved
+        and termination in (TERMINATION_SUCCESS, TERMINATION_TIMEOUT)
+    )
     if success:
         termination = TERMINATION_SUCCESS
 
@@ -326,7 +344,8 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
         predicted_failure_prob=float(predicted_failure_prob),
         hazard_refusals=hazard_refusals,
         final_distance_from_home=float(
-            np.hypot(rover.row - mission.home[0], rover.col - mission.home[1])),
+            np.hypot(rover.row - mission.home[0], rover.col - mission.home[1])
+        ),
         belief_snapshot=world_model.snapshot(),
         history=history,
     )

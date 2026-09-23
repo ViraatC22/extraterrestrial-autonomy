@@ -12,6 +12,7 @@ experiment needs (a low-traction trap, a high-traction refuge, steep
 impassable rims, and true darkness). They are NOT calibrated against measured
 lunar geotechnical data, and the paper says so explicitly.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -31,10 +32,10 @@ LUNAR_GRAVITY = 1.62  # m/s^2
 # True per-class parameters for the Moon.
 LUNAR_CLASS_PARAMS = {
     TerrainClass.SMOOTH_REGOLITH: TerrainClassParams(0.08, 0.04, 1.00, "smooth regolith"),
-    TerrainClass.ROCKY:           TerrainClassParams(0.18, 0.07, 1.45, "rocky"),
-    TerrainClass.LOOSE_FINES:     TerrainClassParams(0.42, 0.14, 1.90, "deep fines"),
-    TerrainClass.BEDROCK:         TerrainClassParams(0.04, 0.02, 0.95, "bedrock"),
-    TerrainClass.RIM_TALUS:       TerrainClassParams(0.30, 0.12, 1.75, "rim talus"),
+    TerrainClass.ROCKY: TerrainClassParams(0.18, 0.07, 1.45, "rocky"),
+    TerrainClass.LOOSE_FINES: TerrainClassParams(0.42, 0.14, 1.90, "deep fines"),
+    TerrainClass.BEDROCK: TerrainClassParams(0.04, 0.02, 0.95, "bedrock"),
+    TerrainClass.RIM_TALUS: TerrainClassParams(0.30, 0.12, 1.75, "rim talus"),
 }
 
 
@@ -55,8 +56,9 @@ def generate_lunar_terrain(
         radius = rng.uniform(size * 0.05, size * 0.15)
         depth = rng.uniform(1.5, 6.5)
         stamp_crater(elevation, cy, cx, radius, depth)
-        craters.append({"row": int(cy), "col": int(cx),
-                        "radius": float(radius), "depth": float(depth)})
+        craters.append(
+            {"row": int(cy), "col": int(cx), "radius": float(radius), "depth": float(depth)}
+        )
 
     slope = derive_slope(elevation)
     roughness = multi_octave_noise(size, rng, octaves=5)
@@ -96,7 +98,7 @@ def generate_lunar_terrain(
         y, x = np.mgrid[0:size, 0:size]
         rel_y = y - crater["row"]
         rel_x = x - crater["col"]
-        dist = np.sqrt(rel_y ** 2 + rel_x ** 2)
+        dist = np.sqrt(rel_y**2 + rel_x**2)
         with np.errstate(invalid="ignore", divide="ignore"):
             facing = (rel_y * sun[0] + rel_x * sun[1]) / np.maximum(dist, 1e-6)
         shadowed = (dist <= crater["radius"] * 0.65) & (facing < -0.15)
@@ -117,6 +119,9 @@ def generate_lunar_terrain(
         class_params=dict(LUNAR_CLASS_PARAMS),
         gravity=LUNAR_GRAVITY,
         seed=seed,
-        metadata={"craters": craters, "max_slope_deg": max_slope_deg,
-                  "n_classes": N_TERRAIN_CLASSES},
+        metadata={
+            "craters": craters,
+            "max_slope_deg": max_slope_deg,
+            "n_classes": N_TERRAIN_CLASSES,
+        },
     )

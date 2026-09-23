@@ -5,6 +5,7 @@ through believed-benign drift sand because distance is all it scores. This is
 not a strawman: it is what a planner does when it has no model of terrain
 risk at all, and it establishes the floor the other methods must beat.
 """
+
 from __future__ import annotations
 
 from .base import Planner

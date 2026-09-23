@@ -25,7 +25,8 @@ df = pd.read_csv(RESULTS_DIR / selected)
 st.caption(f"{len(df)} trials loaded from `{selected}`")
 
 metric = st.selectbox(
-    "Metric", ["final_coverage", "coverage_per_energy", "energy_spent", "rovers_alive", "steps_taken"],
+    "Metric",
+    ["final_coverage", "coverage_per_energy", "energy_spent", "rovers_alive", "steps_taken"],
 )
 group_col = st.selectbox("Group by", ["algorithm", "comm_radius", "n_rovers", "failure_rate"])
 
@@ -57,7 +58,9 @@ else:
     if "error" in anova:
         st.warning(anova["error"])
     else:
-        verdict = "statistically significant" if anova["significant"] else "not statistically significant"
+        verdict = (
+            "statistically significant" if anova["significant"] else "not statistically significant"
+        )
         st.markdown(
             f"**Repeated-measures ANOVA** on `{metric}`: "
             f"F({anova['df_treatment']}, {anova['df_error']}) = {anova['f_stat']:.3f}, "
@@ -80,5 +83,8 @@ else:
         st.dataframe(two_way_anova(df, metric=metric), width="stretch")
 
 st.download_button(
-    "Download this results CSV", df.to_csv(index=False), file_name=selected, mime="text/csv",
+    "Download this results CSV",
+    df.to_csv(index=False),
+    file_name=selected,
+    mime="text/csv",
 )

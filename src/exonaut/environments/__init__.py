@@ -3,6 +3,7 @@
 `make_environment(body, seed, ...)` is the single entry point used by the
 experiment runner, so a trial is fully specified by (body, seed, config).
 """
+
 from __future__ import annotations
 
 from .base import (
@@ -34,7 +35,13 @@ def make_environment(body: str, seed: int, size: int = 64, **kwargs) -> TerrainF
 
 
 __all__ = [
-    "BODIES", "N_TERRAIN_CLASSES", "TRUE_CLASS_PARAMS", "TerrainClass",
-    "TerrainClassParams", "TerrainField", "make_environment",
-    "generate_lunar_terrain", "generate_mars_terrain",
+    "BODIES",
+    "N_TERRAIN_CLASSES",
+    "TRUE_CLASS_PARAMS",
+    "TerrainClass",
+    "TerrainClassParams",
+    "TerrainField",
+    "make_environment",
+    "generate_lunar_terrain",
+    "generate_mars_terrain",
 ]

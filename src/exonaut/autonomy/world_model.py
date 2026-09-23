@@ -28,6 +28,7 @@ fix that by driving) while the second is *aleatoric* (the terrain is simply
 variable, and driving more will not remove it). A planner that treats those
 identically cannot tell "dangerous" apart from "unknown".
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,12 +40,13 @@ from ..environments.base import N_TERRAIN_CLASSES, TerrainClass
 # Assumed observation noise on a single slip measurement. Fixed and shared by
 # every adaptive method so no method gains an advantage from a better-tuned
 # noise model.
-SLIP_OBS_VARIANCE = 0.02 ** 2
+SLIP_OBS_VARIANCE = 0.02**2
 
 
 @dataclass
 class ClassBelief:
     """Posterior over the mean slip fraction of one terrain class."""
+
     mean: float
     variance: float
     # The prior is retained so each update recomputes the posterior from the
@@ -84,16 +86,20 @@ class CellBelief:
 class WorldModel:
     """Belief state consulted by every planner."""
 
-    def __init__(self, size: int, class_prior: dict,
-                 aleatoric_sd: dict | None = None,
-                 energy_multipliers: dict | None = None,
-                 unknown_slip_prior: float = 0.25):
+    def __init__(
+        self,
+        size: int,
+        class_prior: dict,
+        aleatoric_sd: dict | None = None,
+        energy_multipliers: dict | None = None,
+        unknown_slip_prior: float = 0.25,
+    ):
         self.size = size
         # per-cell geometric belief, stored as arrays for planner speed
         self.slope = np.zeros((size, size))
         self.roughness = np.full((size, size), 0.5)
         self.terrain_class = np.full((size, size), int(TerrainClass.SMOOTH_REGOLITH), dtype=np.int8)
-        self.hazard_prob = np.full((size, size), 0.15)   # prior hazard rate
+        self.hazard_prob = np.full((size, size), 0.15)  # prior hazard rate
         self.illumination = np.full((size, size), 0.5)
         self.observed = np.zeros((size, size), dtype=bool)
         self.best_range = np.full((size, size), np.inf)
@@ -103,8 +109,10 @@ class WorldModel:
         for k in range(N_TERRAIN_CLASSES):
             mean, variance = class_prior[k]
             self.class_belief[k] = ClassBelief(
-                mean=mean, variance=variance,
-                prior_mean=mean, prior_variance=variance,
+                mean=mean,
+                variance=variance,
+                prior_mean=mean,
+                prior_variance=variance,
             )
         # aleatoric (irreducible) spread per class, also a prior belief
         self.aleatoric_sd = aleatoric_sd or {k: 0.10 for k in range(N_TERRAIN_CLASSES)}
@@ -118,7 +126,8 @@ class WorldModel:
         # belief already corrects the energy estimate through the physics.
         # The per-class multiplier itself stays at its prior.
         self.energy_multiplier = dict(
-            energy_multipliers or {k: 1.0 for k in range(N_TERRAIN_CLASSES)})
+            energy_multipliers or {k: 1.0 for k in range(N_TERRAIN_CLASSES)}
+        )
         # class_mix and the derived unknown-terrain estimates are queried once
         # per A* node expansion, so they are cached and invalidated on write
         # rather than recomputed over the whole map each time.
@@ -222,10 +231,10 @@ class WorldModel:
             return cached
         mix = self.class_mix()
         mean = self.unknown_slip_estimate()
-        between = float(np.sqrt(sum(
-            w * (self.class_belief[k].mean - mean) ** 2 for k, w in mix.items())))
-        within = float(np.sqrt(sum(
-            w * self.class_belief[k].variance for k, w in mix.items())))
+        between = float(
+            np.sqrt(sum(w * (self.class_belief[k].mean - mean) ** 2 for k, w in mix.items()))
+        )
+        within = float(np.sqrt(sum(w * self.class_belief[k].variance for k, w in mix.items())))
         aleatoric = float(sum(w * self.aleatoric_sd[k] for k, w in mix.items()))
         result = (float(np.hypot(between, within)), aleatoric)
         self._cache["unknown_uncertainty"] = result
@@ -248,16 +257,28 @@ class WorldModel:
             return value
         return float(self.energy_multiplier[int(self.terrain_class[row, col])])
 
-    def expected_energy(self, row: int, col: int, distance: float,
-                        gravity: float, energy_multiplier: float | None = None) -> float:
+    def expected_energy(
+        self,
+        row: int,
+        col: int,
+        distance: float,
+        gravity: float,
+        energy_multiplier: float | None = None,
+    ) -> float:
         from ..robot.power import locomotion_cost
-        multiplier = (self.believed_energy_multiplier(row, col)
-                      if energy_multiplier is None else energy_multiplier)
-        return locomotion_cost(distance, float(self.slope[row, col]),
-                               multiplier, self.expected_slip(row, col), gravity)
 
-    def believed_traversable(self, row: int, col: int, max_slope_deg: float,
-                             hazard_threshold: float = 0.5) -> bool:
+        multiplier = (
+            self.believed_energy_multiplier(row, col)
+            if energy_multiplier is None
+            else energy_multiplier
+        )
+        return locomotion_cost(
+            distance, float(self.slope[row, col]), multiplier, self.expected_slip(row, col), gravity
+        )
+
+    def believed_traversable(
+        self, row: int, col: int, max_slope_deg: float, hazard_threshold: float = 0.5
+    ) -> bool:
         if not (0 <= row < self.size and 0 <= col < self.size):
             return False
         if self.hazard_prob[row, col] >= hazard_threshold:
@@ -268,7 +289,8 @@ class WorldModel:
         """Per-class belief summary, for logging and the dashboard."""
         return {
             int(k): {
-                "mean": b.mean, "epistemic_sd": b.epistemic_sd,
+                "mean": b.mean,
+                "epistemic_sd": b.epistemic_sd,
                 "n_observations": b.n_observations,
             }
             for k, b in self.class_belief.items()

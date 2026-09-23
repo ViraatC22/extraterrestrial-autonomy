@@ -4,13 +4,47 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "exonaut"
-version = "0.1.0"
+version = "0.2.0"
 description = "EXONAUT: adaptive risk-aware autonomy for robotic exploration of uncertain extraterrestrial terrain"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
 testpaths = ["tests"]
+filterwarnings = ["error::SyntaxWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "scripts", "app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # import sorting
+    "B",    # bugbear
+    "UP",   # pyupgrade
+    "SIM",  # simplify
+    "NPY",  # numpy-specific
+]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "B008",    # function call in default arg - used deliberately for dataclass factories
+    "SIM108",  # ternary rewrites hurt readability in the planner cost functions
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+"app/*" = ["E402"]        # Streamlit requires sys.path setup before imports
+
+[tool.mypy]
+# Match the interpreter actually in use; numpy stubs require >= 3.12 syntax.
+python_version = "3.13"
+ignore_missing_imports = true
+warn_unused_ignores = true
+# The numerical core is intentionally untyped in places; mypy runs advisory-only
+# in CI rather than gating, so it surfaces problems without blocking research.
+check_untyped_defs = false

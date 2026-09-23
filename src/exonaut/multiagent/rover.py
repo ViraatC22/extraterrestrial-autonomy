@@ -5,6 +5,7 @@ received over the mesh network from other rovers it has been in comm range
 with (see comms.py). This is what makes the communication-radius IV
 meaningful: shrink it and rovers act on staler, more local information.
 """
+
 from __future__ import annotations
 
 import math
@@ -14,17 +15,23 @@ import numpy as np
 
 # 8-connected movement + stay in place.
 ACTIONS = [
-    (-1, 0), (1, 0), (0, -1), (0, 1),
-    (-1, -1), (-1, 1), (1, -1), (1, 1),
+    (-1, 0),
+    (1, 0),
+    (0, -1),
+    (0, 1),
+    (-1, -1),
+    (-1, 1),
+    (1, -1),
+    (1, 1),
     (0, 0),
 ]
 N_ACTIONS = len(ACTIONS)
 STAY_ACTION = N_ACTIONS - 1
 
-MOVE_COST = 1.0                  # battery units per grid-cell moved (axial)
-DIAGONAL_COST = math.sqrt(2.0)   # diagonal moves cover sqrt(2) cells of ground
-IDLE_COST = 0.1                  # battery units per step while stationary
-SOLAR_RECHARGE = 0.6             # battery units per step when in sunlight
+MOVE_COST = 1.0  # battery units per grid-cell moved (axial)
+DIAGONAL_COST = math.sqrt(2.0)  # diagonal moves cover sqrt(2) cells of ground
+IDLE_COST = 0.1  # battery units per step while stationary
+SOLAR_RECHARGE = 0.6  # battery units per step when in sunlight
 MAX_BATTERY = 100.0
 
 
@@ -34,10 +41,10 @@ def direction_to_action(dr: float, dc: float) -> int:
     policy so 'move toward this point' means the same thing everywhere."""
     if dr == 0 and dc == 0:
         return STAY_ACTION
-    norm = (dr ** 2 + dc ** 2) ** 0.5
+    norm = (dr**2 + dc**2) ** 0.5
     best_action, best_score = STAY_ACTION, -np.inf
     for i, (adr, adc) in enumerate(ACTIONS[:-1]):
-        anorm = (adr ** 2 + adc ** 2) ** 0.5
+        anorm = (adr**2 + adc**2) ** 0.5
         score = (dr * adr + dc * adc) / (norm * anorm)
         if score > best_score:
             best_score = score
@@ -45,7 +52,9 @@ def direction_to_action(dr: float, dc: float) -> int:
     return best_action
 
 
-def best_traversable_action(terrain, row: int, col: int, dr: float, dc: float, max_slope_deg: float) -> int:
+def best_traversable_action(
+    terrain, row: int, col: int, dr: float, dc: float, max_slope_deg: float
+) -> int:
     """Like direction_to_action, but skips any of the 8 headings whose
     target cell isn't currently traversable, falling through to the
     next-closest-matching direction instead. Without this, a policy that
@@ -55,10 +64,13 @@ def best_traversable_action(terrain, row: int, col: int, dr: float, dc: float, m
     would route around it, not freeze."""
     if dr == 0 and dc == 0:
         return STAY_ACTION
-    norm = (dr ** 2 + dc ** 2) ** 0.5
+    norm = (dr**2 + dc**2) ** 0.5
     ranked = sorted(
         range(len(ACTIONS) - 1),
-        key=lambda i: -(dr * ACTIONS[i][0] + dc * ACTIONS[i][1]) / (norm * (ACTIONS[i][0] ** 2 + ACTIONS[i][1] ** 2) ** 0.5),
+        key=lambda i: (
+            -(dr * ACTIONS[i][0] + dc * ACTIONS[i][1])
+            / (norm * (ACTIONS[i][0] ** 2 + ACTIONS[i][1] ** 2) ** 0.5)
+        ),
     )
     for i in ranked:
         adr, adc = ACTIONS[i]
@@ -102,7 +114,7 @@ class Rover:
         c0, c1 = max(0, self.col - self.sensor_radius), min(size, self.col + self.sensor_radius + 1)
         for r in range(r0, r1):
             for c in range(c0, c1):
-                if (r - self.row) ** 2 + (c - self.col) ** 2 <= self.sensor_radius ** 2:
+                if (r - self.row) ** 2 + (c - self.col) ** 2 <= self.sensor_radius**2:
                     if (r, c) not in self.known:
                         newly_seen.add((r, c))
                     self.known[(r, c)] = True
@@ -151,7 +163,7 @@ class Rover:
         one unknown cell - the classic 'frontier' in frontier-based
         exploration."""
         frontiers = []
-        for (r, c) in self.known:
+        for r, c in self.known:
             for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < terrain.size and 0 <= nc < terrain.size and (nr, nc) not in self.known:

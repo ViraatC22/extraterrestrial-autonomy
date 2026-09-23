@@ -39,19 +39,14 @@ def test_fixed_planner_does_not_update_belief():
     prior = load_prior("moon")
     model = WorldModel(8, prior["means"], prior["aleatoric_sd"])
     before = model.snapshot()
-    planner.observe_slip(
-        model, SlipRecord(0, 0, terrain_class=2, slope=0.0, slip=0.9, energy=1.0)
-    )
+    planner.observe_slip(model, SlipRecord(0, 0, terrain_class=2, slope=0.0, slip=0.9, energy=1.0))
     assert model.snapshot() == before
 
 
 def test_ood_world_model_uses_prior_body_energy_beliefs():
     config = MissionConfig(body="mars", prior_body="moon")
     model = build_world_model(config, load_prior("moon"), adaptive=False)
-    expected = {
-        int(k): params.energy_multiplier
-        for k, params in TRUE_CLASS_PARAMS["moon"].items()
-    }
+    expected = {int(k): params.energy_multiplier for k, params in TRUE_CLASS_PARAMS["moon"].items()}
     assert model.energy_multiplier == expected
 
 
@@ -133,8 +128,7 @@ def test_learning_generalizes_to_unobserved_terrain():
 
     # now drive on class-2 ground and measure much worse slip than the prior
     for _ in range(25):
-        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0,
-                                  slip=0.85, energy=1.0))
+        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0, slip=0.85, energy=1.0))
 
     after = wm.expected_slip(*unobserved_cell)
     assert after > before + 0.05, (
@@ -152,6 +146,5 @@ def test_fixed_world_model_does_not_learn():
     wm.observed[:8, :8] = True
     before = wm.expected_slip(20, 20)
     for _ in range(25):
-        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0,
-                                  slip=0.85, energy=1.0))
+        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0, slip=0.85, energy=1.0))
     assert wm.expected_slip(20, 20) == before

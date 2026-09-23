@@ -21,13 +21,17 @@ def test_baseline_makes_meaningful_progress(name, seed):
         actions = {rid: policy(env, rid) for rid in env.rover_ids}
         env.step(actions)
     coverage = float(env.coverage[~env.terrain.hazard_mask].mean())
-    assert coverage > 0.1, f"{name} only reached {coverage:.3f} coverage on seed {seed} (likely stuck)"
+    assert coverage > 0.1, (
+        f"{name} only reached {coverage:.3f} coverage on seed {seed} (likely stuck)"
+    )
 
 
 @pytest.mark.parametrize("name", list(BASELINES.keys()))
 def test_baseline_never_crashes_with_failures_and_small_comm_radius(name):
     policy_spec = BASELINES[name]
-    cfg = EnvConfig(terrain_size=32, n_rovers=5, max_steps=80, seed=9, comm_radius=2, failure_rate=0.4)
+    cfg = EnvConfig(
+        terrain_size=32, n_rovers=5, max_steps=80, seed=9, comm_radius=2, failure_rate=0.4
+    )
     env = SwarmEnv(cfg)
     policy = policy_spec() if isinstance(policy_spec, type) else policy_spec
     while not env.done:

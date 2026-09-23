@@ -13,15 +13,16 @@ Usage pattern:
         obs = env.step(actions)
     metrics = env.metrics()
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import numpy as np
 
-from .rover import Rover
 from ..environments.terrain_legacy import Terrain, generate_terrain
 from . import comms
+from .rover import Rover
 
 
 @dataclass
@@ -78,7 +79,9 @@ class SwarmEnv:
     def reset(self) -> dict:
         cfg = self.config
         self.terrain = generate_terrain(
-            size=cfg.terrain_size, seed=cfg.seed, n_craters=cfg.n_craters,
+            size=cfg.terrain_size,
+            seed=cfg.seed,
+            n_craters=cfg.n_craters,
             max_slope_deg=cfg.max_slope_deg,
         )
         rng = np.random.default_rng(cfg.seed + 1000)
@@ -95,11 +98,16 @@ class SwarmEnv:
             c = base_col + rng.integers(-radius, radius + 1)
             if (r, c) not in occupied and self.terrain.is_traversable(r, c, cfg.max_slope_deg):
                 occupied.add((r, c))
-                self.rovers.append(Rover(
-                    rover_id=placed, row=int(r), col=int(c),
-                    sensor_radius=cfg.sensor_radius, comm_radius=cfg.comm_radius,
-                    max_slope_deg=cfg.max_slope_deg,
-                ))
+                self.rovers.append(
+                    Rover(
+                        rover_id=placed,
+                        row=int(r),
+                        col=int(c),
+                        sensor_radius=cfg.sensor_radius,
+                        comm_radius=cfg.comm_radius,
+                        max_slope_deg=cfg.max_slope_deg,
+                    )
+                )
                 placed += 1
             if attempts % 100 == 0:
                 radius = min(radius + 1, cfg.terrain_size // 3)
@@ -124,7 +132,7 @@ class SwarmEnv:
     # -- stepping ----------------------------------------------------------
     def _apply_sense(self, rover: Rover) -> None:
         rover.sense(self.terrain)
-        for (r, c) in rover.known:
+        for r, c in rover.known:
             self.coverage[r, c] = True
 
     def _maybe_inject_failures(self) -> None:
@@ -159,12 +167,16 @@ class SwarmEnv:
 
         self.step_count += 1
         coverage_frac = float(self.coverage[~self.terrain.hazard_mask].mean())
-        self._history.append({
-            "step": self.step_count,
-            "coverage": coverage_frac,
-            "alive": sum(1 for r in self.rovers if r.alive),
-            "mean_battery": float(np.mean([r.battery for r in self.rovers if r.alive])) if any(r.alive for r in self.rovers) else 0.0,
-        })
+        self._history.append(
+            {
+                "step": self.step_count,
+                "coverage": coverage_frac,
+                "alive": sum(1 for r in self.rovers if r.alive),
+                "mean_battery": float(np.mean([r.battery for r in self.rovers if r.alive]))
+                if any(r.alive for r in self.rovers)
+                else 0.0,
+            }
+        )
 
         all_dead = not any(r.alive for r in self.rovers)
         full_coverage = coverage_frac >= 0.995

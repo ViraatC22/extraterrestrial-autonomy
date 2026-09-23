@@ -20,6 +20,7 @@ ood        : out-of-distribution evaluation (different body / shifted
 
 The four sets are disjoint by construction and the constructor asserts it.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -35,10 +36,10 @@ SPLIT_NAMES = ("train", "validation", "test", "ood")
 # Disjoint integer ranges, so even a regenerated split cannot accidentally
 # overlap another.
 SPLIT_RANGES = {
-    "train":      (100_000, 200_000),
+    "train": (100_000, 200_000),
     "validation": (200_000, 300_000),
-    "test":       (300_000, 400_000),
-    "ood":        (400_000, 500_000),
+    "test": (300_000, 400_000),
+    "ood": (400_000, 500_000),
 }
 
 DEFAULT_SIZES = {

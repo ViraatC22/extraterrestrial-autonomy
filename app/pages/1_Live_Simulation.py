@@ -34,8 +34,13 @@ with st.sidebar:
     autoplay = st.toggle("Autoplay", value=False)
 
 new_config = dict(
-    terrain_size=terrain_size, n_rovers=n_rovers, comm_radius=comm_radius,
-    sensor_radius=sensor_radius, failure_rate=failure_rate, max_steps=max_steps, seed=seed,
+    terrain_size=terrain_size,
+    n_rovers=n_rovers,
+    comm_radius=comm_radius,
+    sensor_radius=sensor_radius,
+    failure_rate=failure_rate,
+    max_steps=max_steps,
+    seed=seed,
 )
 needs_reset = (
     reset_clicked

@@ -16,6 +16,7 @@ the world turns out to be different from what it expected.
 The mission manager owns the *what next* decision (which target, or give up
 and go home). The planners own the *how to get there* decision.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -43,8 +44,8 @@ class ScienceTarget:
 class Mission:
     home: tuple[int, int]
     targets: list[ScienceTarget]
-    energy_reserve: float = 12.0     # charge to keep in hand for contingency
-    risk_budget: float = 0.20        # epsilon: max tolerated P(mission failure)
+    energy_reserve: float = 12.0  # charge to keep in hand for contingency
+    risk_budget: float = 0.20  # epsilon: max tolerated P(mission failure)
     max_steps: int = 600
 
     @property
@@ -60,9 +61,14 @@ class Mission:
         return [t for t in self.targets if not t.visited and not t.abandoned]
 
 
-def generate_mission(terrain, rng: np.random.Generator, n_targets: int = 5,
-                     risk_budget: float = 0.20, max_steps: int = 600,
-                     energy_reserve: float = 12.0) -> Mission:
+def generate_mission(
+    terrain,
+    rng: np.random.Generator,
+    n_targets: int = 5,
+    risk_budget: float = 0.20,
+    max_steps: int = 600,
+    energy_reserve: float = 12.0,
+) -> Mission:
     """Place a home base and science targets on traversable ground.
 
     Targets are spread across the map (rejection-sampled against a minimum
@@ -103,13 +109,22 @@ def generate_mission(terrain, rng: np.random.Generator, n_targets: int = 5,
             continue
         if any(np.hypot(r - t.row, c - t.col) < min_separation for t in targets):
             continue
-        targets.append(ScienceTarget(
-            target_id=len(targets), row=r, col=c,
-            value=float(rng.uniform(1.0, 3.0)),
-        ))
+        targets.append(
+            ScienceTarget(
+                target_id=len(targets),
+                row=r,
+                col=c,
+                value=float(rng.uniform(1.0, 3.0)),
+            )
+        )
 
-    return Mission(home=home, targets=targets, risk_budget=risk_budget,
-                   max_steps=max_steps, energy_reserve=energy_reserve)
+    return Mission(
+        home=home,
+        targets=targets,
+        risk_budget=risk_budget,
+        max_steps=max_steps,
+        energy_reserve=energy_reserve,
+    )
 
 
 class MissionManager:
@@ -135,9 +150,14 @@ class MissionManager:
         self.abandon_after = 2
         self.failed_home_assessments = 0
 
-    def _round_trip_assessment(self, start, target_pos, available_energy,
-                               solar_efficiency: float = 1.0,
-                               solar_rate: float | None = None):
+    def _round_trip_assessment(
+        self,
+        start,
+        target_pos,
+        available_energy,
+        solar_efficiency: float = 1.0,
+        solar_rate: float | None = None,
+    ):
         """Plan out-and-back and assess whether it fits the risk budget."""
         outbound = self.planner.plan(self.world_model, start, target_pos)
         if not outbound:
@@ -147,17 +167,27 @@ class MissionManager:
             return None
         full = outbound + inbound[1:]
         assessment = risk.mission_failure_probability(
-            self.world_model, full, self.gravity,
-            available_energy, self.mission.energy_reserve, start=start,
-            solar_efficiency=solar_efficiency, solar_rate=solar_rate,
+            self.world_model,
+            full,
+            self.gravity,
+            available_energy,
+            self.mission.energy_reserve,
+            start=start,
+            solar_efficiency=solar_efficiency,
+            solar_rate=solar_rate,
         )
         assessment["outbound"] = outbound
         assessment["round_trip"] = full
         return assessment
 
-    def select_objective(self, start, available_energy, charge_fraction: float = 1.0,
-                         solar_efficiency: float = 1.0,
-                         solar_rate: float | None = None) -> dict:
+    def select_objective(
+        self,
+        start,
+        available_energy,
+        charge_fraction: float = 1.0,
+        solar_efficiency: float = 1.0,
+        solar_rate: float | None = None,
+    ) -> dict:
         """Return {'goal': (r,c), 'path': [...], 'returning': bool, ...}.
 
         Missions are flown as sorties: go out, come back, recharge, go out
@@ -173,8 +203,13 @@ class MissionManager:
 
         if not candidates:
             path = self.planner.plan(self.world_model, start, mission.home)
-            return {"goal": mission.home, "path": path, "returning": True,
-                    "target": None, "reason": "all_targets_resolved"}
+            return {
+                "goal": mission.home,
+                "path": path,
+                "returning": True,
+                "target": None,
+                "reason": "all_targets_resolved",
+            }
 
         # Home with a recovered battery: start a new sortie.
         if self.returning and at_home and charge_fraction >= self.resume_charge_fraction:
@@ -182,13 +217,19 @@ class MissionManager:
 
         if self.returning:
             path = self.planner.plan(self.world_model, start, mission.home)
-            return {"goal": mission.home, "path": path, "returning": True,
-                    "target": None, "reason": "return_home"}
+            return {
+                "goal": mission.home,
+                "path": path,
+                "returning": True,
+                "target": None,
+                "reason": "return_home",
+            }
 
         best = None
         for target in candidates:
             assessment = self._round_trip_assessment(
-                start, target.pos, available_energy, solar_efficiency, solar_rate)
+                start, target.pos, available_energy, solar_efficiency, solar_rate
+            )
             if assessment is None:
                 continue
             if assessment["p_failure"] > mission.risk_budget:
@@ -208,8 +249,13 @@ class MissionManager:
                     for target in candidates:
                         target.abandoned = True
             path = self.planner.plan(self.world_model, start, mission.home)
-            return {"goal": mission.home, "path": path, "returning": True,
-                    "target": None, "reason": "no_target_within_budget"}
+            return {
+                "goal": mission.home,
+                "path": path,
+                "returning": True,
+                "target": None,
+                "reason": "no_target_within_budget",
+            }
 
         self.current_target = best["target"]
         return {

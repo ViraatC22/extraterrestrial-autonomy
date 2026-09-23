@@ -24,6 +24,7 @@ Holm-Bonferroni is applied across the prespecified primary family only.
 Secondary contrasts are reported separately and labelled as such, so they
 cannot inflate the primary family's error rate.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -50,20 +51,26 @@ def add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _paired_frames(df: pd.DataFrame, metric: str, treatment: str, control: str,
-                   condition: str | None = None):
+def _paired_frames(
+    df: pd.DataFrame, metric: str, treatment: str, control: str, condition: str | None = None
+):
     """Align treatment and control on their shared blocks."""
     work = df if condition is None else df[df["condition"] == condition]
-    pivot = work.pivot_table(index=BLOCK_KEYS, columns="planner", values=metric,
-                             aggfunc="mean")
+    pivot = work.pivot_table(index=BLOCK_KEYS, columns="planner", values=metric, aggfunc="mean")
     if treatment not in pivot.columns or control not in pivot.columns:
         return None
     pair = pivot[[treatment, control]].dropna()
     return pair if len(pair) else None
 
 
-def paired_continuous(df: pd.DataFrame, metric: str, treatment: str, control: str,
-                      condition: str | None = None, alpha: float = 0.05) -> dict | None:
+def paired_continuous(
+    df: pd.DataFrame,
+    metric: str,
+    treatment: str,
+    control: str,
+    condition: str | None = None,
+    alpha: float = 0.05,
+) -> dict | None:
     pair = _paired_frames(df, metric, treatment, control, condition)
     if pair is None or len(pair) < 2:
         return None
@@ -86,7 +93,7 @@ def paired_continuous(df: pd.DataFrame, metric: str, treatment: str, control: st
             t_stat, p_t = 0.0, 1.0
         else:
             t_stat = float("inf") * np.sign(mean_diff)
-            p_t = float(min(1.0, 2.0 * 0.5 ** n))
+            p_t = float(min(1.0, 2.0 * 0.5**n))
     else:
         t_stat, p_t = stats.ttest_rel(a, b)
     if np.allclose(diff, 0.0):
@@ -114,9 +121,14 @@ def paired_continuous(df: pd.DataFrame, metric: str, treatment: str, control: st
     }
 
 
-def paired_binary(df: pd.DataFrame, treatment: str, control: str,
-                  condition: str | None = None, metric: str = "success",
-                  alpha: float = 0.05) -> dict | None:
+def paired_binary(
+    df: pd.DataFrame,
+    treatment: str,
+    control: str,
+    condition: str | None = None,
+    metric: str = "success",
+    alpha: float = 0.05,
+) -> dict | None:
     """McNemar's exact test on a paired binary outcome."""
     pair = _paired_frames(df, metric, treatment, control, condition)
     if pair is None:
@@ -124,8 +136,8 @@ def paired_binary(df: pd.DataFrame, treatment: str, control: str,
     a = pair[treatment].to_numpy() > 0.5
     b = pair[control].to_numpy() > 0.5
     n = len(a)
-    only_treatment = int(np.count_nonzero(a & ~b))   # treatment wins
-    only_control = int(np.count_nonzero(~a & b))     # control wins
+    only_treatment = int(np.count_nonzero(a & ~b))  # treatment wins
+    only_control = int(np.count_nonzero(~a & b))  # control wins
     discordant = only_treatment + only_control
 
     if discordant == 0:
@@ -165,12 +177,12 @@ def primary_analysis(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
     df = add_derived_columns(df)
     rows = []
     for condition in sorted(df["condition"].unique()):
-        cont = paired_continuous(df, "science_fraction", PRIMARY_TREATMENT,
-                                 PRIMARY_CONTROL, condition, alpha)
+        cont = paired_continuous(
+            df, "science_fraction", PRIMARY_TREATMENT, PRIMARY_CONTROL, condition, alpha
+        )
         if cont:
             rows.append(cont)
-        binary = paired_binary(df, PRIMARY_TREATMENT, PRIMARY_CONTROL,
-                               condition, "success", alpha)
+        binary = paired_binary(df, PRIMARY_TREATMENT, PRIMARY_CONTROL, condition, "success", alpha)
         if binary:
             rows.append(binary)
     out = pd.DataFrame(rows)
@@ -189,12 +201,12 @@ def secondary_analysis(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
     rows = []
     for condition in sorted(df["condition"].unique()):
         for treatment in (PRIMARY_CONTROL, PRIMARY_TREATMENT):
-            cont = paired_continuous(df, "science_fraction", treatment,
-                                     DISTANCE_CONTROL, condition, alpha)
+            cont = paired_continuous(
+                df, "science_fraction", treatment, DISTANCE_CONTROL, condition, alpha
+            )
             if cont:
                 rows.append(cont)
-            binary = paired_binary(df, treatment, DISTANCE_CONTROL,
-                                   condition, "success", alpha)
+            binary = paired_binary(df, treatment, DISTANCE_CONTROL, condition, "success", alpha)
             if binary:
                 rows.append(binary)
     out = pd.DataFrame(rows)
@@ -213,27 +225,32 @@ def descriptive_table(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for (condition, planner), group in df.groupby(["condition", "planner"]):
         terminations = group["termination"].value_counts().to_dict()
-        rows.append({
-            "condition": condition,
-            "planner": planner,
-            "n": len(group),
-            "success_rate": float(group["success"].mean()),
-            "science_fraction": float(group["science_fraction"].mean()),
-            "science_fraction_sd": float(group["science_fraction"].std(ddof=1)),
-            "energy_spent": float(group["energy_spent"].mean()),
-            "severe_slip_events": float(group["severe_slip_events"].mean()),
-            "interventions": float(group["interventions"].mean()),
-            "immobilized": int(terminations.get("immobilized", 0)),
-            "energy_exhausted": int(terminations.get("energy_exhausted", 0)),
-            "timeout": int(terminations.get("timeout", 0)),
-            "completed": int(terminations.get("success", 0)),
-        })
+        rows.append(
+            {
+                "condition": condition,
+                "planner": planner,
+                "n": len(group),
+                "success_rate": float(group["success"].mean()),
+                "science_fraction": float(group["science_fraction"].mean()),
+                "science_fraction_sd": float(group["science_fraction"].std(ddof=1)),
+                "energy_spent": float(group["energy_spent"].mean()),
+                "severe_slip_events": float(group["severe_slip_events"].mean()),
+                "interventions": float(group["interventions"].mean()),
+                "immobilized": int(terminations.get("immobilized", 0)),
+                "energy_exhausted": int(terminations.get("energy_exhausted", 0)),
+                "timeout": int(terminations.get("timeout", 0)),
+                "completed": int(terminations.get("success", 0)),
+            }
+        )
     return pd.DataFrame(rows).sort_values(["condition", "planner"]).reset_index(drop=True)
 
 
-def generalization_gap(df: pd.DataFrame, in_condition: str = "moon_id",
-                       ood_condition: str = "mars_ood",
-                       metric: str = "science_fraction") -> pd.DataFrame:
+def generalization_gap(
+    df: pd.DataFrame,
+    in_condition: str = "moon_id",
+    ood_condition: str = "mars_ood",
+    metric: str = "science_fraction",
+) -> pd.DataFrame:
     """G = M(in-distribution) - M(out-of-distribution), per planner.
 
     A smaller gap means performance transferred better. This is computed
@@ -247,11 +264,13 @@ def generalization_gap(df: pd.DataFrame, in_condition: str = "moon_id",
         outside = df[(df["condition"] == ood_condition) & (df["planner"] == planner)][metric]
         if inside.empty or outside.empty:
             continue
-        rows.append({
-            "planner": planner,
-            "metric": metric,
-            "in_distribution": float(inside.mean()),
-            "out_of_distribution": float(outside.mean()),
-            "generalization_gap": float(inside.mean() - outside.mean()),
-        })
+        rows.append(
+            {
+                "planner": planner,
+                "metric": metric,
+                "in_distribution": float(inside.mean()),
+                "out_of_distribution": float(outside.mean()),
+                "generalization_gap": float(inside.mean() - outside.mean()),
+            }
+        )
     return pd.DataFrame(rows)

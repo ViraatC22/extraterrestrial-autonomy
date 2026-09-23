@@ -10,6 +10,7 @@ PheromonePolicy instance is shared by every rover in a trial (there's one
 pheromone field on the ground, not one per rover) - construct a fresh
 instance per trial so pheromone doesn't leak between runs.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -18,7 +19,9 @@ from ..rover import STAY_ACTION, best_traversable_action
 
 
 class PheromonePolicy:
-    def __init__(self, decay: float = 0.98, deposit: float = 5.0, explore_radius: int | None = None):
+    def __init__(
+        self, decay: float = 0.98, deposit: float = 5.0, explore_radius: int | None = None
+    ):
         self.decay = decay
         self.deposit = deposit
         # None means "bounded by the rover's own sensing radius". A rover
@@ -65,5 +68,10 @@ class PheromonePolicy:
         if target is None:
             return STAY_ACTION
         return best_traversable_action(
-            terrain, rover.row, rover.col, target[0] - rover.row, target[1] - rover.col, rover.max_slope_deg,
+            terrain,
+            rover.row,
+            rover.col,
+            target[0] - rover.row,
+            target[1] - rover.col,
+            rover.max_slope_deg,
         )

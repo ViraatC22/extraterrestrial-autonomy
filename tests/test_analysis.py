@@ -3,6 +3,7 @@
 These produce the paper's reported numbers, so they are checked against
 reference implementations rather than trusted on inspection.
 """
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -27,14 +28,24 @@ def _frame(treatment_success, control_success, treatment_sci=None, control_sci=N
     control_sci = control_sci if control_sci is not None else [0.5] * n
     rows = []
     for i in range(n):
-        for planner, ok, sci in ((TREAT, treatment_success[i], treatment_sci[i]),
-                                 (CTRL, control_success[i], control_sci[i])):
-            rows.append({
-                "condition": "c", "seed": i, "planner": planner,
-                "success": bool(ok), "science_return": sci, "science_possible": 1.0,
-                "energy_spent": 10.0, "severe_slip_events": 0, "interventions": 0,
-                "termination": "success" if ok else "energy_exhausted",
-            })
+        for planner, ok, sci in (
+            (TREAT, treatment_success[i], treatment_sci[i]),
+            (CTRL, control_success[i], control_sci[i]),
+        ):
+            rows.append(
+                {
+                    "condition": "c",
+                    "seed": i,
+                    "planner": planner,
+                    "success": bool(ok),
+                    "science_return": sci,
+                    "science_possible": 1.0,
+                    "energy_spent": 10.0,
+                    "severe_slip_events": 0,
+                    "interventions": 0,
+                    "termination": "success" if ok else "energy_exhausted",
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -78,11 +89,10 @@ def test_mcnemar_detects_one_sided_advantage():
 
 def test_paired_continuous_recovers_known_difference():
     rng = np.random.default_rng(3)
-    block = rng.normal(0, 1.0, 30)          # large between-terrain variance
+    block = rng.normal(0, 1.0, 30)  # large between-terrain variance
     control = 0.4 + block + rng.normal(0, 0.05, 30)
     treatment = control + 0.12 + rng.normal(0, 0.02, 30)
-    df = add_derived_columns(_frame([True] * 30, [True] * 30,
-                                    list(treatment), list(control)))
+    df = add_derived_columns(_frame([True] * 30, [True] * 30, list(treatment), list(control)))
     out = paired_continuous(df, "science_fraction", TREAT, CTRL, "c")
     assert out["mean_diff"] == pytest.approx(0.12, abs=0.02)
     assert out["ci95_low"] < 0.12 < out["ci95_high"]
@@ -125,12 +135,15 @@ def test_descriptive_and_gap_are_consistent_with_rows():
     assert treat_row["n"] == 4
     assert treat_row["success_rate"] == pytest.approx(0.5)
 
-    two = pd.concat([
-        df.assign(condition="moon_id"),
-        df.assign(condition="mars_ood", science_return=0.2),
-    ])
+    two = pd.concat(
+        [
+            df.assign(condition="moon_id"),
+            df.assign(condition="mars_ood", science_return=0.2),
+        ]
+    )
     gap = generalization_gap(two)
     assert set(gap["planner"]) == {TREAT, CTRL}
     for _, row in gap.iterrows():
         assert row["generalization_gap"] == pytest.approx(
-            row["in_distribution"] - row["out_of_distribution"])
+            row["in_distribution"] - row["out_of_distribution"]
+        )

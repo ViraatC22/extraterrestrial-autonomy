@@ -10,6 +10,7 @@ test statistics), so the running text cannot drift from the data either.
 Run after a sweep:
     python scripts/make_paper_assets.py
 """
+
 from __future__ import annotations
 
 import json
@@ -19,6 +20,7 @@ from datetime import date
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -79,13 +81,20 @@ def collapse_rl_seeds(df: pd.DataFrame) -> pd.DataFrame:
     """
     out = df.copy()
     out["training_seed"] = out["algorithm"].str.extract(r"ppo_seed(\d+)")[0]
-    out["algorithm"] = out["algorithm"].where(
-        ~out["algorithm"].str.startswith("rl:"), "rl"
-    )
-    block_cols = [c for c in ["comm_radius", "n_rovers", "failure_rate",
-                              "terrain_size", "max_steps", "seed"] if c in out.columns]
-    numeric = ["final_coverage", "coverage_per_energy", "energy_spent",
-               "rovers_alive", "steps_taken", "n_rovers"]
+    out["algorithm"] = out["algorithm"].where(~out["algorithm"].str.startswith("rl:"), "rl")
+    block_cols = [
+        c
+        for c in ["comm_radius", "n_rovers", "failure_rate", "terrain_size", "max_steps", "seed"]
+        if c in out.columns
+    ]
+    numeric = [
+        "final_coverage",
+        "coverage_per_energy",
+        "energy_spent",
+        "rovers_alive",
+        "steps_taken",
+        "n_rovers",
+    ]
     numeric = [c for c in numeric if c in out.columns]
     agg = out.groupby(block_cols + ["algorithm"], as_index=False)[numeric].mean()
     return agg
@@ -113,10 +122,14 @@ def table_descriptive(df: pd.DataFrame, metric: str, path: Path, caption: str, l
     s = summarize(df, metric=metric, group_cols=("algorithm",))
     s = s.set_index("algorithm").reindex([a for a in ALGO_ORDER if a in set(s["algorithm"])])
     lines = [
-        r"\begin{table}[t]", r"\centering",
-        r"\caption{" + caption + "}", r"\label{" + label + "}",
-        r"\begin{tabular}{lrrrr}", r"\toprule",
-        r"Algorithm & Mean & SD & 95\% CI & $n$ \\", r"\midrule",
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\caption{" + caption + "}",
+        r"\label{" + label + "}",
+        r"\begin{tabular}{lrrrr}",
+        r"\toprule",
+        r"Algorithm & Mean & SD & 95\% CI & $n$ \\",
+        r"\midrule",
     ]
     for algo, row in s.iterrows():
         lines.append(
@@ -130,10 +143,13 @@ def table_descriptive(df: pd.DataFrame, metric: str, path: Path, caption: str, l
 def table_paired(df: pd.DataFrame, metric: str, path: Path, caption: str, label: str):
     pc = paired_comparisons(df, metric=metric)
     lines = [
-        r"\begin{table}[t]", r"\centering",
-        r"\caption{" + caption + "}", r"\label{" + label + "}",
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\caption{" + caption + "}",
+        r"\label{" + label + "}",
         r"\small",
-        r"\begin{tabular}{llrrrrr}", r"\toprule",
+        r"\begin{tabular}{llrrrrr}",
+        r"\toprule",
         r"A & B & $\Delta$ (A$-$B) & 95\% CI & $t$ & $p_{\mathrm{Holm}}$ & $d_z$ \\",
         r"\midrule",
     ]
@@ -147,11 +163,13 @@ def table_paired(df: pd.DataFrame, metric: str, path: Path, caption: str, label:
             f"{_p_plain(r['p_holm'])} & {r['cohens_dz']:+.2f} \\\\"
         )
     lines += [
-        r"\bottomrule", r"\end{tabular}",
+        r"\bottomrule",
+        r"\end{tabular}",
         r"\par\vspace{2pt}\footnotesize $^{*}$significant at $\alpha=0.05$ after "
         r"Holm--Bonferroni correction across all " + str(len(pc)) + r" comparisons. "
-        r"$n=" + str(int(pc['n_pairs'].iloc[0])) + r"$ matched blocks per comparison.",
-        r"\end{table}", "",
+        r"$n=" + str(int(pc["n_pairs"].iloc[0])) + r"$ matched blocks per comparison.",
+        r"\end{table}",
+        "",
     ]
     path.write_text("\n".join(lines))
     return pc
@@ -160,10 +178,14 @@ def table_paired(df: pd.DataFrame, metric: str, path: Path, caption: str, label:
 def table_two_way(df: pd.DataFrame, metric: str, path: Path, caption: str, label: str):
     table = two_way_anova(df, metric=metric)
     lines = [
-        r"\begin{table}[t]", r"\centering",
-        r"\caption{" + caption + "}", r"\label{" + label + "}",
-        r"\begin{tabular}{lrrrrr}", r"\toprule",
-        r"Source & SS & df & $F$ & $p$ & $\eta^2_p$ \\", r"\midrule",
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\caption{" + caption + "}",
+        r"\label{" + label + "}",
+        r"\begin{tabular}{lrrrrr}",
+        r"\toprule",
+        r"Source & SS & df & $F$ & $p$ & $\eta^2_p$ \\",
+        r"\midrule",
     ]
     for source, row in table.iterrows():
         name = source.replace("_", r"\_").replace(" x ", r" $\times$ ")
@@ -178,8 +200,9 @@ def table_two_way(df: pd.DataFrame, metric: str, path: Path, caption: str, label
     return table
 
 
-def table_by_condition(df: pd.DataFrame, metric: str, condition: str, path: Path,
-                       caption: str, label: str):
+def table_by_condition(
+    df: pd.DataFrame, metric: str, condition: str, path: Path, caption: str, label: str
+):
     s = summarize(df, metric=metric, group_cols=("algorithm", condition))
     pivot_mean = s.pivot(index=condition, columns="algorithm", values="mean")
     pivot_sd = s.pivot(index=condition, columns="algorithm", values="sd")
@@ -187,10 +210,14 @@ def table_by_condition(df: pd.DataFrame, metric: str, condition: str, path: Path
 
     header = " & ".join(ALGO_LABELS.get(a, a) for a in algos)
     lines = [
-        r"\begin{table}[t]", r"\centering",
-        r"\caption{" + caption + "}", r"\label{" + label + "}",
-        r"\begin{tabular}{l" + "r" * len(algos) + "}", r"\toprule",
-        condition.replace("_", r"\_") + " & " + header + r" \\", r"\midrule",
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\caption{" + caption + "}",
+        r"\label{" + label + "}",
+        r"\begin{tabular}{l" + "r" * len(algos) + "}",
+        r"\toprule",
+        condition.replace("_", r"\_") + " & " + header + r" \\",
+        r"\midrule",
     ]
     for idx in pivot_mean.index:
         cells = " & ".join(
@@ -198,9 +225,11 @@ def table_by_condition(df: pd.DataFrame, metric: str, condition: str, path: Path
         )
         lines.append(f"{idx} & {cells} \\\\")
     lines += [
-        r"\bottomrule", r"\end{tabular}",
+        r"\bottomrule",
+        r"\end{tabular}",
         r"\par\vspace{2pt}\footnotesize Cell entries are mean (SD).",
-        r"\end{table}", "",
+        r"\end{table}",
+        "",
     ]
     path.write_text("\n".join(lines))
 
@@ -212,10 +241,14 @@ def table_rl_seed_spread(raw: pd.DataFrame, path: Path, caption: str, label: str
         return
     rl["training_seed"] = rl["algorithm"].str.extract(r"ppo_seed(\d+)")[0]
     lines = [
-        r"\begin{table}[t]", r"\centering",
-        r"\caption{" + caption + "}", r"\label{" + label + "}",
-        r"\begin{tabular}{lrrr}", r"\toprule",
-        r"Training seed & Mean coverage & SD & $n$ trials \\", r"\midrule",
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\caption{" + caption + "}",
+        r"\label{" + label + "}",
+        r"\begin{tabular}{lrrr}",
+        r"\toprule",
+        r"Training seed & Mean coverage & SD & $n$ trials \\",
+        r"\midrule",
     ]
     for seed, g in rl.groupby("training_seed"):
         lines.append(
@@ -230,10 +263,15 @@ def table_rl_seed_spread(raw: pd.DataFrame, path: Path, caption: str, label: str
 # figures
 # --------------------------------------------------------------------------
 def _style():
-    plt.rcParams.update({
-        "font.size": 9, "axes.spines.top": False, "axes.spines.right": False,
-        "figure.dpi": 150, "savefig.bbox": "tight",
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 9,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "figure.dpi": 150,
+            "savefig.bbox": "tight",
+        }
+    )
 
 
 def figure_metric_vs_comm(df: pd.DataFrame, metric: str, path: Path, ylabel: str):
@@ -245,10 +283,15 @@ def figure_metric_vs_comm(df: pd.DataFrame, metric: str, path: Path, ylabel: str
             continue
         s = summarize(sub, metric=metric, group_cols=("comm_radius",))
         ax.errorbar(
-            s["comm_radius"], s["mean"],
+            s["comm_radius"],
+            s["mean"],
             yerr=[s["mean"] - s["ci95_low"], s["ci95_high"] - s["mean"]],
-            marker="o", markersize=4, capsize=3, linewidth=1.5,
-            label=ALGO_LABELS[algo], color=ALGO_COLORS[algo],
+            marker="o",
+            markersize=4,
+            capsize=3,
+            linewidth=1.5,
+            label=ALGO_LABELS[algo],
+            color=ALGO_COLORS[algo],
         )
     ax.set_xlabel("Communication radius $R_c$ (cells)")
     ax.set_ylabel(ylabel)
@@ -271,10 +314,16 @@ def figure_metric_vs_failure(df: pd.DataFrame, metric: str, path: Path, ylabel: 
             continue
         s = summarize(sub, metric=metric, group_cols=("failure_rate",))
         x = np.arange(len(rates)) + i * width - 0.4 + width / 2
-        ax.bar(x, s["mean"], width=width, label=ALGO_LABELS[algo],
-               color=ALGO_COLORS[algo],
-               yerr=[s["mean"] - s["ci95_low"], s["ci95_high"] - s["mean"]],
-               capsize=2, error_kw={"linewidth": 0.8})
+        ax.bar(
+            x,
+            s["mean"],
+            width=width,
+            label=ALGO_LABELS[algo],
+            color=ALGO_COLORS[algo],
+            yerr=[s["mean"] - s["ci95_low"], s["ci95_high"] - s["mean"]],
+            capsize=2,
+            error_kw={"linewidth": 0.8},
+        )
     ax.set_xticks(np.arange(len(rates)))
     ax.set_xticklabels([f"{r:.0%}" for r in rates])
     ax.set_xlabel("Fraction of swarm disabled at mid-mission")
@@ -293,10 +342,15 @@ def figure_swarm_size(df: pd.DataFrame, path: Path):
             continue
         s = summarize(sub, metric="final_coverage", group_cols=("n_rovers",))
         ax.errorbar(
-            s["n_rovers"], s["mean"],
+            s["n_rovers"],
+            s["mean"],
             yerr=[s["mean"] - s["ci95_low"], s["ci95_high"] - s["mean"]],
-            marker="s", markersize=4, capsize=3, linewidth=1.5,
-            label=ALGO_LABELS[algo], color=ALGO_COLORS[algo],
+            marker="s",
+            markersize=4,
+            capsize=3,
+            linewidth=1.5,
+            label=ALGO_LABELS[algo],
+            color=ALGO_COLORS[algo],
         )
     ax.set_xlabel("Swarm size $N$ (rovers)")
     ax.set_ylabel("Final coverage")
@@ -324,8 +378,12 @@ def figure_terrain_example(path: Path):
     composite = np.zeros(terrain.shape)
     composite[terrain.hazard_mask] = 1.0
     composite[terrain.shadow_mask] = 2.0
-    axes[2].imshow(composite, cmap=matplotlib.colors.ListedColormap(
-        ["#EEEEEE", "#C44E52", "#4C72B0"]), vmin=0, vmax=2)
+    axes[2].imshow(
+        composite,
+        cmap=matplotlib.colors.ListedColormap(["#EEEEEE", "#C44E52", "#4C72B0"]),
+        vmin=0,
+        vmax=2,
+    )
     axes[2].set_title("Traversable / hazard / PSR", fontsize=8)
 
     for ax in axes:
@@ -349,9 +407,19 @@ def _git_commit() -> str:
 
 def _package_versions() -> dict:
     import importlib.metadata as md
+
     out = {}
-    for pkg in ["numpy", "scipy", "pandas", "stable-baselines3", "torch",
-                "gymnasium", "statsmodels", "matplotlib", "streamlit"]:
+    for pkg in [
+        "numpy",
+        "scipy",
+        "pandas",
+        "stable-baselines3",
+        "torch",
+        "gymnasium",
+        "statsmodels",
+        "matplotlib",
+        "streamlit",
+    ]:
         try:
             out[pkg] = md.version(pkg)
         except Exception:
@@ -359,11 +427,18 @@ def _package_versions() -> dict:
     return out
 
 
-def write_macros(main: pd.DataFrame, raw: pd.DataFrame, pc: pd.DataFrame,
-                 anova: dict, two_way: pd.DataFrame, path: Path):
+def write_macros(
+    main: pd.DataFrame,
+    raw: pd.DataFrame,
+    pc: pd.DataFrame,
+    anova: dict,
+    two_way: pd.DataFrame,
+    path: Path,
+):
     """LaTeX macros for every number quoted in the prose."""
+
     def macro(name, value):
-        return r"\newcommand{\%s}{%s}" % (name, value)
+        return rf"\newcommand{{\{name}}}{{{value}}}"
 
     cov = summarize(main, "final_coverage", ("algorithm",)).set_index("algorithm")
     cpe = summarize(main, "coverage_per_energy", ("algorithm",)).set_index("algorithm")
@@ -376,8 +451,17 @@ def write_macros(main: pd.DataFrame, raw: pd.DataFrame, pc: pd.DataFrame,
     lines.append(macro("NSeeds", str(main["seed"].nunique())))
     lines.append(macro("NCommRadii", str(main["comm_radius"].nunique())))
     lines.append(macro("NFailureRates", str(main["failure_rate"].nunique())))
-    lines.append(macro("CommRadiiList", ", ".join(str(int(v)) for v in sorted(main["comm_radius"].unique()))))
-    lines.append(macro("FailureRatesList", ", ".join(f"{v:.0%}".replace("%", r"\%") for v in sorted(main["failure_rate"].unique()))))
+    lines.append(
+        macro("CommRadiiList", ", ".join(str(int(v)) for v in sorted(main["comm_radius"].unique())))
+    )
+    lines.append(
+        macro(
+            "FailureRatesList",
+            ", ".join(
+                f"{v:.0%}".replace("%", r"\%") for v in sorted(main["failure_rate"].unique())
+            ),
+        )
+    )
 
     for algo in ALGO_ORDER:
         if algo not in cov.index:
@@ -404,7 +488,7 @@ def write_macros(main: pd.DataFrame, raw: pd.DataFrame, pc: pd.DataFrame,
     # best vs each baseline, for the abstract
     for _, r in pc.iterrows():
         a, b = r["algorithm_a"], r["algorithm_b"]
-        tag = f"{a.replace('_','')}VS{b.replace('_','')}"
+        tag = f"{a.replace('_', '')}VS{b.replace('_', '')}"
         lines.append(macro(f"diff{tag}", f"{r['mean_diff']:+.3f}"))
         lines.append(macro(f"p{tag}", _p_plain(r["p_holm"])))
         lines.append(macro(f"dz{tag}", f"{r['cohens_dz']:+.2f}"))
@@ -424,8 +508,10 @@ def write_macros(main: pd.DataFrame, raw: pd.DataFrame, pc: pd.DataFrame,
     missing_marker = r"\textbf{[MISSING]}"
     cfg_path = PROJECT_ROOT / "models" / "ppo_seed0_training_config.json"
     rl_macros = {
-        "RLTimesteps": missing_marker, "RLEnvs": missing_marker,
-        "RLGamma": missing_marker, "RLLR": missing_marker,
+        "RLTimesteps": missing_marker,
+        "RLEnvs": missing_marker,
+        "RLGamma": missing_marker,
+        "RLLR": missing_marker,
         "RLArch": missing_marker,
     }
     if cfg_path.exists():
@@ -440,7 +526,9 @@ def write_macros(main: pd.DataFrame, raw: pd.DataFrame, pc: pd.DataFrame,
         }
     for name, value in rl_macros.items():
         lines.append(macro(name, value))
-    lines.append(macro("NRLSeeds", str(raw[raw["algorithm"].str.startswith("rl:")]["algorithm"].nunique())))
+    lines.append(
+        macro("NRLSeeds", str(raw[raw["algorithm"].str.startswith("rl:")]["algorithm"].nunique()))
+    )
 
     path.write_text("\n".join(lines) + "\n")
 
@@ -461,62 +549,98 @@ def main() -> None:
 
     # tables
     table_descriptive(
-        main_df, "final_coverage", TABLES_DIR / "descriptive_coverage.tex",
+        main_df,
+        "final_coverage",
+        TABLES_DIR / "descriptive_coverage.tex",
         "Final coverage by algorithm, pooled over all conditions.",
-        "tab:descriptive-coverage")
+        "tab:descriptive-coverage",
+    )
     table_descriptive(
-        main_df, "coverage_per_energy", TABLES_DIR / "descriptive_cpe.tex",
+        main_df,
+        "coverage_per_energy",
+        TABLES_DIR / "descriptive_cpe.tex",
         "Coverage per unit energy by algorithm, pooled over all conditions.",
-        "tab:descriptive-cpe")
+        "tab:descriptive-cpe",
+    )
     pc = table_paired(
-        main_df, "final_coverage", TABLES_DIR / "paired_coverage.tex",
+        main_df,
+        "final_coverage",
+        TABLES_DIR / "paired_coverage.tex",
         "Pairwise paired comparisons on final coverage, with Holm--Bonferroni "
         "corrected $p$-values and paired effect sizes.",
-        "tab:paired-coverage")
+        "tab:paired-coverage",
+    )
     table_paired(
-        main_df, "coverage_per_energy", TABLES_DIR / "paired_cpe.tex",
+        main_df,
+        "coverage_per_energy",
+        TABLES_DIR / "paired_cpe.tex",
         "Pairwise paired comparisons on coverage per unit energy.",
-        "tab:paired-cpe")
+        "tab:paired-cpe",
+    )
     two_way = table_two_way(
-        main_df, "final_coverage", TABLES_DIR / "two_way_anova.tex",
+        main_df,
+        "final_coverage",
+        TABLES_DIR / "two_way_anova.tex",
         "Factorial ANOVA of final coverage. The interaction row tests whether the "
         "ranking of algorithms depends on communication radius.",
-        "tab:two-way")
+        "tab:two-way",
+    )
     table_by_condition(
-        main_df, "final_coverage", "comm_radius", TABLES_DIR / "by_comm_radius.tex",
-        "Final coverage by communication radius.", "tab:by-comm")
+        main_df,
+        "final_coverage",
+        "comm_radius",
+        TABLES_DIR / "by_comm_radius.tex",
+        "Final coverage by communication radius.",
+        "tab:by-comm",
+    )
     table_by_condition(
-        main_df, "rovers_alive", "failure_rate", TABLES_DIR / "by_failure_rate.tex",
-        "Rovers surviving to end of mission by injected failure rate.", "tab:by-failure")
+        main_df,
+        "rovers_alive",
+        "failure_rate",
+        TABLES_DIR / "by_failure_rate.tex",
+        "Rovers surviving to end of mission by injected failure rate.",
+        "tab:by-failure",
+    )
     table_rl_seed_spread(
-        raw, TABLES_DIR / "rl_seed_spread.tex",
+        raw,
+        TABLES_DIR / "rl_seed_spread.tex",
         "Variation across the three independently trained RL policies.",
-        "tab:rl-seeds")
+        "tab:rl-seeds",
+    )
 
     anova = repeated_measures_anova(main_df, "final_coverage")
 
     # figures
-    figure_metric_vs_comm(main_df, "final_coverage",
-                          FIGURES_DIR / "coverage_vs_comm.pdf", "Final coverage")
-    figure_metric_vs_comm(main_df, "coverage_per_energy",
-                          FIGURES_DIR / "cpe_vs_comm.pdf", "Coverage per unit energy")
-    figure_metric_vs_failure(main_df, "final_coverage",
-                             FIGURES_DIR / "coverage_vs_failure.pdf", "Final coverage")
+    figure_metric_vs_comm(
+        main_df, "final_coverage", FIGURES_DIR / "coverage_vs_comm.pdf", "Final coverage"
+    )
+    figure_metric_vs_comm(
+        main_df, "coverage_per_energy", FIGURES_DIR / "cpe_vs_comm.pdf", "Coverage per unit energy"
+    )
+    figure_metric_vs_failure(
+        main_df, "final_coverage", FIGURES_DIR / "coverage_vs_failure.pdf", "Final coverage"
+    )
     figure_terrain_example(FIGURES_DIR / "terrain_example.pdf")
     if SWARM_CSV.exists():
         swarm = collapse_rl_seeds(pd.read_csv(SWARM_CSV))
         figure_swarm_size(swarm, FIGURES_DIR / "coverage_vs_swarm_size.pdf")
         table_by_condition(
-            swarm, "final_coverage", "n_rovers", TABLES_DIR / "by_swarm_size.tex",
+            swarm,
+            "final_coverage",
+            "n_rovers",
+            TABLES_DIR / "by_swarm_size.tex",
             "Final coverage by swarm size at fixed communication radius.",
-            "tab:by-swarm")
+            "tab:by-swarm",
+        )
 
     write_macros(main_df, raw, pc, anova, two_way, TABLES_DIR / "generated_macros.tex")
 
     print(f"wrote tables to {TABLES_DIR}")
     print(f"wrote figures to {FIGURES_DIR}")
-    print(f"ANOVA: F({anova['df_treatment']},{anova['df_error']})={anova['f_stat']:.3f}, "
-          f"p={anova['p_value']:.4g}")
+    print(
+        f"ANOVA: F({anova['df_treatment']},{anova['df_error']})={anova['f_stat']:.3f}, "
+        f"p={anova['p_value']:.4g}"
+    )
 
 
 if __name__ == "__main__":

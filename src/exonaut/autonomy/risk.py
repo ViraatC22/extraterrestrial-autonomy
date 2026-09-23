@@ -31,6 +31,7 @@ Path-level risk composes the per-cell terms as independent events:
 
 Again an approximation, again applied uniformly.
 """
+
 from __future__ import annotations
 
 import math
@@ -93,13 +94,14 @@ def risk_field(world_model) -> np.ndarray:
 def path_risk(world_model, path) -> float:
     """Composed probability that a path ends the mission."""
     survival = 1.0
-    for (r, c) in path:
-        survival *= (1.0 - cell_risk(world_model, r, c))
+    for r, c in path:
+        survival *= 1.0 - cell_risk(world_model, r, c)
     return float(np.clip(1.0 - survival, 0.0, 1.0))
 
 
-def path_energy(world_model, path, gravity: float,
-                start: tuple[int, int] | None = None) -> tuple[float, float]:
+def path_energy(
+    world_model, path, gravity: float, start: tuple[int, int] | None = None
+) -> tuple[float, float]:
     """(expected energy, standard deviation) for traversing a path.
 
     Energy variance comes from slip uncertainty propagated through the
@@ -119,9 +121,13 @@ def path_energy(world_model, path, gravity: float,
             continue
         slip = world_model.expected_slip(*cell)
         sd = world_model.total_slip_sd(*cell)
-        energy = locomotion_cost(distance, float(world_model.slope[cell]),
-                                 world_model.believed_energy_multiplier(*cell),
-                                 slip, gravity)
+        energy = locomotion_cost(
+            distance,
+            float(world_model.slope[cell]),
+            world_model.believed_energy_multiplier(*cell),
+            slip,
+            gravity,
+        )
         total += energy
         # d/ds [1/(1-s)] = 1/(1-s)^2, so denergy/dslip = energy/(1-s)
         sensitivity = energy / max(1.0 - slip, 0.08)
@@ -130,8 +136,9 @@ def path_energy(world_model, path, gravity: float,
     return float(total), float(math.sqrt(variance))
 
 
-def energy_shortfall_probability(expected: float, sd: float,
-                                 available: float, reserve: float = 0.0) -> float:
+def energy_shortfall_probability(
+    expected: float, sd: float, available: float, reserve: float = 0.0
+) -> float:
     """P(energy required exceeds the usable budget).
 
     Required energy is treated as Normal(expected, sd^2); the usable budget
@@ -143,8 +150,9 @@ def energy_shortfall_probability(expected: float, sd: float,
     return float(np.clip(_normal_sf(budget, expected, sd), 0.0, 1.0))
 
 
-def expected_solar_income(world_model, path, solar_efficiency: float = 1.0,
-                          solar_rate: float | None = None) -> float:
+def expected_solar_income(
+    world_model, path, solar_efficiency: float = 1.0, solar_rate: float | None = None
+) -> float:
     """Energy the robot expects to harvest while driving the path.
 
     Ignoring this entirely makes the planner so conservative it never leaves
@@ -161,17 +169,21 @@ def expected_solar_income(world_model, path, solar_efficiency: float = 1.0,
     return rate * illumination * solar_efficiency * len(path)
 
 
-def mission_failure_probability(world_model, path, gravity: float,
-                                available_energy: float, reserve: float,
-                                start: tuple[int, int] | None = None,
-                                solar_efficiency: float = 1.0,
-                                solar_rate: float | None = None) -> dict:
+def mission_failure_probability(
+    world_model,
+    path,
+    gravity: float,
+    available_energy: float,
+    reserve: float,
+    start: tuple[int, int] | None = None,
+    solar_efficiency: float = 1.0,
+    solar_rate: float | None = None,
+) -> dict:
     """Total P(mission failure) for a candidate path, split by cause."""
     p_terrain = path_risk(world_model, path)
     expected, sd = path_energy(world_model, path, gravity, start=start)
     income = expected_solar_income(world_model, path, solar_efficiency, solar_rate)
-    p_energy = energy_shortfall_probability(
-        expected, sd, available_energy + income, reserve)
+    p_energy = energy_shortfall_probability(expected, sd, available_energy + income, reserve)
     combined = 1.0 - (1.0 - p_terrain) * (1.0 - p_energy)
     return {
         "p_failure": float(np.clip(combined, 0.0, 1.0)),

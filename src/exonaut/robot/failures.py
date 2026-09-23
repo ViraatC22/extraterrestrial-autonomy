@@ -5,20 +5,21 @@ own assumptions about *itself* stop holding, not just when the terrain
 surprises it. Each fault is injected at a seeded time so that every algorithm
 faces the identical fault at the identical step on the identical terrain.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
 
-class FaultType(str, Enum):
+class FaultType(StrEnum):
     NONE = "none"
-    SENSOR_DEGRADATION = "sensor_degradation"   # sensing range and accuracy drop
-    MOTOR_EFFICIENCY = "motor_efficiency"       # locomotion costs more energy
-    SOLAR_DUST = "solar_dust"                   # recharge rate drops
-    WHEEL_DAMAGE = "wheel_damage"               # slip increases everywhere
+    SENSOR_DEGRADATION = "sensor_degradation"  # sensing range and accuracy drop
+    MOTOR_EFFICIENCY = "motor_efficiency"  # locomotion costs more energy
+    SOLAR_DUST = "solar_dust"  # recharge rate drops
+    WHEEL_DAMAGE = "wheel_damage"  # slip increases everywhere
 
 
 @dataclass
@@ -37,26 +38,36 @@ class FaultSchedule:
     trial, identical across algorithms, and therefore a controlled variable
     rather than a source of between-algorithm noise.
     """
+
     events: list[FaultEvent] = field(default_factory=list)
 
     @classmethod
-    def draw(cls, rng: np.random.Generator, horizon: int, fault_rate: float,
-             allowed: tuple[FaultType, ...] = None) -> "FaultSchedule":
+    def draw(
+        cls,
+        rng: np.random.Generator,
+        horizon: int,
+        fault_rate: float,
+        allowed: tuple[FaultType, ...] = None,
+    ) -> FaultSchedule:
         if fault_rate <= 0:
             return cls([])
         allowed = allowed or (
-            FaultType.SENSOR_DEGRADATION, FaultType.MOTOR_EFFICIENCY,
-            FaultType.SOLAR_DUST, FaultType.WHEEL_DAMAGE,
+            FaultType.SENSOR_DEGRADATION,
+            FaultType.MOTOR_EFFICIENCY,
+            FaultType.SOLAR_DUST,
+            FaultType.WHEEL_DAMAGE,
         )
         # fault_rate is the expected number of faults per mission
         n_faults = rng.poisson(fault_rate)
         events = []
         for _ in range(int(n_faults)):
-            events.append(FaultEvent(
-                fault_type=FaultType(rng.choice([f.value for f in allowed])),
-                step=int(rng.integers(1, max(2, horizon))),
-                severity=float(rng.uniform(0.3, 0.9)),
-            ))
+            events.append(
+                FaultEvent(
+                    fault_type=FaultType(rng.choice([f.value for f in allowed])),
+                    step=int(rng.integers(1, max(2, horizon))),
+                    severity=float(rng.uniform(0.3, 0.9)),
+                )
+            )
         events.sort(key=lambda e: e.step)
         return cls(events)
 

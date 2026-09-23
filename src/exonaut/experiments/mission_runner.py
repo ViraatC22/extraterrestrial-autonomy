@@ -5,14 +5,11 @@ The seed split is loaded from the frozen protocol rather than synthesized by
 the runner, and a metadata sidecar records the exact design and split checksum
 used to create each CSV.
 """
+
 from __future__ import annotations
 
 import json
 import os
-import platform
-import subprocess
-import sys
-from datetime import datetime, timezone
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -22,6 +19,7 @@ import pandas as pd
 from ..planners import available_planners
 from ..simulation import MissionConfig, run_mission
 from .protocol import load_quarantine, load_splits
+from .provenance import environment_record
 
 RESULTS_DIR = Path(__file__).resolve().parents[3] / "data" / "results"
 
@@ -54,15 +52,21 @@ DEFAULT_CONDITIONS = (
     ExperimentCondition("moon_id", "test", "moon"),
     ExperimentCondition("mars_ood", "ood", "mars"),
     ExperimentCondition(
-        "mars_high_uncertainty", "ood", "mars",
+        "mars_high_uncertainty",
+        "ood",
+        "mars",
         overrides={"terrain_uncertainty": 1.5},
     ),
     ExperimentCondition(
-        "mars_faults", "ood", "mars",
+        "mars_faults",
+        "ood",
+        "mars",
         overrides={"fault_rate": 1.0},
     ),
     ExperimentCondition(
-        "mars_comm_delay", "ood", "mars",
+        "mars_comm_delay",
+        "ood",
+        "mars",
         overrides={"comm_delay": 20},
     ),
 )
@@ -92,50 +96,23 @@ def _run_trial_star(args):
     return run_mission_trial(*args)
 
 
-def _git_provenance() -> dict:
-    """Commit the results were produced at, and whether the tree was dirty.
-
-    A result that cannot be traced to an exact code state is not reproducible,
-    and a dirty tree means the commit alone does not describe what ran.
-    """
-    root = Path(__file__).resolve().parents[3]
-    def _git(*args):
-        try:
-            return subprocess.run(["git", "-C", str(root), *args],
-                                  capture_output=True, text=True, timeout=10,
-                                  check=True).stdout.strip()
-        except Exception:
-            return None
-    dirty = _git("status", "--porcelain")
-    return {
-        "commit": _git("rev-parse", "HEAD"),
-        "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
-        "dirty_worktree": bool(dirty) if dirty is not None else None,
-        "dirty_files": sorted(line[3:] for line in dirty.splitlines())[:50] if dirty else [],
-    }
-
-
-def _software_versions() -> dict:
-    import numpy
-    import pandas
-    import scipy
-    return {
-        "python": sys.version.split()[0],
-        "numpy": numpy.__version__,
-        "pandas": pandas.__version__,
-        "scipy": scipy.__version__,
-        "platform": platform.platform(),
-    }
-
-
 def _metadata(
     planners: tuple[str, ...],
     conditions: tuple[ExperimentCondition, ...],
     n_seeds: int,
     base_config: dict,
+    design_name: str = "exonaut",
 ) -> dict:
     splits = load_splits()
+    design = {
+        "planners": list(planners),
+        "conditions": [asdict(c) for c in conditions],
+        "n_seeds_per_condition": n_seeds,
+        "base_config": base_config,
+        "seed_split_checksum": splits.checksum(),
+    }
     return {
+        **environment_record(design_name, design),
         "schema_version": 1,
         "design": "matched randomized block",
         "planners": list(planners),
@@ -148,9 +125,6 @@ def _metadata(
         # frozen. Recorded here so a reader can confirm which terrains the
         # confirmatory result did and did not see.
         "quarantined_seeds": {k: sorted(v) for k, v in load_quarantine().items()},
-        "git": _git_provenance(),
-        "software": _software_versions(),
-        "generated_utc": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -162,6 +136,7 @@ def run_mission_sweep(
     save_as: str | None = "exonaut_main.csv",
     n_workers: int | None = None,
     progress_cb=None,
+    design_name: str | None = None,
 ) -> pd.DataFrame:
     """Evaluate planners on matched frozen seeds across all conditions."""
     planners = tuple(planners)
@@ -208,19 +183,20 @@ def run_mission_sweep(
                 elif done % 25 == 0 or done == total:
                     print(f"[{done}/{total}] EXONAUT missions complete")
 
-    df = pd.DataFrame(rows).sort_values(
-        ["condition", "planner", "seed"]
-    ).reset_index(drop=True)
+    df = pd.DataFrame(rows).sort_values(["condition", "planner", "seed"]).reset_index(drop=True)
 
     if save_as:
         RESULTS_DIR.mkdir(parents=True, exist_ok=True)
         csv_path = RESULTS_DIR / save_as
         df.to_csv(csv_path, index=False)
         meta_path = csv_path.with_suffix(".metadata.json")
-        meta_path.write_text(json.dumps(
-            _metadata(planners, conditions, n_seeds, base_config),
-            indent=2,
-            sort_keys=True,
-        ) + "\n")
+        meta_path.write_text(
+            json.dumps(
+                _metadata(planners, conditions, n_seeds, base_config),
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
         print(f"saved {len(df)} mission results to {csv_path}")
     return df

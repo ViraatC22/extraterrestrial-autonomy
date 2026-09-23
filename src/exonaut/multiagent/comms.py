@@ -7,6 +7,7 @@ range), mirroring the mesh-network behavior described for NASA's CADRE
 rovers. Shrinking comm_radius is the main experimental lever for testing
 how coordination degrades under realistic lunar comm constraints.
 """
+
 from __future__ import annotations
 
 import numpy as np

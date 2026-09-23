@@ -1,11 +1,26 @@
+# Direct dependencies with lower bounds. For the exact environment that
+# produced the committed results, use requirements-lock.txt instead.
+#
+# core
 numpy>=1.26
 scipy>=1.11
 pandas>=2.1
+scikit-learn>=1.4
+# statistics
 statsmodels>=0.14
-matplotlib>=3.8
-plotly>=5.20
-streamlit>=1.38
-gymnasium>=0.29
-stable-baselines3>=2.3
+# ML / RL
 torch>=2.2
+gymnasium>=0.29
+stable-baselines3>=2.2
+# data formats
+pyarrow>=15.0
+PyYAML>=6.0
+# visualization
+matplotlib>=3.8
+plotly>=5.18
+# presentation
+streamlit>=1.30
+# engineering
 pytest>=8.0
+ruff>=0.5
+mypy>=1.8

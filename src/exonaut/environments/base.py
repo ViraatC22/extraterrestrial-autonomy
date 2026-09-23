@@ -20,6 +20,7 @@ the simulator. The robot never reads it directly; it receives noisy, partial
 observations through `robot/sensors.py` and maintains its own estimate in
 `autonomy/world_model.py`.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -35,11 +36,12 @@ class TerrainClass(IntEnum):
     meaningful: a world model can carry over its *structure* while its
     *parameters* must adapt.
     """
+
     SMOOTH_REGOLITH = 0
     ROCKY = 1
-    LOOSE_FINES = 2      # deep dust / drift sand - the high-slip trap
-    BEDROCK = 3          # exposed competent rock - best traction
-    RIM_TALUS = 4        # crater rim debris - steep and rocky
+    LOOSE_FINES = 2  # deep dust / drift sand - the high-slip trap
+    BEDROCK = 3  # exposed competent rock - best traction
+    RIM_TALUS = 4  # crater rim debris - steep and rocky
 
 
 N_TERRAIN_CLASSES = len(TerrainClass)
@@ -54,6 +56,7 @@ class TerrainClassParams:
     the quantities an adaptive world model must estimate online; a fixed
     planner is stuck with whatever prior it was given.
     """
+
     slip_mean: float
     slip_dispersion: float
     energy_multiplier: float
@@ -71,16 +74,17 @@ class TerrainClassParams:
 @dataclass
 class TerrainField:
     """Ground-truth terrain. Owned by the simulator, never read by a policy."""
+
     body: str
     size: int
-    elevation: np.ndarray          # metres
-    slope: np.ndarray              # degrees
-    roughness: np.ndarray          # [0,1]
-    terrain_class: np.ndarray      # int, values of TerrainClass
-    illumination: np.ndarray       # [0,1] fraction of nominal solar flux
-    hazard: np.ndarray             # bool, impassable
-    class_params: dict             # TerrainClass -> TerrainClassParams
-    gravity: float                 # m/s^2, scales locomotion energy
+    elevation: np.ndarray  # metres
+    slope: np.ndarray  # degrees
+    roughness: np.ndarray  # [0,1]
+    terrain_class: np.ndarray  # int, values of TerrainClass
+    illumination: np.ndarray  # [0,1] fraction of nominal solar flux
+    hazard: np.ndarray  # bool, impassable
+    class_params: dict  # TerrainClass -> TerrainClassParams
+    gravity: float  # m/s^2, scales locomotion energy
     seed: int
     metadata: dict = field(default_factory=dict)
 
@@ -118,11 +122,12 @@ class TerrainField:
 def derive_slope(elevation: np.ndarray, cell_size_m: float = 1.0) -> np.ndarray:
     """Slope in degrees from the elevation gradient."""
     dy, dx = np.gradient(elevation, cell_size_m)
-    return np.degrees(np.arctan(np.sqrt(dy ** 2 + dx ** 2)))
+    return np.degrees(np.arctan(np.sqrt(dy**2 + dx**2)))
 
 
-def multi_octave_noise(size: int, rng: np.random.Generator, octaves: int = 4,
-                       persistence: float = 0.5) -> np.ndarray:
+def multi_octave_noise(
+    size: int, rng: np.random.Generator, octaves: int = 4, persistence: float = 0.5
+) -> np.ndarray:
     """Band-limited noise from a stack of randomly oriented sinusoids.
 
     Deliberately dependency-free and fully determined by `rng`, so a terrain
@@ -132,7 +137,7 @@ def multi_octave_noise(size: int, rng: np.random.Generator, octaves: int = 4,
     field_sum = np.zeros((size, size))
     amplitude = 1.0
     for octave in range(octaves):
-        freq = (2 ** octave) / size
+        freq = (2**octave) / size
         angle = rng.uniform(0, 2 * np.pi)
         phase = rng.uniform(0, 2 * np.pi)
         u = x * np.cos(angle) + y * np.sin(angle)
@@ -145,8 +150,7 @@ def multi_octave_noise(size: int, rng: np.random.Generator, octaves: int = 4,
     return field_sum
 
 
-def stamp_crater(elevation: np.ndarray, cy: float, cx: float,
-                 radius: float, depth: float) -> None:
+def stamp_crater(elevation: np.ndarray, cy: float, cx: float, radius: float, depth: float) -> None:
     """Add a paraboloidal bowl with a raised rim, in place."""
     size = elevation.shape[0]
     y, x = np.mgrid[0:size, 0:size]

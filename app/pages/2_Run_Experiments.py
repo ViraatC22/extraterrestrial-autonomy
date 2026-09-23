@@ -19,16 +19,25 @@ specs = available_algorithm_specs()
 
 with st.form("sweep_form"):
     algo_names = st.multiselect(
-        "Algorithms to compare", specs, default=specs, format_func=display_name,
+        "Algorithms to compare",
+        specs,
+        default=specs,
+        format_func=display_name,
     )
     comm_radii = st.multiselect(
-        "Communication radii to test (cells)", [3, 6, 10, 16, 24, 40], default=[6, 16, 40],
+        "Communication radii to test (cells)",
+        [3, 6, 10, 16, 24, 40],
+        default=[6, 16, 40],
     )
     n_rovers_list = st.multiselect(
-        "Swarm sizes to test", [1, 2, 4, 6, 8], default=[4],
+        "Swarm sizes to test",
+        [1, 2, 4, 6, 8],
+        default=[4],
     )
     failure_rates = st.multiselect(
-        "Rover failure rates to test", [0.0, 0.25, 0.5], default=[0.0, 0.25],
+        "Rover failure rates to test",
+        [0.0, 0.25, 0.5],
+        default=[0.0, 0.25],
     )
     n_seeds = st.slider("Trials per condition (random seeds)", 3, 30, 8)
     terrain_size = st.slider("Terrain size (cells/side)", 24, 96, 48, step=8)

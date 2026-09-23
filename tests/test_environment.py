@@ -1,7 +1,7 @@
 import pytest
 
-from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
 from exonaut.multiagent.rover import STAY_ACTION
+from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
 
 
 def make_env(**overrides):
@@ -66,9 +66,7 @@ def test_energy_spent_is_cumulative_not_battery_deficit():
 
     m = env.metrics()
     assert m["energy_spent"] == pytest.approx(sum(r.energy_spent for r in env.rovers))
-    assert m["coverage_per_energy"] == pytest.approx(
-        m["final_coverage"] / m["energy_spent"]
-    )
+    assert m["coverage_per_energy"] == pytest.approx(m["final_coverage"] / m["energy_spent"])
 
 
 def test_energy_spent_matches_action_costs():
@@ -87,7 +85,7 @@ def test_energy_spent_matches_action_costs():
         assert delta == pytest.approx(MOVE_COST)  # axial move
     else:
         assert delta == pytest.approx(IDLE_COST)  # blocked, charged as idle
-    assert DIAGONAL_COST == pytest.approx(2 ** 0.5)
+    assert pytest.approx(2**0.5) == DIAGONAL_COST
 
 
 def test_failure_injection_reduces_alive_count():

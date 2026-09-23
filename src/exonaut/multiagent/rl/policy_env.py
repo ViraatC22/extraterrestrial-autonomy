@@ -17,19 +17,22 @@ This is a legitimate and common way to bootstrap a decentralized
 parameter-shared policy without full self-play, and it keeps training time
 low enough to run on a laptop CPU.
 """
+
 from __future__ import annotations
 
-import numpy as np
 import gymnasium as gym
+import numpy as np
 from gymnasium import spaces
 
-from ..swarm_env import SwarmEnv, EnvConfig
 from ..baselines.frontier import frontier_policy
 from ..rover import N_ACTIONS, STAY_ACTION
+from ..swarm_env import EnvConfig, SwarmEnv
 
 PATCH_RADIUS = 5
 PATCH_SIZE = 2 * PATCH_RADIUS + 1
-OBS_DIM = PATCH_SIZE * PATCH_SIZE + 6  # patch + [battery, teammate_dx, teammate_dy, frontier_dx, frontier_dy, steps_frac]
+OBS_DIM = (
+    PATCH_SIZE * PATCH_SIZE + 6
+)  # patch + [battery, teammate_dx, teammate_dy, frontier_dx, frontier_dy, steps_frac]
 
 # Training terrains are drawn from a seed pool that is disjoint from the
 # seeds used for evaluation (evaluation uses seeds 0..n_seeds-1). Without
@@ -77,17 +80,24 @@ def encode_observation(env: SwarmEnv, rover) -> np.ndarray:
     frontier_dx, frontier_dy = 0.0, 0.0
     frontiers = rover.frontier_cells(terrain)
     if frontiers:
-        target = min(frontiers, key=lambda cell: (cell[0] - rover.row) ** 2 + (cell[1] - rover.col) ** 2)
+        target = min(
+            frontiers, key=lambda cell: (cell[0] - rover.row) ** 2 + (cell[1] - rover.col) ** 2
+        )
         span = max(terrain.size, 1)
         frontier_dx = (target[0] - rover.row) / span
         frontier_dy = (target[1] - rover.col) / span
 
-    extra = np.array([
-        rover.battery / 100.0,
-        teammate_dx, teammate_dy,
-        frontier_dx, frontier_dy,
-        env.step_count / max(env.config.max_steps, 1),
-    ], dtype=np.float32)
+    extra = np.array(
+        [
+            rover.battery / 100.0,
+            teammate_dx,
+            teammate_dy,
+            frontier_dx,
+            frontier_dy,
+            env.step_count / max(env.config.max_steps, 1),
+        ],
+        dtype=np.float32,
+    )
     return np.concatenate([patch.flatten(), extra])
 
 

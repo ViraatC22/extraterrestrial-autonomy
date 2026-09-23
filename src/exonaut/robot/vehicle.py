@@ -9,6 +9,7 @@ for the way real planetary rovers are lost - embedding in soft ground rather
 than driving off a cliff - and it is what gives "risk" a concrete, measurable
 meaning in this study.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -31,6 +32,7 @@ class SlipRecord:
     """One proprioceptive mobility measurement: what the robot felt when it
     actually drove on a cell. This is the high-quality evidence the world
     model learns from."""
+
     row: int
     col: int
     terrain_class: int
@@ -47,7 +49,7 @@ class Rover:
     power: PowerSystem = field(default_factory=PowerSystem)
     sensors: SensorSuite = field(default_factory=SensorSuite)
     motor_efficiency: float = 1.0
-    slip_bias: float = 0.0            # added by wheel damage
+    slip_bias: float = 0.0  # added by wheel damage
     alive: bool = True
     immobilized: bool = False
     consecutive_severe_slip: int = 0
@@ -77,33 +79,44 @@ class Rover:
                 self.motor_efficiency = max(0.25, self.motor_efficiency - 0.5 * event.severity)
             elif event.fault_type == FaultType.SOLAR_DUST:
                 self.power.solar_efficiency = max(
-                    0.1, self.power.solar_efficiency - 0.6 * event.severity)
+                    0.1, self.power.solar_efficiency - 0.6 * event.severity
+                )
             elif event.fault_type == FaultType.WHEEL_DAMAGE:
                 self.slip_bias = min(0.5, self.slip_bias + 0.25 * event.severity)
             self.active_faults.append(event)
         return fired
 
     # -- motion ------------------------------------------------------------
-    def attempt_move(self, dr: int, dc: int, terrain: TerrainField,
-                     rng: np.random.Generator) -> dict:
+    def attempt_move(
+        self, dr: int, dc: int, terrain: TerrainField, rng: np.random.Generator
+    ) -> dict:
         """Try to drive one cell. Returns an outcome record.
 
         Outcome keys: moved, reason, slip, energy, record.
         """
         if not self.operational:
-            return {"moved": False, "reason": "not_operational", "slip": 0.0,
-                    "energy": 0.0, "record": None}
+            return {
+                "moved": False,
+                "reason": "not_operational",
+                "slip": 0.0,
+                "energy": 0.0,
+                "record": None,
+            }
 
         target = (self.row + dr, self.col + dc)
         if not terrain.in_bounds(*target):
-            return {"moved": False, "reason": "off_map", "slip": 0.0,
-                    "energy": 0.0, "record": None}
+            return {"moved": False, "reason": "off_map", "slip": 0.0, "energy": 0.0, "record": None}
 
         # Onboard geometric hazard check: the robot refuses commands into
         # terrain it can see is lethal, regardless of what the planner asked.
         if terrain.hazard[target] or terrain.slope[target] > self.max_slope_deg:
-            return {"moved": False, "reason": "hazard_refused", "slip": 0.0,
-                    "energy": 0.0, "record": None}
+            return {
+                "moved": False,
+                "reason": "hazard_refused",
+                "slip": 0.0,
+                "energy": 0.0,
+                "record": None,
+            }
 
         distance = float(np.hypot(dr, dc))
         mean, dispersion = terrain.true_slip_distribution(*target)
@@ -120,14 +133,21 @@ class Rover:
         ) / max(self.motor_efficiency, 1e-6)
 
         if not self.power.draw(energy):
-            return {"moved": False, "reason": "insufficient_energy", "slip": slip,
-                    "energy": 0.0, "record": None}
+            return {
+                "moved": False,
+                "reason": "insufficient_energy",
+                "slip": slip,
+                "energy": 0.0,
+                "record": None,
+            }
 
         record = SlipRecord(
-            row=target[0], col=target[1],
+            row=target[0],
+            col=target[1],
             terrain_class=int(terrain.terrain_class[target]),
             slope=float(terrain.slope[target]),
-            slip=slip, energy=energy,
+            slip=slip,
+            energy=energy,
         )
         self.slip_history.append(record)
 
@@ -136,22 +156,28 @@ class Rover:
             self.consecutive_severe_slip += 1
             if self.consecutive_severe_slip >= EMBED_LIMIT:
                 self.immobilized = True
-            return {"moved": False, "reason": "slip_no_progress", "slip": slip,
-                    "energy": energy, "record": record}
+            return {
+                "moved": False,
+                "reason": "slip_no_progress",
+                "slip": slip,
+                "energy": energy,
+                "record": record,
+            }
 
         self.consecutive_severe_slip = 0
         self.row, self.col = target
         self.path.append(target)
-        return {"moved": True, "reason": "ok", "slip": slip,
-                "energy": energy, "record": record}
+        return {"moved": True, "reason": "ok", "slip": slip, "energy": energy, "record": record}
 
     def hold(self, illumination: float) -> None:
         """Stay put for one timestep: housekeeping draw, then recharge."""
         from .power import IDLE_DRAW_WH
+
         self.power.draw(min(IDLE_DRAW_WH, self.power.charge))
         self.power.recharge(illumination)
 
     def sense(self, terrain: TerrainField, rng: np.random.Generator) -> dict:
         from .power import SENSING_DRAW_WH
+
         self.power.draw(min(SENSING_DRAW_WH, self.power.charge))
         return self.sensors.observe(terrain, self.row, self.col, rng)

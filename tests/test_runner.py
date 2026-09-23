@@ -3,6 +3,7 @@
 The paper's results are only meaningful if a trial is fully determined by
 (algorithm, condition, seed). These tests assert that directly.
 """
+
 import pandas as pd
 
 from exonaut.experiments.runner import run_sweep, run_trial
@@ -41,8 +42,12 @@ def test_parallel_and_serial_sweeps_agree_exactly():
     """Parallelism must not change any reported number."""
     args = dict(
         algorithms=["frontier", "pheromone"],
-        comm_radii=[6], n_rovers_list=[3], failure_rates=[0.0],
-        n_seeds=4, base_kwargs=BASE, save_as=None,
+        comm_radii=[6],
+        n_rovers_list=[3],
+        failure_rates=[0.0],
+        n_seeds=4,
+        base_kwargs=BASE,
+        save_as=None,
     )
     serial = run_sweep(**args, n_workers=1)
     parallel = run_sweep(**args, n_workers=4)

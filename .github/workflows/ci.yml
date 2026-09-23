@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Lint (ruff)
+        run: ruff check src scripts tests app
+
+      - name: Format check (ruff)
+        run: ruff format --check src scripts tests app
+
+      - name: Type check (advisory, non-blocking)
+        continue-on-error: true
+        run: mypy src/exonaut
+
+      - name: Tests
+        run: pytest tests/ -q
+
+  protocol-integrity:
+    # The scientific claims depend on the seed protocol being untouched, so CI
+    # verifies it independently of the test suite: the split file must still
+    # match its recorded checksum, and no quarantined seed may be reachable
+    # from a confirmatory split.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Verify frozen seed protocol
+        run: |
+          python - <<'PY'
+          from exonaut.experiments.protocol import load_quarantine, load_splits, verify_splits
+          info = verify_splits()
+          print("split checksum:", info["checksum"])
+          print("sizes:", info["sizes"])
+          splits = load_splits()
+          for name, burned in load_quarantine().items():
+              reachable = set(splits.get(name)) & set(burned)
+              assert not reachable, f"quarantined seeds reachable in {name}: {sorted(reachable)}"
+          print("quarantine holds; no burned seed reachable")
+          PY

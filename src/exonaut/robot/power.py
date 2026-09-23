@@ -10,19 +10,20 @@ end-of-mission battery deficit as "energy used" would silently subtract all
 solar income and understate true expenditure, so `expended` is accumulated
 explicitly at every draw.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 CAPACITY_WH = 100.0
-IDLE_DRAW_WH = 0.08          # housekeeping per timestep
-SENSING_DRAW_WH = 0.02       # per full sensor sweep
-NOMINAL_SOLAR_WH = 0.55      # per timestep at full illumination
+IDLE_DRAW_WH = 0.08  # housekeeping per timestep
+SENSING_DRAW_WH = 0.02  # per full sensor sweep
+NOMINAL_SOLAR_WH = 0.55  # per timestep at full illumination
 # Locomotion cost is normalized so that one axial cell on flat, ideal terrain
 # at lunar gravity costs BASE_MOVE_WH.
 BASE_MOVE_WH = 1.0
 REFERENCE_GRAVITY = 1.62
-SLOPE_ENERGY_COEFF = 0.035   # extra fraction of base cost per degree of slope
+SLOPE_ENERGY_COEFF = 0.035  # extra fraction of base cost per degree of slope
 
 
 @dataclass
@@ -31,7 +32,7 @@ class PowerSystem:
     charge: float = CAPACITY_WH
     expended: float = 0.0
     generated: float = 0.0
-    solar_efficiency: float = 1.0   # degraded by dust-accumulation faults
+    solar_efficiency: float = 1.0  # degraded by dust-accumulation faults
     #: Nominal harvest per timestep at full illumination. Exposed per-vehicle
     #: rather than as a module constant because the ratio of this to
     #: locomotion cost sets whether a mission is decided by route choices or
@@ -66,8 +67,9 @@ class PowerSystem:
         return self.charge <= 0.0
 
 
-def locomotion_cost(distance_cells: float, slope_deg: float, energy_multiplier: float,
-                    slip: float, gravity: float) -> float:
+def locomotion_cost(
+    distance_cells: float, slope_deg: float, energy_multiplier: float, slip: float, gravity: float
+) -> float:
     """Energy to cover `distance_cells` of ground.
 
     Slip appears in the denominator because slipping wheels still turn (and
@@ -79,5 +81,11 @@ def locomotion_cost(distance_cells: float, slope_deg: float, energy_multiplier: 
     effective = max(1.0 - slip, 0.08)
     gravity_factor = gravity / REFERENCE_GRAVITY
     slope_factor = 1.0 + SLOPE_ENERGY_COEFF * max(0.0, slope_deg)
-    return (BASE_MOVE_WH * distance_cells * energy_multiplier
-            * slope_factor * gravity_factor / effective)
+    return (
+        BASE_MOVE_WH
+        * distance_cells
+        * energy_multiplier
+        * slope_factor
+        * gravity_factor
+        / effective
+    )

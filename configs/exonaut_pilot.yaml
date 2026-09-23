@@ -1,0 +1,39 @@
+# EXONAUT experiment configuration.
+#
+# Every figure in the paper is regenerable from this file plus the frozen
+# seed splits: the config fixes the design, the splits fix which terrains
+# it runs on, and the run's metadata sidecar records the commit and library
+# versions that executed it.
+design_name: exonaut-pilot-v1
+planners:
+- astar
+- risk_aware_astar
+- adaptive_risk_aware_astar
+n_seeds: 4
+base_config:
+  size: 32
+  n_targets: 3
+  max_steps: 180
+conditions:
+- name: moon_id
+  split: test
+  body: moon
+- name: mars_ood
+  split: ood
+  body: mars
+- name: mars_high_uncertainty
+  split: ood
+  body: mars
+  overrides:
+    terrain_uncertainty: 1.5
+- name: mars_faults
+  split: ood
+  body: mars
+  overrides:
+    fault_rate: 1.0
+- name: mars_comm_delay
+  split: ood
+  body: mars
+  overrides:
+    comm_delay: 20
+output: exonaut_pilot.csv

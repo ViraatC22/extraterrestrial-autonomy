@@ -6,6 +6,7 @@ and whether it revises that cost as evidence arrives. Sharing one search
 implementation is deliberate: it means a measured difference between planners
 is a difference in their objective, not in the quality of someone's A*.
 """
+
 from __future__ import annotations
 
 import heapq
@@ -13,8 +14,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1),
-              (-1, -1), (-1, 1), (1, -1), (1, 1)]
+NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
 
 class Planner(ABC):
@@ -24,8 +24,9 @@ class Planner(ABC):
     #: Whether this planner revises its world model from driving experience.
     adaptive = False
 
-    def __init__(self, max_slope_deg: float = 25.0, hazard_threshold: float = 0.5,
-                 gravity: float = 1.62):
+    def __init__(
+        self, max_slope_deg: float = 25.0, hazard_threshold: float = 0.5, gravity: float = 1.62
+    ):
         self.max_slope_deg = max_slope_deg
         self.hazard_threshold = hazard_threshold
         self.gravity = gravity
@@ -53,8 +54,7 @@ class Planner(ABC):
         return 1.0
 
     def passable(self, world_model, row, col) -> bool:
-        return world_model.believed_traversable(
-            row, col, self.max_slope_deg, self.hazard_threshold)
+        return world_model.believed_traversable(row, col, self.max_slope_deg, self.hazard_threshold)
 
     def plan(self, world_model, start, goal) -> list:
         """A* from start to goal over the believed world. Returns a list of

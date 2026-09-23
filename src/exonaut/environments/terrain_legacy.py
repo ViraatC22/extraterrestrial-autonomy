@@ -12,6 +12,7 @@ generation fully reproducible from an integer seed) - elevation noise is
 built from a small stack of random sine fields, which is enough texture for
 the purposes of this simulation.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -46,7 +47,7 @@ def _random_sine_field(size: int, rng: np.random.Generator, octaves: int = 4) ->
     field = np.zeros((size, size))
     amplitude = 1.0
     for octave in range(octaves):
-        freq = (2 ** octave) / size
+        freq = (2**octave) / size
         phase_x = rng.uniform(0, 2 * np.pi)
         phase_y = rng.uniform(0, 2 * np.pi)
         angle = rng.uniform(0, 2 * np.pi)
@@ -104,12 +105,14 @@ def generate_terrain(
         radius = rng.uniform(size * 0.04, size * 0.14)
         depth = rng.uniform(1.5, 6.0)
         _stamp_crater(elevation, cy, cx, radius, depth)
-        craters.append({"row": int(cy), "col": int(cx), "radius": float(radius), "depth": float(depth)})
+        craters.append(
+            {"row": int(cy), "col": int(cx), "radius": float(radius), "depth": float(depth)}
+        )
 
     # Slope: magnitude of the elevation gradient, converted to degrees.
     # Cell spacing is treated as 1 m, a reasonable scale for a rover-sized patch.
     dy, dx = np.gradient(elevation)
-    slope = np.degrees(np.arctan(np.sqrt(dy ** 2 + dx ** 2)))
+    slope = np.degrees(np.arctan(np.sqrt(dy**2 + dx**2)))
 
     # Permanently shadowed regions: crater floors below a depth threshold
     # and facing away from a fixed low sun-angle direction, approximating
