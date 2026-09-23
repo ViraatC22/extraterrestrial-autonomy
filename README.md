@@ -1,102 +1,107 @@
-# Lunar Swarm Nav
+# EXONAUT
 
-**Decentralized vs. learned swarm coordination for communication-constrained lunar surface
-exploration.** A science fair project (Robotics & Intelligent Machines) built around a simulated
-swarm of rovers exploring procedurally generated lunar terrain, comparing a reinforcement-learning
-policy against classical decentralized swarm algorithms as communication range, swarm size, and
-rover-failure rate change.
+**Adaptive risk-aware autonomy for robotic exploration of uncertain extraterrestrial terrain.**
 
-Motivated by NASA's [CADRE mission](https://www.jpl.nasa.gov/missions/cadre/) — three autonomous
-rovers landing on the Moon (launch currently scheduled for early 2027) that must coordinate over a mesh network with no real-time human
-control, because Earth-Moon communication has latency and dropout. See
-[`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the full hypothesis, experimental design, and
-statistics, and [`docs/REFERENCES.md`](docs/REFERENCES.md) for the research this builds on.
+EXONAUT is a reproducible simulation study of a planetary rover that must collect science value
+and return safely while terrain behavior, energy use, sensing, and hardware health are uncertain.
+The central experiment compares three planners on matched procedural worlds:
 
-## What's here
+1. distance-only A*;
+2. fixed risk-aware A*; and
+3. adaptive risk-aware A*, which updates a Bayesian slip model from driving experience.
 
-- **Simulation core** (`src/lunar_swarm/`) — procedural lunar terrain (craters, hazard slopes,
-  permanently shadowed regions), rovers with limited sensing/battery/communication, and a
-  range-limited mesh network.
-- **Four algorithms** — three classical decentralized baselines (`frontier`, `potential_field`,
-  `pheromone`) and one policy trained with reinforcement learning (`rl_policy`, PPO via
-  Stable-Baselines3).
-- **Experiment runner + statistics** (`src/lunar_swarm/experiments/`) — batch sweeps across
-  conditions/seeds, ANOVA and pairwise t-tests.
-- **Streamlit dashboard** (`app/`) — live simulation viewer, experiment runner, and results
-  explorer with interactive plots.
+The robot begins with a prior calibrated on lunar training terrains. The out-of-distribution test
+sends that unchanged prior to Martian terrains whose class frequencies and slip statistics differ.
+The study asks whether online adaptation preserves science return and mission completion when the
+deployment environment differs from the calibration environment.
+
+The earlier multi-rover lunar-swarm study remains available under `src/exonaut/multiagent/` for
+reproducibility, but it is no longer the primary research question.
+
+## Current evidence status
+
+- The seed protocol and lunar/Martian priors are frozen and checksummed.
+- The implementation and legacy regression suite pass 56 tests.
+- A 60-mission pilot is committed under `data/results/exonaut_pilot.csv`.
+- Pilot results are descriptive only: four matched seeds per condition are insufficient for a
+  confirmatory claim.
+- The preregistered 50-seed-per-condition run has not yet been designated as final evidence.
+
+The LaTeX source is `paper/paper.tex`; the compiled deliverable is `paper/paper.pdf`.
 
 ## Setup
 
-Requires Python 3.10+.
-
-> **Note:** this project folder's name contains a `/` (shown by Finder as `26/27`, stored on disk
-> as `26:27`). Colons are path separators on Unix, so `python -m venv` refuses to create a virtual
-> environment *inside* this folder. Put the venv anywhere else instead, e.g.:
+Python 3.10 or newer is required. Because this repository's folder name contains a colon, create
+the virtual environment outside the repository:
 
 ```bash
-python3 -m venv ~/.venvs/lunar-swarm-nav
-source ~/.venvs/lunar-swarm-nav/bin/activate
+python3 -m venv ~/.venvs/exonaut
+source ~/.venvs/exonaut/bin/activate
 pip install -r requirements.txt
 pip install -e .
 ```
 
-## Run the dashboard
+## Reproduce the research workflow
+
+Verify the frozen seed protocol and run the tests:
 
 ```bash
-source ~/.venvs/lunar-swarm-nav/bin/activate
-streamlit run app/streamlit_app.py
+python -c "from exonaut.experiments.protocol import verify_splits; print(verify_splits())"
+python -m pytest -q
 ```
 
-Opens with three pages: **Live Simulation** (watch one run step by step), **Run Experiments**
-(configure and launch a batch sweep), **Results Explorer** (summary stats, plots, ANOVA/t-tests on
-any saved sweep).
-
-## Train the RL policy
+Re-run the documented pilot:
 
 ```bash
-python -m lunar_swarm.rl.train --timesteps 300000
+python scripts/run_exonaut_experiments.py --pilot
+python scripts/make_exonaut_paper_assets.py
 ```
 
-Saves to `models/ppo_lunar_swarm.zip`. On a laptop CPU this takes roughly 10-30 minutes; a smaller
-`--timesteps` is fine for quick iteration. See `python -m lunar_swarm.rl.train --help` for all
-options (swarm size, terrain size, communication radius used during training, etc).
-
-## Run the default experiment sweep from the terminal
+Run the preregistered confirmatory design:
 
 ```bash
-python scripts/run_default_sweep.py
+python scripts/run_exonaut_experiments.py \
+  --config experiments/configs/exonaut_main.json
 ```
 
-Regenerates `data/results/sweep_results.csv` — the same thing the "Run Experiments" dashboard page
-does, without the UI.
-
-## Run the tests
+Compile the paper with Tectonic:
 
 ```bash
-python -m pytest tests/ -v
+tectonic -X compile paper/paper.tex --outdir paper
 ```
 
-## Project structure
+Do not overwrite the confirmatory result after inspecting it. If the method changes, record a new
+protocol/version and run it on new seeds.
 
+## Repository map
+
+```text
+src/exonaut/
+  autonomy/       Bayesian world model, risk composition, mission decisions
+  environments/   Moon/Mars procedural ground-truth generators
+  planners/       shared A* search and the three planner treatments
+  robot/          sensing, energy, motion, slip, embedding, and faults
+  experiments/    frozen seeds, batch runner, statistics, metadata
+  multiagent/     archived lunar-swarm experiment
+  simulation.py   one complete deterministic rover mission
+experiments/configs/  pilot and confirmatory designs
+data/processed/       calibrated priors
+data/splits/          immutable seed protocol
+data/results/         row-level results and provenance sidecars
+docs/                 architecture, methodology, preregistration, research log
+paper/                LaTeX source, generated assets, and compiled PDF
+tests/                scientific-integrity and regression tests
 ```
-src/lunar_swarm/
-  terrain.py          procedural lunar terrain generation
-  rover.py             single-rover agent state and movement
-  comms.py              range-limited mesh networking between rovers
-  environment.py        the multi-rover simulation loop (SwarmEnv)
-  algorithms.py          registry combining baselines + trained RL models
-  baselines/             frontier, potential-field, and pheromone (ACO-style) policies
-  rl/                     Gymnasium training wrapper, PPO training script, deployment policy
-  experiments/            batch sweep runner + statistics (ANOVA, t-tests)
-  viz/                     matplotlib rendering for the live-simulation view
-app/                      Streamlit dashboard (3 pages)
-scripts/                  terminal convenience scripts
-tests/                     pytest suite
-docs/                      methodology, references
-models/                    trained RL model checkpoints (.zip)
-data/results/               saved experiment sweep CSVs
-```
+
+## Scientific scope
+
+This is a controlled 2.5-D autonomy testbed, not a flight dynamics model or a prediction of any
+specific lunar or Martian mission. Terrain parameters are chosen to create identifiable risk and
+domain-shift regimes. Claims are restricted to comparative behavior inside this simulator.
+
+See `docs/METHODOLOGY.md`, `docs/PREREGISTRATION.md`, and `docs/RESEARCH_LOG.md` before interpreting
+or extending the results.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. See `LICENSE`.

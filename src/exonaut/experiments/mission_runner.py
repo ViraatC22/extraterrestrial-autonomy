@@ -17,7 +17,7 @@ import pandas as pd
 
 from ..planners import available_planners
 from ..simulation import MissionConfig, run_mission
-from .protocol import load_splits
+from .protocol import load_quarantine, load_splits
 
 RESULTS_DIR = Path(__file__).resolve().parents[3] / "data" / "results"
 
@@ -104,6 +104,10 @@ def _metadata(
         "base_config": base_config,
         "seed_split_checksum": splits.checksum(),
         "seed_split_created": splits.created,
+        # Seeds excluded because they were observed before the protocol was
+        # frozen. Recorded here so a reader can confirm which terrains the
+        # confirmatory result did and did not see.
+        "quarantined_seeds": {k: sorted(v) for k, v in load_quarantine().items()},
     }
 
 

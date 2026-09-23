@@ -1,0 +1,60 @@
+{
+  "base_config": {
+    "max_steps": 180,
+    "n_targets": 3,
+    "size": 32
+  },
+  "conditions": [
+    {
+      "body": "moon",
+      "name": "moon_id",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "test"
+    },
+    {
+      "body": "mars",
+      "name": "mars_ood",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_high_uncertainty",
+      "overrides": {
+        "terrain_uncertainty": 1.5
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_faults",
+      "overrides": {
+        "fault_rate": 1.0
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_comm_delay",
+      "overrides": {
+        "comm_delay": 20
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    }
+  ],
+  "design": "matched randomized block",
+  "n_seeds_per_condition": 4,
+  "planners": [
+    "astar",
+    "risk_aware_astar",
+    "adaptive_risk_aware_astar"
+  ],
+  "schema_version": 1,
+  "seed_split_checksum": "c9346c400ce5ada98fa15886a82e937d1238d5285060b8185dbb0f2e9ed8ed1f",
+  "seed_split_created": "2026-09-22"
+}

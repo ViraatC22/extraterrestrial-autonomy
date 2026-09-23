@@ -71,10 +71,22 @@ class SeedSplits:
                         f"seed splits '{a}' and '{b}' overlap on {sorted(overlap)[:5]}"
                     )
 
-    def get(self, name: str) -> tuple:
+    def get(self, name: str, exclude_quarantined: bool = True) -> tuple:
+        """Seeds for a split.
+
+        Quarantined seeds are dropped by default: they were seen during
+        development and reusing them would make "held-out" untrue. Pass
+        exclude_quarantined=False only to reproduce a historical run.
+        """
         if name not in SPLIT_NAMES:
             raise ValueError(f"unknown split {name!r}; expected one of {SPLIT_NAMES}")
-        return getattr(self, name)
+        seeds = getattr(self, name)
+        if not exclude_quarantined:
+            return seeds
+        burned = load_quarantine().get(name, set())
+        if not burned:
+            return seeds
+        return tuple(s for s in seeds if s not in burned)
 
     def checksum(self) -> str:
         payload = json.dumps(
@@ -102,6 +114,27 @@ def build_splits(sizes: dict | None = None, note: str = "") -> SeedSplits:
             raise ValueError(f"split {name} of size {count} exceeds its range")
         values[name] = tuple(range(low, low + count))
     return SeedSplits(created=date.today().isoformat(), note=note, **values)
+
+
+def quarantine_path() -> Path:
+    return SPLITS_DIR / "quarantine.json"
+
+
+def load_quarantine() -> dict:
+    """Seeds that were observed during development and can no longer serve as
+    held-out data.
+
+    A seed that has been looked at is not held out any more, whatever the
+    intention was. Rather than quietly reusing such seeds - or quietly
+    shifting the offset and hoping nobody checks - they are listed
+    explicitly, with the artifact that consumed them, and excluded by
+    default everywhere.
+    """
+    path = quarantine_path()
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text())
+    return {k: set(v) for k, v in payload.get("seeds", {}).items()}
 
 
 def splits_path() -> Path:

@@ -143,7 +143,8 @@ def energy_shortfall_probability(expected: float, sd: float,
     return float(np.clip(_normal_sf(budget, expected, sd), 0.0, 1.0))
 
 
-def expected_solar_income(world_model, path, solar_efficiency: float = 1.0) -> float:
+def expected_solar_income(world_model, path, solar_efficiency: float = 1.0,
+                          solar_rate: float | None = None) -> float:
     """Energy the robot expects to harvest while driving the path.
 
     Ignoring this entirely makes the planner so conservative it never leaves
@@ -155,18 +156,20 @@ def expected_solar_income(world_model, path, solar_efficiency: float = 1.0) -> f
 
     if not path:
         return 0.0
+    rate = NOMINAL_SOLAR_WH if solar_rate is None else solar_rate
     illumination = float(np.mean([world_model.illumination[cell] for cell in path]))
-    return NOMINAL_SOLAR_WH * illumination * solar_efficiency * len(path)
+    return rate * illumination * solar_efficiency * len(path)
 
 
 def mission_failure_probability(world_model, path, gravity: float,
                                 available_energy: float, reserve: float,
                                 start: tuple[int, int] | None = None,
-                                solar_efficiency: float = 1.0) -> dict:
+                                solar_efficiency: float = 1.0,
+                                solar_rate: float | None = None) -> dict:
     """Total P(mission failure) for a candidate path, split by cause."""
     p_terrain = path_risk(world_model, path)
     expected, sd = path_energy(world_model, path, gravity, start=start)
-    income = expected_solar_income(world_model, path, solar_efficiency)
+    income = expected_solar_income(world_model, path, solar_efficiency, solar_rate)
     p_energy = energy_shortfall_probability(
         expected, sd, available_energy + income, reserve)
     combined = 1.0 - (1.0 - p_terrain) * (1.0 - p_energy)

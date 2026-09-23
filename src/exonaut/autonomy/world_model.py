@@ -113,9 +113,12 @@ class WorldModel:
         # every class (the earlier behaviour) made the planner underestimate
         # every route through expensive ground by up to the true multiplier,
         # which is a systematic bias, not conservatism.
+        # Note: only the slip belief is revised online. That is not a gap -
+        # locomotion cost carries a 1/(1-slip) term, so a corrected slip
+        # belief already corrects the energy estimate through the physics.
+        # The per-class multiplier itself stays at its prior.
         self.energy_multiplier = dict(
             energy_multipliers or {k: 1.0 for k in range(N_TERRAIN_CLASSES)})
-        self.energy_observations = {k: [] for k in range(N_TERRAIN_CLASSES)}
 
     # -- ingesting observations -------------------------------------------
     def ingest_observations(self, observations: dict) -> int:
@@ -147,21 +150,59 @@ class WorldModel:
         return None
 
     # -- queries used by planners -----------------------------------------
+    def class_mix(self) -> dict:
+        """Empirical terrain-class frequencies among cells seen so far.
+
+        Used to reason about ground that has not been looked at yet. Falls
+        back to uniform before anything has been observed.
+        """
+        if not self.observed.any():
+            return {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
+        seen = self.terrain_class[self.observed]
+        counts = np.bincount(seen.astype(int), minlength=N_TERRAIN_CLASSES).astype(float)
+        total = counts.sum()
+        if total <= 0:
+            return {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
+        return {k: float(counts[k] / total) for k in range(N_TERRAIN_CLASSES)}
+
+    def unknown_slip_estimate(self) -> float:
+        """Expected slip on terrain that has not been observed at all.
+
+        This marginalizes the *current* class beliefs over the class mix
+        actually encountered, so it moves as those beliefs move. A fixed
+        constant here would discard the entire point of learning: a robot
+        could measure that the local drift sand is treacherous and still plan
+        its next route as though unseen ground were benign. Because routes
+        are mostly made of not-yet-observed cells, that constant was what
+        prevented adaptation from reaching any planning decision.
+        """
+        mix = self.class_mix()
+        return float(sum(w * self.class_belief[k].mean for k, w in mix.items()))
+
     def expected_slip(self, row: int, col: int) -> float:
-        k = int(self.terrain_class[row, col])
-        base = self.class_belief[k].mean if self.observed[row, col] else self.unknown_slip_prior
+        if self.observed[row, col]:
+            base = self.class_belief[int(self.terrain_class[row, col])].mean
+        else:
+            base = self.unknown_slip_estimate()
         return float(np.clip(base + 0.01 * self.slope[row, col], 0.0, 0.97))
 
     def slip_uncertainty(self, row: int, col: int) -> tuple[float, float]:
         """(epistemic_sd, aleatoric_sd) for the slip at a cell."""
-        k = int(self.terrain_class[row, col])
-        epistemic = self.class_belief[k].epistemic_sd
-        aleatoric = self.aleatoric_sd[k]
-        if not self.observed[row, col]:
-            # never looked at this cell: inflate epistemic uncertainty rather
-            # than pretending the class guess is trustworthy
-            epistemic = float(np.hypot(epistemic, 0.12))
-        return float(epistemic), float(aleatoric)
+        if self.observed[row, col]:
+            k = int(self.terrain_class[row, col])
+            return float(self.class_belief[k].epistemic_sd), float(self.aleatoric_sd[k])
+
+        # Unobserved: the class itself is unknown, so epistemic uncertainty
+        # must also cover the spread *between* class means, not just the
+        # uncertainty within one class.
+        mix = self.class_mix()
+        mean = self.unknown_slip_estimate()
+        between = float(np.sqrt(sum(
+            w * (self.class_belief[k].mean - mean) ** 2 for k, w in mix.items())))
+        within = float(np.sqrt(sum(
+            w * self.class_belief[k].variance for k, w in mix.items())))
+        aleatoric = float(sum(w * self.aleatoric_sd[k] for k, w in mix.items()))
+        return float(np.hypot(between, within)), aleatoric
 
     def total_slip_sd(self, row: int, col: int) -> float:
         epistemic, aleatoric = self.slip_uncertainty(row, col)
@@ -169,9 +210,10 @@ class WorldModel:
 
     def believed_energy_multiplier(self, row: int, col: int) -> float:
         if not self.observed[row, col]:
-            # unsurveyed ground: assume the average of what we believe about
-            # the classes rather than the cheapest case
-            return float(np.mean(list(self.energy_multiplier.values())))
+            # unsurveyed ground: weight by the class mix actually encountered
+            # rather than assuming the cheapest case
+            mix = self.class_mix()
+            return float(sum(w * self.energy_multiplier[k] for k, w in mix.items()))
         return float(self.energy_multiplier[int(self.terrain_class[row, col])])
 
     def expected_energy(self, row: int, col: int, distance: float,

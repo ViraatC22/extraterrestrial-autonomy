@@ -80,3 +80,78 @@ def test_unresolved_mission_at_home_is_not_reported_as_success():
     assert result.success is False
     assert result.targets_visited == 0
     assert result.targets_total == 1
+
+
+def test_confirmatory_seeds_never_include_quarantined():
+    """The confirmatory design must not reuse terrains that were already seen
+    during the engineering pilot."""
+    from exonaut.experiments.protocol import load_quarantine, load_splits
+
+    splits = load_splits()
+    quarantine = load_quarantine()
+    assert quarantine, "quarantine file missing: burned seeds must be recorded"
+    for split_name, burned in quarantine.items():
+        clean = set(splits.get(split_name))
+        assert not (clean & set(burned)), (
+            f"{split_name} still yields quarantined seeds {sorted(clean & set(burned))}"
+        )
+        # and the raw split must still contain them, proving they were removed
+        # by the quarantine rather than never having existed
+        raw = set(splits.get(split_name, exclude_quarantined=False))
+        assert set(burned) <= raw
+
+
+def _fresh_world_model(adaptive=True):
+    from exonaut.autonomy.priors import default_prior
+    from exonaut.autonomy.world_model import AdaptiveWorldModel, WorldModel
+
+    prior = default_prior("moon")
+    cls = AdaptiveWorldModel if adaptive else WorldModel
+    return cls(size=32, class_prior=prior["means"], aleatoric_sd=prior["aleatoric_sd"])
+
+
+def test_learning_generalizes_to_unobserved_terrain():
+    """Adapted beliefs must change the estimate for ground the robot has NOT
+    visited.
+
+    Regression guard for a silent defect: the world model learned terrain
+    slip correctly but `expected_slip` fell back to a fixed constant for any
+    unobserved cell. Since planned routes are mostly unobserved cells, the
+    learning never reached a single planning decision and the adaptive
+    planner behaved identically to the fixed one.
+    """
+    from exonaut.robot.vehicle import SlipRecord
+
+    wm = _fresh_world_model(adaptive=True)
+    # pretend the robot has surveyed a patch and seen it is all class 2
+    wm.terrain_class[:8, :8] = 2
+    wm.observed[:8, :8] = True
+
+    unobserved_cell = (20, 20)
+    assert not wm.observed[unobserved_cell]
+    before = wm.expected_slip(*unobserved_cell)
+
+    # now drive on class-2 ground and measure much worse slip than the prior
+    for _ in range(25):
+        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0,
+                                  slip=0.85, energy=1.0))
+
+    after = wm.expected_slip(*unobserved_cell)
+    assert after > before + 0.05, (
+        f"learning did not generalize: unobserved-cell slip estimate went "
+        f"{before:.3f} -> {after:.3f}"
+    )
+
+
+def test_fixed_world_model_does_not_learn():
+    """The control must genuinely not adapt, or the comparison is meaningless."""
+    from exonaut.robot.vehicle import SlipRecord
+
+    wm = _fresh_world_model(adaptive=False)
+    wm.terrain_class[:8, :8] = 2
+    wm.observed[:8, :8] = True
+    before = wm.expected_slip(20, 20)
+    for _ in range(25):
+        wm.ingest_slip(SlipRecord(row=1, col=1, terrain_class=2, slope=0.0,
+                                  slip=0.85, energy=1.0))
+    assert wm.expected_slip(20, 20) == before

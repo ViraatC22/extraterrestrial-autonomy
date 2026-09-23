@@ -1,94 +1,107 @@
 # Methodology
 
-> **The authoritative, complete methodology — with all equations, the full
-> experimental design, and the statistical treatment — is the paper:
-> [`paper/paper.tex`](../paper/paper.tex) (compiled: `paper/paper.pdf`).**
-> This file is a short orientation so you can find your way around the code.
-> Where the two ever disagree, the paper and the code are correct and this
-> file is stale — please fix it.
+The paper in `paper/paper.tex` is the authoritative narrative. This document is the compact,
+implementation-facing specification.
 
-## The question
+## Research question
 
-NASA's [CADRE mission](https://www.jpl.nasa.gov/missions/cadre/) will put three
-cooperating rovers and a base station on the Moon (aboard Intuitive Machines
-IM-3, targeting Reiner Gamma; launch currently scheduled for early 2027). They
-must coordinate over a range-limited mesh network with no human in the loop,
-because Earth–Moon light time rules out teleoperation.
+When a planetary rover enters terrain whose mobility statistics differ from those used to
+calibrate its prior, does updating the onboard slip model from proprioceptive experience improve
+science return and mission completion compared with fixed risk-aware and distance-only planning?
 
-**Research question.** As the inter-rover communication radius shrinks, how does
-a reinforcement-learning coordination policy compare against classical
-decentralized swarm heuristics at exploring terrain — and which degrades more
-gracefully when rovers fail?
+## Treatments
 
-## Hypotheses
+All planners share the same eight-connected A* implementation.
 
-- **H1** — the four policies differ in mean final coverage.
-- **H2** — the gap between policies *grows as communication radius shrinks*
-  (formally: an algorithm × comm-radius **interaction**, not a main effect).
-- **H3** — the policies differ in how gracefully they degrade under rover loss.
+- `astar` minimizes geometric distance.
+- `risk_aware_astar` uses fixed distance, expected-energy, terrain-risk, and epistemic-uncertainty
+  costs.
+- `adaptive_risk_aware_astar` uses the identical cost function and weights but updates its
+  per-class slip posterior after each drive attempt.
 
-## Where things live
+The fixed/adaptive comparison therefore isolates online belief updating rather than search quality
+or objective tuning.
 
-| Concern | File |
-|---|---|
-| Terrain generation (craters, slopes, hazards, PSRs) | `src/lunar_swarm/terrain.py` |
-| Rover state, movement, battery, energy accounting | `src/lunar_swarm/rover.py` |
-| Range-limited multi-hop mesh networking | `src/lunar_swarm/comms.py` |
-| Simulation loop, metrics, failure injection | `src/lunar_swarm/environment.py` |
-| Classical baselines | `src/lunar_swarm/baselines/` |
-| RL training env, training script, deployment policy | `src/lunar_swarm/rl/` |
-| Batch experiment runner | `src/lunar_swarm/experiments/runner.py` |
-| Statistics (paired tests, Holm, ANOVA) | `src/lunar_swarm/experiments/stats.py` |
-| Paper tables/figures generator | `scripts/make_paper_assets.py` |
+## World and belief separation
 
-## Design decisions that matter for validity
+`TerrainField` is simulator ground truth. A planner never receives it. The rover instead builds a
+`WorldModel` from range-dependent noisy slope, roughness, illumination, hazard, and terrain-class
+observations. Slip is observed proprioceptively only after a drive attempt.
 
-**Matched terrain (randomized block design).** Terrain and initial rover
-placement are deterministic functions of the trial seed alone, so every
-algorithm runs on bit-identical terrain within a condition. This is why the
-analysis is *paired*, not independent-samples — asserted by
-`tests/test_runner.py`.
+The adaptive update is Normal-Normal conjugate inference over the mean slip for the terrain class
+the rover *believes* occupies the driven cell. It deliberately does not use the simulator's true
+class label. Posterior variance represents epistemic uncertainty; class dispersion represents
+aleatoric uncertainty.
 
-**Train/test seed separation.** RL training draws a fresh terrain every episode
-from seeds in `[100000, 1000000)`; evaluation uses seeds `0..N-1`. The pools are
-disjoint by construction, so no reported result was measured on a training map.
+## Mission
 
-**Energy is measured, not inferred.** `energy_spent` accumulates the actual
-battery draw per action. It is *not* the end-of-episode battery deficit, because
-solar recharge would make that understate real expenditure. Rover survival is
-reported as its own separate dependent variable rather than folded into energy.
+Each mission starts at a safe home cell, places separated science targets on traversable terrain,
+and requires the rover to decide between pursuing another target and returning home. A mission is
+successful only if the rover is operational, is home, and has resolved every target by visiting or
+abandoning it under the mission policy.
 
-**RL training simplification (disclosed).** During training one learner rover is
-embedded among frontier-following teammates; at evaluation every rover runs an
-independent copy of the trained network. This is a best-response-to-heuristic
-approximation of self-play and is a genuine limitation, discussed in the paper.
+The mission manager ranks reachable targets by science value divided by expected energy, subject
+to a risk budget for the planned round trip. When no route is acceptable, the rover requests ground
+help and waits for the configured communication delay.
 
-**Multiple trained policies.** Three policies are trained from different RL
-seeds and all are evaluated, because a single training run is weak evidence.
+## Failure model
 
-## Two defects found and fixed during development
+Mission-ending or mission-degrading mechanisms include:
 
-Both produced plausible-looking but wrong numbers, and both are now covered by
-regression tests. They are documented in the paper's *Threats to Validity*.
+- repeated severe slip causing permanent embedding;
+- energy exhaustion;
+- geometric hazard refusal followed by replanning;
+- sensor degradation;
+- lower motor efficiency;
+- reduced solar efficiency; and
+- wheel damage that increases slip.
 
-1. **Policies could get permanently wedged.** The steering rule committed to a
-   single best heading; if it pointed at a hazard the move was rejected and the
-   policy re-issued the identical rejected move forever, yielding near-zero
-   coverage. Fixed by falling through to the next-best *traversable* heading
-   (`best_traversable_action`); guarded by `tests/test_baselines.py`.
-2. **The RL policy trained on a single map.** Environments used a fixed config
-   seed, so after the first episode every episode regenerated the same terrain —
-   and evaluation seeds overlapped it. Fixed by resampling terrain per episode
-   from a disjoint training pool.
+Fault schedules are drawn completely from the trial seed before a mission starts, so every planner
+faces the same fault timing and severity within a matched block.
 
-## Reproducing the results
+## Environments and domain shift
 
-```bash
-python -m lunar_swarm.rl.train --timesteps 500000 --seed 0 --out-name ppo_seed0
-python scripts/run_paper_experiments.py
-python scripts/make_paper_assets.py
-tectonic paper/paper.tex
-```
+The Moon and Mars share a five-class terrain vocabulary but have different class distributions and
+class parameters. The lunar environment includes craters and permanent shadow. The Martian
+environment includes directional drift bands, different slip ordering, diffuse illumination, and
+higher gravity.
 
-Every number and figure in the paper is emitted by `make_paper_assets.py` from
-the committed CSVs in `data/results/`; none is typed by hand.
+All planners use priors calibrated from noisy measurements on lunar `train` seeds. In Martian OOD
+conditions they retain lunar slip and energy beliefs at mission start. Passing true Martian class
+parameters into the planner would be leakage and is covered by regression tests.
+
+## Outcomes
+
+Primary outcomes:
+
+- science fraction: collected science value divided by possible value;
+- mission success: safe return with all targets resolved.
+
+Secondary outcomes:
+
+- targets visited;
+- energy spent and generated;
+- minimum and final charge;
+- severe-slip events and immobilization;
+- human interventions and communication waiting;
+- replans and A* nodes expanded.
+
+## Statistical design
+
+Every planner receives the same `(condition, seed)` world, targets, stochastic draws, and fault
+schedule. The seed is the experimental block. Primary planner contrasts must therefore be paired.
+
+The 60-mission pilot uses four seeds per condition and is descriptive. The confirmatory design uses
+50 seeds per condition. Pairwise tests use paired differences with Holm correction and report
+effect sizes and confidence intervals. Binary mission success is summarized with matched counts;
+the confirmatory analysis should use a paired binary model or exact matched test rather than an
+ordinary independent-proportions test.
+
+## Reproducibility controls
+
+- `data/splits/seed_splits.json` is immutable and checksummed.
+- train, validation, test, and OOD ranges are disjoint.
+- priors record their calibration seeds.
+- every result CSV has a JSON design/checksum sidecar.
+- serial and multiprocessing sweeps are regression-tested for equality.
+- paper tables and figures are generated from row-level CSVs.

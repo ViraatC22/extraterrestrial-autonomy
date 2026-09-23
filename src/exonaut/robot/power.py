@@ -32,6 +32,11 @@ class PowerSystem:
     expended: float = 0.0
     generated: float = 0.0
     solar_efficiency: float = 1.0   # degraded by dust-accumulation faults
+    #: Nominal harvest per timestep at full illumination. Exposed per-vehicle
+    #: rather than as a module constant because the ratio of this to
+    #: locomotion cost sets whether a mission is decided by route choices or
+    #: merely by how long the robot must sit still recharging.
+    solar_rate: float = NOMINAL_SOLAR_WH
 
     def draw(self, amount: float) -> bool:
         """Draw energy. Returns False (and draws nothing) if there is not
@@ -46,7 +51,7 @@ class PowerSystem:
         return True
 
     def recharge(self, illumination: float) -> float:
-        gain = NOMINAL_SOLAR_WH * max(0.0, illumination) * self.solar_efficiency
+        gain = self.solar_rate * max(0.0, illumination) * self.solar_efficiency
         gain = min(gain, self.capacity - self.charge)
         self.charge += gain
         self.generated += gain

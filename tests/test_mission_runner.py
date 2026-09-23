@@ -32,7 +32,11 @@ def test_sweep_is_matched_and_deterministic():
     b = run_mission_sweep(**kwargs)
     pd.testing.assert_frame_equal(a, b)
     assert set(a.groupby("seed")["planner"].nunique()) == {2}
-    assert sorted(a["seed"].unique().tolist()) == [300000, 300001]
+    # Assert against the protocol rather than hardcoded numbers, so the test
+    # follows the quarantine instead of pinning seeds that may be retired.
+    from exonaut.experiments.protocol import load_splits
+    expected = list(load_splits().get(MOON.split)[:2])
+    assert sorted(a["seed"].unique().tolist()) == expected
 
 
 def test_parallel_and_serial_sweeps_match():

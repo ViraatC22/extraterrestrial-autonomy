@@ -47,7 +47,11 @@ class MissionConfig:
     n_targets: int = 5
     max_steps: int = 600
     risk_budget: float = 0.20
-    energy_reserve: float = 12.0
+    # Fraction of battery capacity held back as contingency. A fraction, not
+    # an absolute figure: capacity is scaled by gravity per body, so a fixed
+    # 12 Wh reserve was 6.7% of the lunar battery but only 2.9% of the Martian
+    # one - the robot kept almost no margin exactly where it needed the most.
+    energy_reserve_fraction: float = 0.25
     sensing_radius: int = 6
     sensor_noise_scale: float = 1.0
     terrain_uncertainty: float = 1.0   # multiplies true slip dispersion
@@ -60,6 +64,8 @@ class MissionConfig:
     fault_rate: float = 0.0            # expected faults per mission
     comm_delay: int = 0                # steps lost per intervention request
     replan_interval: int = 10          # forced replan cadence
+    solar_rate: float = 2.0            # Wh harvested per step at full sun
+    resume_charge_fraction: float = 0.6  # battery level that starts a new sortie
     prior_body: str = "moon"           # body the world-model prior came from
     max_slope_deg: float = 25.0
 
@@ -144,25 +150,26 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
             )
         terrain.class_params = scaled
 
+    capacity = config.battery_capacity
+    if capacity is None:
+        from .robot.power import REFERENCE_GRAVITY
+        capacity = BASE_BATTERY_CAPACITY * (terrain.gravity / REFERENCE_GRAVITY)
+
     mission = generate_mission(
         terrain, rng, n_targets=config.n_targets,
         risk_budget=config.risk_budget, max_steps=config.max_steps,
-        energy_reserve=config.energy_reserve,
+        energy_reserve=config.energy_reserve_fraction * capacity,
     )
 
     prior = prior or default_prior(config.prior_body)
     planner = _make_planner(config.planner, config, terrain.gravity)
     world_model = build_world_model(config, prior, adaptive=planner.adaptive)
 
-    capacity = config.battery_capacity
-    if capacity is None:
-        from .robot.power import REFERENCE_GRAVITY
-        capacity = BASE_BATTERY_CAPACITY * (terrain.gravity / REFERENCE_GRAVITY)
-
     rover = Rover(
         row=mission.home[0], col=mission.home[1],
         max_slope_deg=config.max_slope_deg,
-        power=PowerSystem(capacity=capacity, charge=capacity),
+        power=PowerSystem(capacity=capacity, charge=capacity,
+                          solar_rate=config.solar_rate),
         sensors=SensorSuite(
             sensing_radius=config.sensing_radius,
             slope_noise_deg=1.2 * config.sensor_noise_scale,
@@ -172,6 +179,7 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
     )
     faults = FaultSchedule.draw(rng, config.max_steps, config.fault_rate)
     manager = MissionManager(mission, planner, world_model, terrain.gravity)
+    manager.resume_charge_fraction = config.resume_charge_fraction
 
     path: list = []
     path_index = 0
@@ -213,6 +221,7 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
                 rover.pos, rover.power.charge,
                 charge_fraction=rover.power.fraction,
                 solar_efficiency=rover.power.solar_efficiency,
+                solar_rate=rover.power.solar_rate,
             )
             path = objective["path"] or []
             path_index = 1 if len(path) > 1 else 0

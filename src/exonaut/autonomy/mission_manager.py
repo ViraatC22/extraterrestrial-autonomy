@@ -136,7 +136,8 @@ class MissionManager:
         self.failed_home_assessments = 0
 
     def _round_trip_assessment(self, start, target_pos, available_energy,
-                               solar_efficiency: float = 1.0):
+                               solar_efficiency: float = 1.0,
+                               solar_rate: float | None = None):
         """Plan out-and-back and assess whether it fits the risk budget."""
         outbound = self.planner.plan(self.world_model, start, target_pos)
         if not outbound:
@@ -148,14 +149,15 @@ class MissionManager:
         assessment = risk.mission_failure_probability(
             self.world_model, full, self.gravity,
             available_energy, self.mission.energy_reserve, start=start,
-            solar_efficiency=solar_efficiency,
+            solar_efficiency=solar_efficiency, solar_rate=solar_rate,
         )
         assessment["outbound"] = outbound
         assessment["round_trip"] = full
         return assessment
 
     def select_objective(self, start, available_energy, charge_fraction: float = 1.0,
-                         solar_efficiency: float = 1.0) -> dict:
+                         solar_efficiency: float = 1.0,
+                         solar_rate: float | None = None) -> dict:
         """Return {'goal': (r,c), 'path': [...], 'returning': bool, ...}.
 
         Missions are flown as sorties: go out, come back, recharge, go out
@@ -186,7 +188,7 @@ class MissionManager:
         best = None
         for target in candidates:
             assessment = self._round_trip_assessment(
-                start, target.pos, available_energy, solar_efficiency)
+                start, target.pos, available_energy, solar_efficiency, solar_rate)
             if assessment is None:
                 continue
             if assessment["p_failure"] > mission.risk_budget:
