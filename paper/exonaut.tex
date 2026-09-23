@@ -1,0 +1,496 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
+            citecolor=blue!50!black}
+
+% Generated numbers. Every value the results section reports is defined here by
+% scripts/make_exonaut_paper_assets.py from the row-level CSV. Nothing is typed.
+\input{tables/exonaut_main_macros.tex}
+
+\title{\textbf{Adaptive Risk-Aware Autonomy for Robotic Exploration of\\
+Uncertain Extraterrestrial Terrain}}
+\author{Viraat Chauhan}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+A planetary rover cannot be driven in real time from Earth, so it must decide
+for itself which ground is safe enough to cross. Those decisions rest on a
+terrain model built before launch, from whatever experience was available at
+the time. This work asks what happens when that model is wrong --- when the
+robot arrives somewhere whose ground does not behave the way its model says
+--- and whether a robot that revises its model from its own driving survives
+better than one that does not.
+
+We build a controlled 2.5-D autonomy testbed in which a single solar-powered
+rover must visit science targets and return to its lander before its energy
+runs out, on terrain where wheel slip is stochastic, sensing is noisy and
+range-limited, and sustained slip ends the mission by embedding the vehicle.
+Three planners are compared on identical terrain: distance-only \mbox{A*}, a
+fixed risk-aware planner, and an otherwise identical planner whose mobility
+model is updated online from measured slip. The three differ only in their
+objective and in whether that objective's inputs are revised, so a measured
+difference is attributable to the decision rule rather than to a different
+search implementation.
+
+The central experiment is a domain shift. Every planner carries a mobility
+prior calibrated on lunar terrain and is then evaluated on Martian terrain,
+where the same terrain-class vocabulary carries substantially different slip
+statistics. Across \MainMissions{} missions on frozen, held-out seeds, we
+report the effect of online adaptation on mission success and science return,
+and the generalization gap between in-distribution and out-of-distribution
+performance.
+
+This is a simulation study of decision-making, not a validated model of any
+flight vehicle or landing site. Section~\ref{sec:limitations} states plainly
+what the model does and does not represent.
+\end{abstract}
+
+\section{Introduction}
+
+Round-trip light time to Mars runs from roughly eight to forty minutes, and
+contact windows are intermittent. A surface robot therefore cannot be
+joysticked around a hazard; by the time an operator sees a problem, the
+problem has already happened. Autonomy on planetary rovers exists for this
+reason, and the quality of that autonomy is measured by what the robot does
+when nobody can help it.
+
+The failure mode that actually strands planetary rovers is not driving off a
+cliff. It is sinking. A rover crossing ground that looks benign can lose
+traction in loose material, dig itself in, and become permanently immobile.
+NASA's \emph{Spirit} ended its driving mission this way in 2009, embedded in
+soft soil. What makes this failure mode interesting for autonomy research is
+that it is invisible to geometry: the ground that traps a rover is often flat.
+Detecting it requires a model of how terrain \emph{behaves}, not how it
+\emph{looks}, and the only direct measurement of behaviour is slip observed
+while driving on it.
+
+That creates an asymmetry this paper is built around. Geometry --- slope,
+roughness, obstacles --- can be sensed at a distance from imagery. Mobility
+can only be measured by committing the vehicle to the ground. A robot
+therefore plans long routes using a terrain model it cannot verify in advance,
+and the model it starts with was calibrated somewhere else.
+
+\paragraph{Research question.}
+Does a planetary robot that continuously updates its terrain-mobility model
+from its own driving make safer and more productive decisions than one using a
+fixed model, when the terrain it encounters does not match the model it was
+given?
+
+\paragraph{Hypotheses.}
+Stated before the confirmatory data were generated (see
+\texttt{docs/PREREGISTRATION.md}):
+\begin{description}[leftmargin=2.2em,style=nextline]
+  \item[H1] On in-distribution terrain, where the prior is already correct,
+  adaptation neither helps nor harms: the adaptive and fixed planners perform
+  equivalently.
+  \item[H2] On out-of-distribution terrain, the adaptive planner returns a
+  higher paired science fraction than the fixed planner.
+  \item[H3] Under increased slip dispersion and injected faults, the adaptive
+  planner achieves a higher mission-success rate and fewer severe-slip events.
+  \item[H4] Intervention delay reduces productivity for all planners, and most
+  for those that request more interventions.
+\end{description}
+
+\paragraph{What is and is not claimed as novel.}
+Risk-aware planetary path planning, learned traversability, uncertainty-aware
+terrain models and energy-constrained planning all exist in the literature and
+are cited in Section~\ref{sec:related}. This work does not claim to invent any
+of them. What it contributes is a controlled measurement: holding the search
+algorithm, the cost function, the mission logic and the terrain fixed, and
+changing \emph{only} whether the mobility model is revised online, in order to
+isolate what that single mechanism is worth under a realistic domain shift.
+
+\section{Related work}
+\label{sec:related}
+
+Slip has long been treated as the operative traversability signal for Mars
+rovers rather than slope alone; Angelova et al. learned to predict slip from
+terrain appearance, and Helmick et al. built terrain-adaptive navigation
+around slip-aware models. More recent work makes the uncertainty explicit
+rather than producing a single traversability score: Endo et al. fuse
+probabilistic traversability predictions for risk-aware planning on
+heterogeneous terrain, and extend this with test-time adaptation so that a
+traversability model can be corrected during deployment. Sanchez-Ibanez et al.
+address a complementary risk, planning under localization uncertainty for
+space exploration rovers.
+
+The distinction this paper draws --- between uncertainty that more driving can
+reduce and variability that it cannot --- follows the same motivation as that
+line of work. Our contribution is not a better traversability model but a
+controlled comparison of what online correction of such a model is worth when
+the deployment environment differs from the calibration environment.
+
+\section{Simulation model}
+
+\subsection{Scope}
+
+The simulator is a controlled testbed for comparing decision rules. It is not
+a validated dynamics model of a specific rover, and its absolute outputs are
+properties of the model rather than predictions of on-surface performance. Its
+purpose is to expose different planners to \emph{identical} stochastic worlds
+so that differences between them are attributable to their decisions.
+
+\subsection{Terrain}
+
+Terrain is a $N \times N$ grid with an elevation field $z(x)$, from which slope
+$\theta(x)$ is the gradient magnitude in degrees. Each cell carries a terrain
+class $k(x)$ from a five-member vocabulary shared by both bodies: smooth
+regolith, rocky, loose fines, bedrock, and rim talus. Each cell also carries a
+roughness value, an illumination fraction $I(x) \in [0,1]$, and a hazard flag.
+
+Crucially, the class \emph{vocabulary} is shared across bodies while the class
+\emph{parameters} are not. Each body assigns every class a true mean slip
+$\mu_k$, dispersion $\sigma_k$, and locomotion multiplier $m_k$. This is the
+mechanism of the domain shift: a robot arriving at a new body recognizes the
+same terrain categories but the statistics behind them have changed.
+
+\subsection{Mobility and embedding}
+
+When the robot commands a move into cell $x$, the realized slip fraction is
+
+\begin{equation}
+  s \sim \mathcal{N}\!\left(\mu_{k(x)} + \beta\,\theta(x) + b,\; \sigma_{k(x)}^2\right),
+  \qquad s \in [0, 0.995],
+  \label{eq:slip}
+\end{equation}
+
+with $\beta = 0.01$ per degree, representing traction lost on grades, and $b$ a
+bias introduced by wheel-damage faults. A step is \emph{severe} when
+$s \ge \tau$ with $\tau = 0.80$: the wheels turn but the robot does not
+advance. After $L = 3$ consecutive severe steps the robot is permanently
+embedded and the mission ends. This is the model's representation of the
+Spirit-style loss mode, and it is the only failure with no recovery.
+
+\subsection{Energy}
+
+Energy to traverse a cell is
+
+\begin{equation}
+  E(x) \;=\; \frac{E_0 \, d \, m_{k(x)} \,\bigl(1 + \gamma\,\theta(x)\bigr)}
+                  {\max(1 - s,\; \epsilon)}
+             \cdot \frac{g}{g_{\mathrm{ref}}} \cdot \frac{1}{\eta_m},
+  \label{eq:energy}
+\end{equation}
+
+with $d$ the distance in cells, $\gamma = 0.035$ per degree,
+$\epsilon = 0.08$, $g$ the body's gravity against a lunar reference
+$g_{\mathrm{ref}} = 1.62~\mathrm{m/s^2}$, and $\eta_m$ a motor-efficiency
+factor degraded by faults. The slip term sits in the denominator because
+slipping wheels still consume power while delivering less ground: at slip $s$,
+covering the same distance costs roughly $1/(1-s)$ times as much.
+
+Equation~\ref{eq:energy} is the reason a mobility error is also an energy
+error, and it is the mechanism behind the results in
+Section~\ref{sec:results}. A robot that underestimates slip underestimates the
+cost of every route it considers.
+
+Solar income per timestep is $\rho\, I(x)\, \eta_s$, with $\rho$ the nominal
+harvest rate and $\eta_s$ an efficiency degraded by dust faults. Battery
+capacity is scaled by $g/g_{\mathrm{ref}}$, representing a vehicle whose power
+system is sized for the body it was built for; what transfers between bodies
+in this study is the autonomy, not the hardware.
+
+\subsection{Sensing}
+
+The robot never reads ground truth. Within a sensing radius it receives noisy
+estimates of slope, roughness, illumination, terrain class and hazard status,
+with noise growing linearly in range. Terrain class is misclassified with a
+range-dependent probability. Slip, by contrast, is measured directly and
+without class ambiguity --- but only for the single cell just driven.
+
+\section{Autonomy stack}
+
+\subsection{World model}
+
+The robot maintains a belief, not the terrain. Per cell it stores the most
+recent close-range geometric estimate. Per terrain class it stores a posterior
+over mean slip, updated from driven experience by a Normal--Normal conjugate
+model: with prior mean $m_0$, prior variance $t_0^2$, observation variance
+$\sigma_o^2$ and $n$ measurements of sample mean $\bar{s}$,
+
+\begin{equation}
+  \lambda = \frac{1}{t_0^2} + \frac{n}{\sigma_o^2},
+  \qquad
+  m_n = \frac{1}{\lambda}\left(\frac{m_0}{t_0^2} + \frac{n \bar{s}}{\sigma_o^2}\right),
+  \qquad
+  t_n^2 = \frac{1}{\lambda}.
+  \label{eq:conjugate}
+\end{equation}
+
+The posterior is recomputed from the prior and the full sample each time, so
+it does not depend on update order.
+
+\paragraph{Generalizing to unseen ground.}
+Routes are composed mostly of cells the robot has never observed, so what it
+believes about \emph{unknown} terrain determines almost every plan. For an
+unobserved cell the class is unknown, and the expected slip is the current
+class beliefs marginalized over the class mix $\pi_k$ actually encountered so
+far:
+
+\begin{equation}
+  \hat{s}_{\mathrm{unk}} \;=\; \sum_k \pi_k \, m_n^{(k)}.
+  \label{eq:unknown}
+\end{equation}
+
+This is what allows learning to transfer: measuring that the local drift sand
+is treacherous raises the robot's estimate for ground it has not yet reached.
+A fixed constant in place of Equation~\ref{eq:unknown} would confine every
+lesson to cells already visited and, because routes are mostly unvisited
+cells, would prevent adaptation from affecting any planning decision at all.
+
+\paragraph{Two kinds of uncertainty.}
+For unobserved cells the epistemic term combines the spread \emph{between}
+class means with the uncertainty \emph{within} each:
+
+\begin{equation}
+  \sigma_{\mathrm{epi}}^2 = \underbrace{\sum_k \pi_k \bigl(m_n^{(k)} - \hat{s}_{\mathrm{unk}}\bigr)^2}_{\text{between classes}}
+  \;+\; \underbrace{\sum_k \pi_k \, t_n^{2\,(k)}}_{\text{within class}},
+  \qquad
+  \sigma_{\mathrm{tot}}^2 = \sigma_{\mathrm{epi}}^2 + \sigma_{\mathrm{ale}}^2 .
+  \label{eq:uncertainty}
+\end{equation}
+
+The separation matters: $\sigma_{\mathrm{epi}}$ is reducible by driving,
+whereas $\sigma_{\mathrm{ale}}$ is the terrain's own variability and is not. A
+planner that cannot tell them apart cannot distinguish ground that is
+dangerous from ground that is merely unvisited.
+
+\subsection{Risk}
+
+Under the belief that slip at $x$ is $\mathcal{N}(\hat{s}, \sigma_{\mathrm{tot}}^2)$,
+the probability of a severe step and of embedding are
+
+\begin{equation}
+  p_{\mathrm{sev}}(x) = 1 - \Phi\!\left(\frac{\tau - \hat{s}(x)}{\sigma_{\mathrm{tot}}(x)}\right),
+  \qquad
+  p_{\mathrm{emb}}(x) = p_{\mathrm{sev}}(x)^{L}.
+  \label{eq:embed}
+\end{equation}
+
+Treating consecutive steps as independent \emph{understates} risk in
+homogeneous terrain, where severe slip is spatially correlated and runs are
+more likely than independence implies. The approximation is applied identically
+to every planner and so cannot favour one.
+
+A believed hazard is not by itself mission-ending: the robot's onboard
+geometric check refuses such a command and replans. It enters the risk only
+through the residual probability $\kappa = 0.005$ that the check misses it:
+
+\begin{equation}
+  R(x) \;=\; 1 - \bigl(1 - p_{\mathrm{emb}}(x)\bigr)\bigl(1 - \kappa\, p_{\mathrm{haz}}(x)\bigr),
+  \qquad
+  R(\pi) \;=\; 1 - \prod_{x \in \pi}\bigl(1 - R(x)\bigr).
+  \label{eq:risk}
+\end{equation}
+
+Energy risk is evaluated against the usable budget, treating required energy as
+normal with variance propagated from slip uncertainty by linearizing
+Equation~\ref{eq:energy} about $\hat{s}$:
+
+\begin{equation}
+  \sigma_E^2 = \sum_{x \in \pi} \left(\frac{E(x)}{1 - \hat{s}(x)}\right)^{2}\!\sigma_{\mathrm{tot}}^2(x),
+  \qquad
+  P_{\mathrm{energy}} = \Pr\!\left[E_{\mathrm{req}} \ge B + S - R_{\mathrm{res}}\right],
+  \label{eq:energyrisk}
+\end{equation}
+
+with $B$ the charge in hand, $S$ the solar income expected over the route, and
+$R_{\mathrm{res}}$ a reserve held back as a fraction of capacity. Total mission
+failure probability composes the two causes.
+
+\subsection{Mission logic}
+
+A mission is: start at the lander, visit science targets, return before the
+energy runs out. The manager pursues the reachable target with the best
+value-to-cost ratio whose round trip satisfies the risk budget
+$P_{\mathrm{fail}} \le \varepsilon$, and otherwise returns home. Missions are
+flown as sorties --- a target that does not fit on a low battery is
+reconsidered after recharging, and written off only when the robot is home,
+recharged, and still cannot reach it.
+
+When no route is believed to exist, the robot must ask mission control. It
+idles for the communication delay before receiving a relaxed instruction, and
+each such episode is counted as a human intervention. An autonomy system that
+succeeds only by asking for help frequently has not really succeeded, so
+intervention count is reported alongside the outcome measures.
+
+\subsection{The three planners}
+
+All three run the same A* implementation over the same believed world and
+differ only in the cost assigned to entering a cell.
+
+\begin{description}[leftmargin=2.2em,style=nextline]
+  \item[Distance-only A*] $J = d$. The control with no terrain model at all.
+  \item[Fixed risk-aware A*] $J = w_d d + w_e E(x) + w_r R(x) + w_u \sigma_{\mathrm{epi}}(x)$,
+  consulting the world model but never revising it.
+  \item[Adaptive risk-aware A*] Identical objective and identical weights; the
+  single difference is that measured slip is folded into the class belief via
+  Equation~\ref{eq:conjugate}, so future plans use corrected estimates.
+\end{description}
+
+The adaptive planner is implemented as a subclass of the fixed planner that
+overrides one method. The experimental treatment is therefore a single switch,
+which is what makes the contrast interpretable.
+
+\section{Experimental design}
+
+\subsection{Seed protocol}
+
+Terrain seeds are partitioned into disjoint integer ranges --- train,
+validation, test and out-of-distribution --- frozen to a checksummed file
+before any result was generated. Priors are calibrated on train seeds only.
+All tuning was performed on validation seeds. Test and OOD seeds informed no
+design decision.
+
+Eight seeds consumed by an earlier engineering pilot are permanently
+quarantined and excluded from every confirmatory result; a regression test
+asserts they cannot reappear. The confirmatory run used
+\MainSeedsPerCondition{} seeds per condition from split checksum
+\texttt{\MainSplitChecksum} at commit \texttt{\MainCommit}.
+
+\subsection{Design}
+
+\MainPlanners{} planners $\times$ \MainConditions{} conditions $\times$
+\MainSeedsPerCondition{} seeds $=$ \MainMissions{} missions. Every planner is
+evaluated on identical terrain within a condition, making this a randomized
+block design in which terrain seed is the block.
+
+Conditions: Moon in-distribution; Mars out-of-distribution; Mars with
+$1.5\times$ slip dispersion; Mars with injected faults; and Mars with a
+20-step intervention delay. Every condition uses a lunar-calibrated prior, so
+the Martian conditions are genuine domain shifts.
+
+\subsection{Analysis}
+
+Because planners share terrain within a condition, all contrasts are paired.
+Science fraction uses a paired $t$-test with a Wilcoxon signed-rank companion,
+Cohen's $d_z$, and a 95\% confidence interval. Mission success is binary and
+paired, so it uses McNemar's exact test, which conditions on the seeds where
+the two planners actually disagreed. Holm--Bonferroni correction is applied
+across the prespecified primary family; secondary contrasts against the
+distance-only control are corrected separately and never pooled with it.
+
+We also report the generalization gap
+$G = M_{\mathrm{in}} - M_{\mathrm{out}}$ per planner, a between-condition
+descriptive quantity reported without a paired test because the conditions
+draw from different seed splits.
+
+\section{Results}
+\label{sec:results}
+
+\begin{table}[htbp]
+\centering
+\caption{Outcomes by condition and planner. Immob.\ and Energy out are counts
+of missions ending in embedding and in energy exhaustion respectively.}
+\input{tables/exonaut_main_descriptive.tex}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Primary contrasts: adaptive versus fixed risk-aware A*, paired within
+condition and seed. Holm-corrected across the primary family;
+$^{*}$ marks $p_{\mathrm{Holm}} < 0.05$.}
+\input{tables/exonaut_main_primary.tex}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Generalization gap in science fraction between the in-distribution
+lunar condition and the out-of-distribution Martian condition. Smaller is
+better.}
+\input{tables/exonaut_main_gap.tex}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/exonaut_main_outcomes.pdf}
+\caption{Mission success rate and science fraction by condition and planner.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/exonaut_main_terminations.pdf}
+\caption{How missions ended. The mechanism behind the headline numbers is
+visible here as a shift between termination causes rather than a uniform
+improvement.}
+\end{figure}
+
+\section{Limitations}
+\label{sec:limitations}
+
+Stated plainly, because the value of this study depends on what it does not
+claim.
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{This is not a validated rover model.} Terrain parameters were
+  chosen to produce the qualitative regimes the experiment needs --- a
+  low-traction trap, a high-traction refuge, impassable rims, and true
+  darkness --- and are not calibrated against measured lunar or Martian
+  geotechnical data. Absolute values are properties of this simulator.
+  \item \textbf{2.5-D, not dynamics.} There is no vehicle suspension, no wheel
+  contact mechanics, and no attitude. Slip is drawn from a distribution rather
+  than emerging from terramechanics.
+  \item \textbf{Risk composition is approximate.} Equations~\ref{eq:embed} and
+  \ref{eq:risk} treat per-cell events as independent, which understates risk in
+  homogeneous terrain. It is applied identically to all planners.
+  \item \textbf{Only the slip model adapts.} The per-class locomotion
+  multiplier is not revised online. Energy estimates still improve through the
+  slip channel, since slip enters Equation~\ref{eq:energy} directly, but a
+  systematic error in $m_k$ would persist.
+  \item \textbf{The analysis plan is not a true pre-registration.} It was
+  written after the adaptive planner existed and after an eight-seed
+  engineering pilot had been seen. Those eight seeds are quarantined, and the
+  full timeline is recorded in \texttt{docs/RESEARCH\_LOG.md}.
+  \item \textbf{Two bodies, one prior direction.} Only Moon$\rightarrow$Mars
+  transfer is tested. The reverse direction, and bodies beyond these two, are
+  untested.
+\end{enumerate}
+
+\section{Reproducibility}
+
+Every number above is generated by
+\texttt{scripts/make\_exonaut\_paper\_assets.py} from the committed row-level
+CSV; no value is typed into this document. The run's metadata sidecar records
+the git commit, the seed-split checksum, the quarantine list, and library
+versions. The full pipeline is:
+
+\begin{verbatim}
+python scripts/freeze_seed_protocol.py          # once; refuses to overwrite
+python scripts/calibrate_priors.py              # priors from TRAIN seeds only
+python scripts/run_exonaut_experiments.py       # confirmatory sweep
+python scripts/make_exonaut_paper_assets.py     # tables, figures, macros
+\end{verbatim}
+
+\section*{References}
+
+\begin{enumerate}[leftmargin=2em]
+  \item A. Angelova, L. Matthies, D. Helmick, G. Sibley, P. Perona.
+  ``Learning to Predict Slip for Ground Robots.'' ICRA, 2006.
+  \item D. Helmick, A. Angelova, M. Livianu, L. Matthies. ``Terrain Adaptive
+  Navigation for Mars Rovers.'' IEEE Aerospace Conference, 2007.
+  \item M. Endo, T. Taniai, R. Yonetani, G. Ishigami. ``Risk-aware Path
+  Planning via Probabilistic Fusion of Traversability Prediction for Planetary
+  Rovers on Heterogeneous Terrains.'' ICRA, 2023. arXiv:2303.01169.
+  \item M. Endo, T. Taniai, G. Ishigami. ``Deep Probabilistic Traversability
+  with Test-time Adaptation for Uncertainty-aware Planetary Rover
+  Navigation.'' 2024. arXiv:2409.00641.
+  \item J. R. Sanchez-Ibanez, P. J. Sanchez-Cuevas, M. A. Olivares Mendez.
+  ``Optimal and Risk-Aware Path Planning considering Localization Uncertainty
+  for Space Exploration Rovers.'' IROS, 2022.
+  \item NASA. ``Spirit.'' Mission page documenting the 2009 loss of traction
+  in soft soil.
+\end{enumerate}
+
+\end{document}
