@@ -34,7 +34,7 @@ with st.form("sweep_form"):
     terrain_size = st.slider("Terrain size (cells/side)", 24, 96, 48, step=8)
     max_steps = st.slider("Max steps per trial", 50, 600, 250, step=25)
     save_name = st.text_input("Save results as", value="sweep_results.csv")
-    submitted = st.form_submit_button("Run sweep", use_container_width=True)
+    submitted = st.form_submit_button("Run sweep", width="stretch")
 
 if submitted:
     if not algo_names or not comm_radii or not n_rovers_list or not failure_rates:
@@ -63,4 +63,4 @@ if submitted:
     )
     status.text(f"Done — {len(df)} trials.")
     st.success(f"Ran {len(df)} trials and saved to data/results/{save_name}")
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width="stretch")

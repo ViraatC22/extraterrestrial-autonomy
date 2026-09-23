@@ -25,18 +25,18 @@ metric = st.selectbox(
 group_col = st.selectbox("Group by", ["algorithm", "comm_radius", "n_rovers", "failure_rate"])
 
 st.subheader("Summary")
-st.dataframe(summarize(df, metric=metric, group_cols=(group_col,)), use_container_width=True)
+st.dataframe(summarize(df, metric=metric, group_cols=(group_col,)), width="stretch")
 
 st.subheader("Distribution")
 color = "algorithm" if group_col != "algorithm" else None
 fig = px.box(df, x=group_col, y=metric, color=color, points="all")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 if "comm_radius" in df.columns and df["comm_radius"].nunique() > 1:
     st.subheader(f"{metric} vs. communication radius, by algorithm")
     line_df = df.groupby(["algorithm", "comm_radius"])[metric].mean().reset_index()
     fig2 = px.line(line_df, x="comm_radius", y=metric, color="algorithm", markers=True)
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
 
 st.subheader("Statistics")
 if df["algorithm"].nunique() < 2:
@@ -49,7 +49,7 @@ else:
         f"p = {anova['p_value']:.4g} ({verdict} at α = 0.05)"
     )
     st.caption("Pairwise Welch's t-tests (does not assume equal variance)")
-    st.dataframe(pairwise_ttests(df, metric=metric, group_col="algorithm"), use_container_width=True)
+    st.dataframe(pairwise_ttests(df, metric=metric, group_col="algorithm"), width="stretch")
 
 st.download_button(
     "Download this results CSV", df.to_csv(index=False), file_name=selected, mime="text/csv",

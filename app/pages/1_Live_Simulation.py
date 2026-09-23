@@ -28,8 +28,8 @@ with st.sidebar:
     max_steps = st.slider("Max steps", 50, 800, 250, step=25)
     speed = st.select_slider("Steps per tick (autoplay)", options=[1, 2, 4, 8, 16], value=4)
 
-    reset_clicked = st.button("Reset scenario", use_container_width=True)
-    step_clicked = st.button("Step once", use_container_width=True)
+    reset_clicked = st.button("Reset scenario", width="stretch")
+    step_clicked = st.button("Step once", width="stretch")
     autoplay = st.toggle("Autoplay", value=False)
 
 new_config = dict(
@@ -67,7 +67,7 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     fig = render_env(env)
-    st.pyplot(fig, use_container_width=True)
+    st.pyplot(fig, width="stretch")
 
 with col2:
     coverage_frac = float(env.coverage[~env.terrain.hazard_mask].mean())
