@@ -3,7 +3,12 @@ from exonaut.autonomy.world_model import AdaptiveWorldModel, WorldModel
 from exonaut.environments import TRUE_CLASS_PARAMS
 from exonaut.planners import available_planners, make_planner
 from exonaut.robot.vehicle import SlipRecord
-from exonaut.simulation import MissionConfig, build_world_model, run_mission
+from exonaut.simulation import (
+    TERMINATION_TIMEOUT,
+    MissionConfig,
+    build_world_model,
+    run_mission,
+)
 
 
 def test_adaptive_planner_is_registered_and_updates_belief():
@@ -57,3 +62,21 @@ def test_mission_is_deterministic_for_each_planner():
         a = run_mission(config, seed=300001).to_row()
         b = run_mission(config, seed=300001).to_row()
         assert a == b
+
+
+def test_unresolved_mission_at_home_is_not_reported_as_success():
+    result = run_mission(
+        MissionConfig(
+            planner="risk_aware_astar",
+            size=20,
+            n_targets=1,
+            max_steps=1,
+            risk_budget=0.0,
+        ),
+        seed=200000,
+    )
+
+    assert result.termination == TERMINATION_TIMEOUT
+    assert result.success is False
+    assert result.targets_visited == 0
+    assert result.targets_total == 1

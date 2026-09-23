@@ -15,11 +15,11 @@ Usage pattern:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
-from .rover import Rover, N_ACTIONS, STAY_ACTION
+from .rover import Rover
 from ..environments.terrain_legacy import Terrain, generate_terrain
 from . import comms
 

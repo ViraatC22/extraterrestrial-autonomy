@@ -24,8 +24,7 @@ from dataclasses import dataclass, field, asdict
 
 import numpy as np
 
-from .autonomy import risk
-from .autonomy.mission_manager import Mission, MissionManager, generate_mission
+from .autonomy.mission_manager import MissionManager, generate_mission
 from .autonomy.world_model import AdaptiveWorldModel, WorldModel
 from .environments import TRUE_CLASS_PARAMS, make_environment
 from .robot import FaultSchedule, Rover, SensorSuite
@@ -289,8 +288,9 @@ def run_mission(config: MissionConfig, seed: int, prior: dict | None = None,
             break
 
     at_home = rover.pos == mission.home
-    success = bool(rover.operational and at_home and termination in
-                   (TERMINATION_SUCCESS, TERMINATION_TIMEOUT))
+    objectives_resolved = not mission.remaining
+    success = bool(rover.operational and at_home and objectives_resolved and
+                   termination in (TERMINATION_SUCCESS, TERMINATION_TIMEOUT))
     if success:
         termination = TERMINATION_SUCCESS
 
