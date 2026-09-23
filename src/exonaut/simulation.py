@@ -100,12 +100,15 @@ class MissionResult:
     final_distance_from_home: float
     belief_snapshot: dict = field(default_factory=dict)
     history: list = field(default_factory=list)
+    #: home position and science-target layout, so a replay can be rendered
+    #: without re-deriving the mission
+    mission_layout: dict = field(default_factory=dict)
 
     def to_row(self) -> dict:
         row = {
             k: v
             for k, v in self.__dict__.items()
-            if k not in ("config", "history", "belief_snapshot")
+            if k not in ("config", "history", "belief_snapshot", "mission_layout")
         }
         row.update(self.config)
         row["seed"] = self.seed
@@ -203,6 +206,7 @@ def run_mission(
     distance_travelled = 0.0
     min_charge = rover.power.charge
     predicted_failure_prob = 0.0
+    objective_goal = None
     slips: list[float] = []
     history: list[dict] = []
     termination = TERMINATION_TIMEOUT
@@ -236,6 +240,7 @@ def run_mission(
             )
             path = objective["path"] or []
             path_index = 1 if len(path) > 1 else 0
+            objective_goal = objective.get("goal")
             predicted_failure_prob = objective.get("p_failure", predicted_failure_prob)
 
             if not path or len(path) < 2:
@@ -295,14 +300,31 @@ def run_mission(
             break
 
         if collect_history:
+            # Enough per-step state to replay the mission and to show *why*
+            # the robot did what it did: the route it was committed to, what
+            # it currently believed about each terrain class, and whether it
+            # had given up and turned for home.
             history.append(
                 {
                     "step": step,
                     "row": rover.row,
                     "col": rover.col,
                     "charge": rover.power.charge,
+                    "charge_fraction": rover.power.fraction,
                     "science": mission.collected_value,
                     "slip": outcome["slip"],
+                    "moved": outcome["moved"],
+                    "reason": outcome["reason"],
+                    "planned_path": list(path[path_index:]) if path else [],
+                    "goal": objective_goal,
+                    "returning": manager.returning,
+                    "targets_visited": sum(1 for t in mission.targets if t.visited),
+                    "belief": {int(k): v["mean"] for k, v in world_model.snapshot().items()},
+                    "belief_sd": {
+                        int(k): v["epistemic_sd"] for k, v in world_model.snapshot().items()
+                    },
+                    "interventions": interventions,
+                    "predicted_failure_prob": predicted_failure_prob,
                 }
             )
 
@@ -348,4 +370,18 @@ def run_mission(
         ),
         belief_snapshot=world_model.snapshot(),
         history=history,
+        mission_layout={
+            "home": mission.home,
+            "targets": [
+                {
+                    "id": t.target_id,
+                    "row": t.row,
+                    "col": t.col,
+                    "value": t.value,
+                    "visited": t.visited,
+                    "abandoned": t.abandoned,
+                }
+                for t in mission.targets
+            ],
+        },
     )

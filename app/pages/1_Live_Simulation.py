@@ -1,99 +1,162 @@
-import time
+"""Watch one mission unfold, with the robot's beliefs beside its route."""
 
-import pandas as pd
-import streamlit as st
+import sys
+from pathlib import Path
 
-from exonaut.experiments.runner import build_policy
-from exonaut.multiagent.algorithms import available_algorithm_specs, display_name
-from exonaut.multiagent.swarm_env import EnvConfig, SwarmEnv
-from exonaut.viz.render import render_env
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-st.set_page_config(page_title="Live Simulation", page_icon="🛰️", layout="wide")
+import streamlit as st  # noqa: E402
+
+from _shared import (  # noqa: E402
+    CLASS_LABELS,
+    LAYERS,
+    PLANNER_LABELS,
+    belief_figure,
+    cached_mission,
+    get_terrain,
+    metric_row,
+    page_setup,
+    terrain_figure,
+)
+from exonaut.environments import TRUE_CLASS_PARAMS  # noqa: E402
+from exonaut.experiments.protocol import load_splits  # noqa: E402
+
+page_setup("Live Simulation")
 st.title("Live Simulation")
 st.caption(
-    "Gray = elevation. Pink overlay = explored by any rover. Red = hazard (steep slope / crater "
-    "rim). Blue = permanently shadowed (no solar charging). Green lines = active mesh comm links."
+    "One mission, replayed step by step. The rover starts at the lander, visits "
+    "science targets, and tries to get home before its energy runs out."
 )
 
-specs = available_algorithm_specs()
+splits = load_splits()
 
 with st.sidebar:
-    st.header("Scenario")
-    algo_name = st.selectbox("Algorithm", specs, format_func=display_name)
-    seed = st.number_input("Terrain seed", min_value=0, max_value=10_000, value=1)
-    terrain_size = st.slider("Terrain size (cells/side)", 24, 96, 48, step=8)
-    n_rovers = st.slider("Swarm size", 1, 8, 4)
-    comm_radius = st.slider("Communication radius (cells)", 1, 60, 12)
-    sensor_radius = st.slider("Sensor radius (cells)", 1, 10, 4)
-    failure_rate = st.slider("Rover failure rate", 0.0, 1.0, 0.0, step=0.05)
-    max_steps = st.slider("Max steps", 50, 800, 250, step=25)
-    speed = st.select_slider("Steps per tick (autoplay)", options=[1, 2, 4, 8, 16], value=4)
+    st.header("Mission")
+    body = st.selectbox("Body", ["moon", "mars"], index=1)
+    planner = st.selectbox(
+        "Planner",
+        list(PLANNER_LABELS),
+        index=list(PLANNER_LABELS).index("adaptive_risk_aware_astar"),
+        format_func=lambda k: PLANNER_LABELS[k],
+    )
+    split_name = st.selectbox(
+        "Seed split",
+        ["validation", "test", "ood", "train"],
+        index=0,
+        help="Validation is the safe one to explore interactively. Test and OOD "
+        "seeds carry the confirmatory result; browsing them does not "
+        "invalidate anything already published, but treat them as spent.",
+    )
+    seeds = splits.get(split_name)
+    seed = st.select_slider("Terrain seed", options=list(seeds[:60]), value=seeds[0])
 
-    reset_clicked = st.button("Reset scenario", width="stretch")
-    step_clicked = st.button("Step once", width="stretch")
-    autoplay = st.toggle("Autoplay", value=False)
+    st.divider()
+    size = st.slider("Map size", 32, 80, 56, step=8)
+    n_targets = st.slider("Science targets", 2, 8, 4)
+    max_steps = st.slider("Step budget", 200, 1200, 600, step=100)
+    risk_budget = st.slider(
+        "Risk budget ε",
+        0.02,
+        0.60,
+        0.20,
+        step=0.02,
+        help="Maximum tolerated P(mission failure) for a round trip.",
+    )
+    st.divider()
+    fault_rate = st.slider("Expected faults", 0.0, 3.0, 0.0, step=0.5)
+    comm_delay = st.slider("Comm delay (steps)", 0, 40, 0, step=5)
 
-new_config = dict(
-    terrain_size=terrain_size,
-    n_rovers=n_rovers,
-    comm_radius=comm_radius,
-    sensor_radius=sensor_radius,
-    failure_rate=failure_rate,
+config = dict(
+    body=body,
+    planner=planner,
+    size=size,
+    n_targets=n_targets,
     max_steps=max_steps,
-    seed=seed,
+    risk_budget=risk_budget,
+    fault_rate=fault_rate,
+    comm_delay=comm_delay,
+    solar_rate=2.0,
+    energy_reserve_fraction=0.25,
+    prior_body="moon",
 )
-needs_reset = (
-    reset_clicked
-    or "live_env" not in st.session_state
-    or st.session_state.get("live_env_config") != new_config
-    or st.session_state.get("live_env_algo") != algo_name
-)
 
-if needs_reset:
-    st.session_state["live_env"] = SwarmEnv(EnvConfig(**new_config))
-    st.session_state["live_env_config"] = new_config
-    st.session_state["live_env_algo"] = algo_name
-    st.session_state["live_policy"] = build_policy(algo_name)
+result = cached_mission(config, seed)
+terrain = get_terrain(body, seed, size)
+frames = result.history
 
-env: SwarmEnv = st.session_state["live_env"]
-policy = st.session_state["live_policy"]
+metric_row(result)
+if body == "mars":
+    st.caption(
+        "This robot carries a **lunar** prior. On Mars the same terrain-class "
+        "names carry different slip statistics — that mismatch is the domain "
+        "shift under study."
+    )
 
+if not frames:
+    st.warning("This mission produced no steps.")
+    st.stop()
 
-def do_step() -> None:
-    if not env.done:
-        actions = {rid: policy(env, rid) for rid in env.rover_ids}
-        env.step(actions)
+step_index = st.slider("Mission step", 1, len(frames), len(frames), step=1) - 1
+frame = frames[step_index]
 
+left, right = st.columns([3, 2])
 
-if step_clicked:
-    do_step()
+with left:
+    layer = st.selectbox("Map layer", list(LAYERS), index=0)
+    driven = [(f["row"], f["col"]) for f in frames[: step_index + 1]]
+    targets = []
+    for target in result.mission_layout.get("targets", []):
+        entry = dict(target)
+        # a target counts as collected once the rover has stood on it
+        entry["visited"] = (target["row"], target["col"]) in set(driven)
+        targets.append(entry)
 
-col1, col2 = st.columns([2, 1])
+    st.plotly_chart(
+        terrain_figure(
+            terrain,
+            layer=layer,
+            path=driven,
+            planned=frame["planned_path"],
+            rover=(frame["row"], frame["col"]),
+            home=result.mission_layout.get("home"),
+            targets=targets,
+        ),
+        use_container_width=True,
+    )
 
-with col1:
-    fig = render_env(env)
-    st.pyplot(fig, width="stretch")
+with right:
+    st.metric("Battery", f"{frame['charge_fraction']:.0%}", f"{frame['charge']:.0f} Wh")
+    status = "returning to lander" if frame["returning"] else "pursuing target"
+    st.write(f"**Status** — {status}")
+    if frame["goal"]:
+        st.write(f"**Current goal** — {tuple(frame['goal'])}")
+    st.write(f"**Science collected** — {frame['science']:.2f} ({frame['targets_visited']} targets)")
+    st.write(f"**Ground interventions so far** — {frame['interventions']}")
+    if frame["reason"] != "ok":
+        st.warning(f"Last move blocked: `{frame['reason']}` (slip {frame['slip']:.2f})")
 
-with col2:
-    coverage_frac = float(env.coverage[~env.terrain.hazard_mask].mean())
-    alive = sum(1 for r in env.rovers if r.alive)
-    st.metric("Step", f"{env.step_count} / {env.config.max_steps}")
-    st.metric("Coverage", f"{coverage_frac * 100:.1f}%")
-    st.metric("Rovers alive", f"{alive}/{len(env.rovers)}")
-    if env.done:
-        st.success("Episode finished.")
+    st.divider()
+    st.markdown("**Belief about terrain mobility**")
+    adaptive = planner == "adaptive_risk_aware_astar"
+    st.caption(
+        "Dotted lines are the truth for this body. A fixed planner's lines stay "
+        "flat by construction — only the adaptive planner revises them."
+        if adaptive
+        else "This planner does not revise its model, so these lines are flat. Switch "
+        "to the adaptive planner to see them move."
+    )
+    true_values = {int(k): v.slip_mean for k, v in TRUE_CLASS_PARAMS[body].items()}
+    st.plotly_chart(
+        belief_figure(frames[: step_index + 1], true_values=true_values),
+        use_container_width=True,
+    )
 
-    if env.history:
-        hist_df = pd.DataFrame(env.history).set_index("step")
-        st.caption("Coverage over time")
-        st.line_chart(hist_df[["coverage"]])
-        st.caption("Mean battery over time")
-        st.line_chart(hist_df[["mean_battery"]])
-
-if autoplay and not env.done:
-    for _ in range(speed):
-        do_step()
-        if env.done:
-            break
-    time.sleep(0.05)
-    st.rerun()
+    start, now = frames[0]["belief"], frame["belief"]
+    moved = {k: now[k] - start[k] for k in now if abs(now[k] - start[k]) > 1e-6}
+    if moved:
+        biggest = max(moved, key=lambda k: abs(moved[k]))
+        st.success(
+            f"Largest revision: **{CLASS_LABELS.get(biggest, biggest)}** "
+            f"{start[biggest]:.3f} → {now[biggest]:.3f} "
+            f"(true {true_values.get(biggest, float('nan')):.3f})"
+        )

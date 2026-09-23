@@ -1,0 +1,181 @@
+"""Contract tests for the mission-control API.
+
+The frontend is built against these shapes, so they are pinned here. The
+tests also assert the property that makes the interface trustworthy: what the
+API reports must equal what `run_mission` produced, not a recomputation.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from exonaut.api import app
+
+SMALL = {"size": 32, "n_targets": 2, "max_steps": 150}
+
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture(scope="module")
+def session(client):
+    response = client.post("/start-mission", json={"seed": 200000, **SMALL})
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_health(client):
+    assert client.get("/health").json()["status"] == "ok"
+
+
+def test_planners_include_the_experimental_arms(client):
+    names = {p["name"] for p in client.get("/planners").json()}
+    assert {"astar", "risk_aware_astar", "adaptive_risk_aware_astar"} <= names
+    catalogue = {p["name"]: p for p in client.get("/planners").json()}
+    assert catalogue["adaptive_risk_aware_astar"]["adaptive"] is True
+    assert catalogue["risk_aware_astar"]["adaptive"] is False
+
+
+def test_splits_expose_the_quarantine(client):
+    splits = {s["name"]: s for s in client.get("/splits").json()}
+    assert set(splits) == {"train", "validation", "test", "ood"}
+    # burned seeds must be surfaced, and must not be the first usable seed
+    assert splits["test"]["quarantined"], "quarantine not reported"
+    assert splits["test"]["first"] not in splits["test"]["quarantined"]
+    assert splits["ood"]["first"] not in splits["ood"]["quarantined"]
+
+
+def test_terrain_layers_are_square_and_aligned(client):
+    payload = client.get("/terrain", params={"body": "mars", "seed": 200000, "size": 32}).json()
+    assert payload["size"] == 32
+    for layer in ("elevation", "slope", "roughness", "illumination", "terrain_class", "hazard"):
+        grid = payload[layer]
+        assert len(grid) == 32, layer
+        assert all(len(row) == 32 for row in grid), layer
+    low, high = payload["elevation_range"]
+    assert low < high
+
+
+def test_terrain_rejects_unknown_body(client):
+    assert client.get("/terrain", params={"body": "venus"}).status_code == 400
+
+
+def test_start_mission_returns_a_consistent_summary(session):
+    summary = session["summary"]
+    assert summary["n_frames"] > 0
+    assert summary["targets_total"] == SMALL["n_targets"]
+    assert 0.0 <= summary["science_fraction"] <= 1.0
+    assert summary["termination"] in {"success", "timeout", "immobilized", "energy_exhausted"}
+    # science_fraction must be derived from the two reported quantities
+    assert summary["science_fraction"] == pytest.approx(
+        summary["science_return"] / summary["science_possible"]
+    )
+
+
+def test_mission_is_deterministic_for_the_same_request(client):
+    first = client.post("/start-mission", json={"seed": 200001, **SMALL}).json()
+    second = client.post("/start-mission", json={"seed": 200001, **SMALL}).json()
+    assert first["session_id"] == second["session_id"]
+    assert first["summary"] == second["summary"]
+
+
+def test_api_summary_matches_the_engine_directly(client):
+    """The API must report what run_mission produced, not a re-derivation."""
+    from exonaut.simulation import MissionConfig, run_mission
+
+    request = {"seed": 200002, "body": "mars", "planner": "risk_aware_astar", **SMALL}
+    api = client.post("/start-mission", json=request).json()["summary"]
+
+    config = MissionConfig(
+        body="mars", planner="risk_aware_astar", size=32, n_targets=2, max_steps=150
+    )
+    direct = run_mission(config, seed=200002, collect_history=True)
+
+    assert api["termination"] == direct.termination
+    assert api["success"] == direct.success
+    assert api["science_return"] == pytest.approx(direct.science_return)
+    assert api["energy_spent"] == pytest.approx(direct.energy_spent)
+    assert api["n_frames"] == len(direct.history)
+
+
+def test_step_and_telemetry_agree(client, session):
+    session_id = session["session_id"]
+    frames = client.get(f"/missions/{session_id}/telemetry").json()
+    assert len(frames) == session["summary"]["n_frames"]
+    single = client.get(f"/missions/{session_id}/step", params={"index": 3}).json()
+    assert single == frames[3]
+
+
+def test_step_out_of_range_is_rejected(client, session):
+    session_id = session["session_id"]
+    total = session["summary"]["n_frames"]
+    assert client.get(f"/missions/{session_id}/step", params={"index": total}).status_code == 416
+
+
+def test_unknown_session_is_404(client):
+    assert client.get("/missions/nope").status_code == 404
+    assert client.get("/missions/nope/step").status_code == 404
+
+
+def test_robot_state_defaults_to_the_last_frame(client, session):
+    session_id = session["session_id"]
+    state = client.get("/robot-state", params={"session_id": session_id}).json()
+    frames = client.get(f"/missions/{session_id}/telemetry").json()
+    assert state == frames[-1]
+
+
+def test_adaptive_planner_beliefs_move_and_fixed_ones_do_not(client):
+    """The frontend draws this distinction, so the API must actually carry it."""
+    def belief_span(planner):
+        started = client.post(
+            "/start-mission",
+            json={"seed": 200000, "body": "mars", "planner": planner, "size": 40,
+                  "n_targets": 3, "max_steps": 300},
+        ).json()
+        frames = client.get(f"/missions/{started['session_id']}/telemetry").json()
+        first, last = frames[0]["belief"], frames[-1]["belief"]
+        return max(abs(last[k] - first[k]) for k in first)
+
+    assert belief_span("risk_aware_astar") == pytest.approx(0.0, abs=1e-9)
+    assert belief_span("adaptive_risk_aware_astar") > 0.01
+
+
+def test_results_endpoint_serves_committed_experiment_data(client):
+    available = client.get("/results/available").json()
+    if "exonaut_main" not in available:
+        pytest.skip("confirmatory results not present")
+    payload = client.get("/results", params={"name": "exonaut_main"}).json()
+    assert payload["n_missions"] > 0
+    assert payload["descriptive"]
+    assert payload["primary"]
+    assert payload["metadata"].get("seed_split_checksum")
+
+
+def test_websocket_streams_summary_then_frames(client, session):
+    session_id = session["session_id"]
+    with client.websocket_connect(f"/ws/telemetry/{session_id}") as socket:
+        first = socket.receive_json()
+        assert first["type"] == "summary"
+        assert first["data"]["n_frames"] == session["summary"]["n_frames"]
+
+        socket.send_json({"action": "speed", "interval": 0.005})
+        frame = socket.receive_json()
+        assert frame["type"] == "frame"
+        assert frame["data"]["step"] >= 1
+        socket.send_json({"action": "stop"})
+
+
+def test_websocket_rejects_unknown_session(client):
+    with client.websocket_connect("/ws/telemetry/does-not-exist") as socket:
+        message = socket.receive_json()
+        assert message["type"] == "error"
+
+
+def test_reset_drops_sessions(client):
+    started = client.post("/start-mission", json={"seed": 200003, **SMALL}).json()
+    session_id = started["session_id"]
+    assert client.get(f"/missions/{session_id}").status_code == 200
+    assert client.delete(f"/missions/{session_id}").json()["dropped"] is True
+    assert client.get(f"/missions/{session_id}").status_code == 404
