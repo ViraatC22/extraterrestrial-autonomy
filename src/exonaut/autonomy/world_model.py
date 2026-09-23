@@ -119,6 +119,10 @@ class WorldModel:
         # The per-class multiplier itself stays at its prior.
         self.energy_multiplier = dict(
             energy_multipliers or {k: 1.0 for k in range(N_TERRAIN_CLASSES)})
+        # class_mix and the derived unknown-terrain estimates are queried once
+        # per A* node expansion, so they are cached and invalidated on write
+        # rather than recomputed over the whole map each time.
+        self._cache: dict = {}
 
     # -- ingesting observations -------------------------------------------
     def ingest_observations(self, observations: dict) -> int:
@@ -137,6 +141,8 @@ class WorldModel:
             self.hazard_prob[r, c] = confidence if obs["hazard"] else (1.0 - confidence)
             self.observed[r, c] = True
             updated += 1
+        if updated:
+            self._invalidate()
         return updated
 
     def ingest_slip(self, record) -> None:
@@ -150,20 +156,31 @@ class WorldModel:
         return None
 
     # -- queries used by planners -----------------------------------------
+    def _invalidate(self) -> None:
+        self._cache.clear()
+
     def class_mix(self) -> dict:
         """Empirical terrain-class frequencies among cells seen so far.
 
         Used to reason about ground that has not been looked at yet. Falls
         back to uniform before anything has been observed.
         """
+        cached = self._cache.get("class_mix")
+        if cached is not None:
+            return cached
         if not self.observed.any():
-            return {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
+            uniform = {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
+            self._cache["class_mix"] = uniform
+            return uniform
         seen = self.terrain_class[self.observed]
         counts = np.bincount(seen.astype(int), minlength=N_TERRAIN_CLASSES).astype(float)
         total = counts.sum()
         if total <= 0:
-            return {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
-        return {k: float(counts[k] / total) for k in range(N_TERRAIN_CLASSES)}
+            mix = {k: 1.0 / N_TERRAIN_CLASSES for k in range(N_TERRAIN_CLASSES)}
+        else:
+            mix = {k: float(counts[k] / total) for k in range(N_TERRAIN_CLASSES)}
+        self._cache["class_mix"] = mix
+        return mix
 
     def unknown_slip_estimate(self) -> float:
         """Expected slip on terrain that has not been observed at all.
@@ -176,8 +193,13 @@ class WorldModel:
         are mostly made of not-yet-observed cells, that constant was what
         prevented adaptation from reaching any planning decision.
         """
+        cached = self._cache.get("unknown_slip")
+        if cached is not None:
+            return cached
         mix = self.class_mix()
-        return float(sum(w * self.class_belief[k].mean for k, w in mix.items()))
+        value = float(sum(w * self.class_belief[k].mean for k, w in mix.items()))
+        self._cache["unknown_slip"] = value
+        return value
 
     def expected_slip(self, row: int, col: int) -> float:
         if self.observed[row, col]:
@@ -195,6 +217,9 @@ class WorldModel:
         # Unobserved: the class itself is unknown, so epistemic uncertainty
         # must also cover the spread *between* class means, not just the
         # uncertainty within one class.
+        cached = self._cache.get("unknown_uncertainty")
+        if cached is not None:
+            return cached
         mix = self.class_mix()
         mean = self.unknown_slip_estimate()
         between = float(np.sqrt(sum(
@@ -202,7 +227,9 @@ class WorldModel:
         within = float(np.sqrt(sum(
             w * self.class_belief[k].variance for k, w in mix.items())))
         aleatoric = float(sum(w * self.aleatoric_sd[k] for k, w in mix.items()))
-        return float(np.hypot(between, within)), aleatoric
+        result = (float(np.hypot(between, within)), aleatoric)
+        self._cache["unknown_uncertainty"] = result
+        return result
 
     def total_slip_sd(self, row: int, col: int) -> float:
         epistemic, aleatoric = self.slip_uncertainty(row, col)
@@ -212,8 +239,13 @@ class WorldModel:
         if not self.observed[row, col]:
             # unsurveyed ground: weight by the class mix actually encountered
             # rather than assuming the cheapest case
+            cached = self._cache.get("unknown_energy_multiplier")
+            if cached is not None:
+                return cached
             mix = self.class_mix()
-            return float(sum(w * self.energy_multiplier[k] for k, w in mix.items()))
+            value = float(sum(w * self.energy_multiplier[k] for k, w in mix.items()))
+            self._cache["unknown_energy_multiplier"] = value
+            return value
         return float(self.energy_multiplier[int(self.terrain_class[row, col])])
 
     def expected_energy(self, row: int, col: int, distance: float,
@@ -261,3 +293,4 @@ class AdaptiveWorldModel(WorldModel):
         # terrain class itself, not about how steep this particular cell was
         slope_adjusted = float(np.clip(record.slip - 0.01 * record.slope, 0.0, 1.0))
         belief.update(slope_adjusted)
+        self._invalidate()

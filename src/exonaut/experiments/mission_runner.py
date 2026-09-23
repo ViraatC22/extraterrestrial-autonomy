@@ -9,6 +9,10 @@ from __future__ import annotations
 
 import json
 import os
+import platform
+import subprocess
+import sys
+from datetime import datetime, timezone
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -88,6 +92,42 @@ def _run_trial_star(args):
     return run_mission_trial(*args)
 
 
+def _git_provenance() -> dict:
+    """Commit the results were produced at, and whether the tree was dirty.
+
+    A result that cannot be traced to an exact code state is not reproducible,
+    and a dirty tree means the commit alone does not describe what ran.
+    """
+    root = Path(__file__).resolve().parents[3]
+    def _git(*args):
+        try:
+            return subprocess.run(["git", "-C", str(root), *args],
+                                  capture_output=True, text=True, timeout=10,
+                                  check=True).stdout.strip()
+        except Exception:
+            return None
+    dirty = _git("status", "--porcelain")
+    return {
+        "commit": _git("rev-parse", "HEAD"),
+        "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
+        "dirty_worktree": bool(dirty) if dirty is not None else None,
+        "dirty_files": sorted(line[3:] for line in dirty.splitlines())[:50] if dirty else [],
+    }
+
+
+def _software_versions() -> dict:
+    import numpy
+    import pandas
+    import scipy
+    return {
+        "python": sys.version.split()[0],
+        "numpy": numpy.__version__,
+        "pandas": pandas.__version__,
+        "scipy": scipy.__version__,
+        "platform": platform.platform(),
+    }
+
+
 def _metadata(
     planners: tuple[str, ...],
     conditions: tuple[ExperimentCondition, ...],
@@ -108,6 +148,9 @@ def _metadata(
         # frozen. Recorded here so a reader can confirm which terrains the
         # confirmatory result did and did not see.
         "quarantined_seeds": {k: sorted(v) for k, v in load_quarantine().items()},
+        "git": _git_provenance(),
+        "software": _software_versions(),
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
     }
 
 

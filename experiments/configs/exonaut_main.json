@@ -9,29 +9,46 @@
   "base_config": {
     "size": 64,
     "n_targets": 5,
-    "max_steps": 600
+    "max_steps": 800,
+    "solar_rate": 2.0,
+    "energy_reserve_fraction": 0.25
   },
   "conditions": [
-    {"name": "moon_id", "split": "test", "body": "moon"},
-    {"name": "mars_ood", "split": "ood", "body": "mars"},
+    {
+      "name": "moon_id",
+      "split": "test",
+      "body": "moon"
+    },
+    {
+      "name": "mars_ood",
+      "split": "ood",
+      "body": "mars"
+    },
     {
       "name": "mars_high_uncertainty",
       "split": "ood",
       "body": "mars",
-      "overrides": {"terrain_uncertainty": 1.5}
+      "overrides": {
+        "terrain_uncertainty": 1.5
+      }
     },
     {
       "name": "mars_faults",
       "split": "ood",
       "body": "mars",
-      "overrides": {"fault_rate": 1.0}
+      "overrides": {
+        "fault_rate": 1.0
+      }
     },
     {
       "name": "mars_comm_delay",
       "split": "ood",
       "body": "mars",
-      "overrides": {"comm_delay": 20}
+      "overrides": {
+        "comm_delay": 20
+      }
     }
   ],
-  "output": "exonaut_main.csv"
+  "output": "exonaut_main.csv",
+  "tuning_note": "base_config values were set on VALIDATION seeds (200000+) after the defects recorded in docs/RESEARCH_LOG.md were corrected. This exact geometry was checked on validation seeds for non-degeneracy before the confirmatory run. No test or OOD seed informed any of these values."
 }
