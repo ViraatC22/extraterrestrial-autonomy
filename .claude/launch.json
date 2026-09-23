@@ -2,6 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd web && node node_modules/next/dist/bin/next dev --port 3000"],
+      "port": 3000
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "source $HOME/.venvs/lunar-swarm-nav/bin/activate && python -m uvicorn exonaut.api:app --host 127.0.0.1 --port 8000"],
+      "port": 8000
+    },
+    {
       "name": "streamlit",
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "source $HOME/.venvs/lunar-swarm-nav/bin/activate && streamlit run app/streamlit_app.py --server.headless true --server.port 8501"],
