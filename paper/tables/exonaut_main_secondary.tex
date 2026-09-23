@@ -1,0 +1,26 @@
+\begin{tabular}{@{}llr@{~}lll@{}}
+\toprule
+Condition & Outcome & $\Delta$ & 95\% CI & Test & $p_{\mathrm{Holm}}$ \\
+\midrule
+Mars, 20-step intervention delay & Science fraction & +0.093 & [+0.059, +0.126] & paired t-test & $<$0.001$^{*}$ \\
+Mars, 20-step intervention delay & Mission success & -0.260 & [-0.420, -0.100] & McNemar exact & 0.047$^{*}$ \\
+Mars, 20-step intervention delay & Science fraction & +0.049 & [+0.012, +0.086] & paired t-test & 0.075 \\
+Mars, 20-step intervention delay & Mission success & -0.100 & [-0.265, +0.065] & McNemar exact & 0.997 \\
+Mars, fault injection & Science fraction & +0.094 & [+0.056, +0.133] & paired t-test & $<$0.001$^{*}$ \\
+Mars, fault injection & Mission success & -0.140 & [-0.281, +0.001] & McNemar exact & 0.554 \\
+Mars, fault injection & Science fraction & +0.072 & [+0.033, +0.111] & paired t-test & 0.007$^{*}$ \\
+Mars, fault injection & Mission success & +0.060 & [-0.096, +0.216] & McNemar exact & 0.997 \\
+Mars, 1.5x slip dispersion & Science fraction & +0.081 & [+0.044, +0.117] & paired t-test & $<$0.001$^{*}$ \\
+Mars, 1.5x slip dispersion & Mission success & -0.220 & [-0.364, -0.076] & McNemar exact & 0.059 \\
+Mars, 1.5x slip dispersion & Science fraction & +0.050 & [+0.015, +0.085] & paired t-test & 0.050$^{*}$ \\
+Mars, 1.5x slip dispersion & Mission success & -0.080 & [-0.230, +0.070] & McNemar exact & 0.997 \\
+Mars (OOD) & Science fraction & +0.072 & [+0.038, +0.106] & paired t-test & 0.001$^{*}$ \\
+Mars (OOD) & Mission success & -0.140 & [-0.312, +0.032] & McNemar exact & 0.835 \\
+Mars (OOD) & Science fraction & +0.057 & [+0.019, +0.095] & paired t-test & 0.047$^{*}$ \\
+Mars (OOD) & Mission success & -0.140 & [-0.322, +0.042] & McNemar exact & 0.835 \\
+Moon (in-distribution) & Science fraction & +0.129 & [+0.072, +0.185] & paired t-test & $<$0.001$^{*}$ \\
+Moon (in-distribution) & Mission success & +0.240 & [+0.093, +0.387] & McNemar exact & 0.047$^{*}$ \\
+Moon (in-distribution) & Science fraction & +0.169 & [+0.111, +0.227] & paired t-test & $<$0.001$^{*}$ \\
+Moon (in-distribution) & Mission success & +0.260 & [+0.110, +0.410] & McNemar exact & 0.031$^{*}$ \\
+\bottomrule
+\end{tabular}

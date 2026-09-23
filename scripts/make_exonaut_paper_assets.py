@@ -246,6 +246,8 @@ def write_macros(df: pd.DataFrame, desc: pd.DataFrame, primary: pd.DataFrame,
         lines.append(rf"\newcommand{{\{prefix}{key}Science}}{{{row['science_fraction']:.3f}}}")
         lines.append(rf"\newcommand{{\{prefix}{key}Immob}}{{{int(row['immobilized'])}}}")
         lines.append(rf"\newcommand{{\{prefix}{key}EnergyOut}}{{{int(row['energy_exhausted'])}}}")
+        lines.append(rf"\newcommand{{\{prefix}{key}Interventions}}{{{row['interventions']:.1f}}}")
+        lines.append(rf"\newcommand{{\{prefix}{key}SlipEvents}}{{{row['severe_slip_events']:.2f}}}")
 
     for _, row in primary.iterrows():
         key = CONDITION_SHORT.get(row["condition"], row["condition"])

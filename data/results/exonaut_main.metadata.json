@@ -1,0 +1,92 @@
+{
+  "base_config": {
+    "energy_reserve_fraction": 0.25,
+    "max_steps": 800,
+    "n_targets": 5,
+    "size": 64,
+    "solar_rate": 2.0
+  },
+  "conditions": [
+    {
+      "body": "moon",
+      "name": "moon_id",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "test"
+    },
+    {
+      "body": "mars",
+      "name": "mars_ood",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_high_uncertainty",
+      "overrides": {
+        "terrain_uncertainty": 1.5
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_faults",
+      "overrides": {
+        "fault_rate": 1.0
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_comm_delay",
+      "overrides": {
+        "comm_delay": 20
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    }
+  ],
+  "design": "matched randomized block",
+  "generated_utc": "2026-09-23T14:43:31.913515+00:00",
+  "git": {
+    "branch": "automation/project-recovery-20260922",
+    "commit": "a5e5081728c8df4df162990bba8d7a8188fbb2fe",
+    "dirty_files": [
+      "data/results/exonaut_main.csv"
+    ],
+    "dirty_worktree": true
+  },
+  "n_seeds_per_condition": 50,
+  "planners": [
+    "astar",
+    "risk_aware_astar",
+    "adaptive_risk_aware_astar"
+  ],
+  "quarantined_seeds": {
+    "ood": [
+      400000,
+      400001,
+      400002,
+      400003
+    ],
+    "test": [
+      300000,
+      300001,
+      300002,
+      300003
+    ]
+  },
+  "schema_version": 1,
+  "seed_split_checksum": "c9346c400ce5ada98fa15886a82e937d1238d5285060b8185dbb0f2e9ed8ed1f",
+  "seed_split_created": "2026-09-22",
+  "software": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "platform": "macOS-26.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.9",
+    "scipy": "1.18.1"
+  }
+}

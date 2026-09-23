@@ -20,17 +20,28 @@ reproducibility, but it is no longer the primary research question.
 
 ## Current evidence status
 
-- The seed protocol and lunar/Martian priors are frozen and checksummed.
+- The seed protocol and lunar/Martian priors are frozen and checksummed; eight seeds consumed by an
+  early engineering pilot are permanently quarantined and excluded from all confirmatory results.
 - The implementation and regression suite pass 66 tests.
-- A 60-mission pilot is committed under `data/results/exonaut_pilot.csv`.
-- Pilot results are descriptive only: four matched seeds per condition are insufficient for a
-  confirmatory claim.
-- The preregistered 50-seed-per-condition run has not yet been designated as final evidence.
+- The confirmatory run is complete: 750 missions on held-out seeds, committed as
+  `data/results/exonaut_main.csv` with a metadata sidecar recording the git commit, split checksum,
+  quarantine list and library versions.
 
-The EXONAUT paper is `paper/exonaut.tex`. Every number it reports is generated from the
-row-level results CSV by `scripts/make_exonaut_paper_assets.py`; no value is typed into the
-document. The completed write-up for the earlier swarm study is kept separately under
-`paper/swarm_extension/` so its figures can never be mistaken for EXONAUT results.
+### Headline outcome
+
+Adaptation was **neutral in distribution** (lunar success 0.92 vs 0.90) and did **not** improve
+science return under domain shift, contradicting the stated hypothesis H2. The one contrast
+surviving Holm correction was mission success under injected hardware faults, which rose from 0.26
+to 0.46 (adaptation won all ten discordant seeds). Across Martian conditions adaptation consistently
+bought **survival rather than productivity**, by making energy predictions accurate enough that the
+robot turned back in time.
+
+An unpredicted result: distance-only A* had the highest Martian success rate in three of four
+conditions while returning the least science, indicating that the risk formulation prices caution
+as free when nearly all terrain is hazardous.
+
+`docs/PREREGISTRATION.md` is a confirmatory analysis plan, not a pre-registration; the reasons and
+the full timeline are in `docs/RESEARCH_LOG.md`.
 
 ## Setup
 

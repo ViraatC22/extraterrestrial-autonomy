@@ -390,6 +390,110 @@ draw from different seed splits.
 \section{Results}
 \label{sec:results}
 
+All \MainMissions{} confirmatory missions completed without software error and
+none were excluded. Results are reported for every outcome regardless of
+significance, as the analysis plan requires.
+
+\subsection{In-distribution: adaptation is neutral (H1 supported)}
+
+On lunar terrain, where the prior is already correct, the adaptive and fixed
+risk-aware planners are statistically indistinguishable: success
+\MainMoonIDAdaptiveSuccess{} versus \MainMoonIDFixedSuccess{}
+($\Delta = \MainDeltaMoonIDSuccess$, $p_{\mathrm{Holm}} = \MainPMoonIDSuccess$),
+differing on only five of fifty seeds. This is what H1 predicted: when there is
+nothing to learn, learning costs nothing.
+
+Both risk-aware planners clearly beat the distance-only control here
+(\MainMoonIDAstarSuccess{} success, \MainMoonIDAstarScience{} science
+fraction), confirming that modelling terrain risk is worth doing when the
+model is right.
+
+\subsection{Out-of-distribution: H2 is not supported}
+
+H2 predicted that adaptation would raise science fraction on Martian terrain.
+It did not. In the baseline Martian condition the paired difference in science
+fraction was $\MainDeltaMarsOODScience$
+($p_{\mathrm{Holm}} = \MainPMarsOODScience$) --- a point estimate in the
+\emph{opposite} direction to the hypothesis --- and mission success was exactly
+tied, with each planner winning five of the ten seeds on which they differed.
+
+We report this as a failure of the stated hypothesis rather than reframing it.
+The validation-set estimate that motivated H2 (a success advantage of $+0.125$
+to $+0.167$) did not replicate on held-out seeds. That divergence is itself the
+argument for holding seeds back: a tuning-set effect of that size vanished
+entirely under confirmatory evaluation.
+
+\subsection{Degraded conditions: H3 partially supported}
+
+The one contrast surviving Holm correction across the ten-member primary family
+is mission success under injected hardware faults, where adaptation raised
+success from \MainMarsFaultFixedSuccess{} to \MainMarsFaultAdaptiveSuccess{}
+($\Delta = \MainDeltaMarsFaultSuccess$,
+$p_{\mathrm{Holm}} = \MainPMarsFaultSuccess$). The discordant pairs are
+one-sided: of the ten seeds where the two planners disagreed, the adaptive
+planner succeeded on all ten and the fixed planner on none.
+
+The other two degraded conditions move the same way without reaching
+corrected significance: $\MainDeltaMarsUncSuccess$ under elevated slip
+dispersion (12 of 13 discordant seeds favouring adaptation,
+$p_{\mathrm{Holm}} = \MainPMarsUncSuccess$) and $\MainDeltaMarsCommSuccess$
+under intervention delay ($p_{\mathrm{Holm}} = \MainPMarsCommSuccess$). The
+direction is consistent across all three degraded conditions, which is
+suggestive, but only one is individually defensible after correction and we do
+not claim more.
+
+\subsection{Adaptation buys survival, not science}
+
+Across every Martian condition the sign pattern is the same: adaptation
+improves mission success while slightly \emph{reducing} science fraction
+(for example $\MainDeltaMarsCommScience$ under intervention delay). The
+mechanism is visible in the termination counts. Under faults, energy
+exhaustion falls from \MainMarsFaultFixedEnergyOut{} missions to
+\MainMarsFaultAdaptiveEnergyOut{}, and ground interventions fall from
+\MainMarsFaultFixedInterventions{} to \MainMarsFaultAdaptiveInterventions{}
+per mission.
+
+This follows directly from Equation~\ref{eq:energy}. A robot that has measured
+that the local ground is slippier than its prior assumed raises its estimate of
+what every remaining route will cost, and therefore turns back sooner. Turning
+back sooner is exactly what converts a stranded rover into a surviving one ---
+and exactly what costs it the last science target. The adaptive planner is not
+better at everything; it is more accurate about its own energy budget, and
+accuracy here purchases caution.
+
+\subsection{An unanticipated result: the uninformed planner survives}
+
+None of the hypotheses anticipated the clearest pattern in the Martian data.
+Distance-only A*, which models no terrain risk whatsoever, achieved the
+\emph{highest} mission-success rate of the three planners in three of the four
+Martian conditions --- \MainMarsOODAstarSuccess{} against
+\MainMarsOODFixedSuccess{} and \MainMarsOODAdaptiveSuccess{} in the baseline
+OOD condition.
+
+It also returned the least science (\MainMarsOODAstarScience{} against
+\MainMarsOODFixedScience{} and \MainMarsOODAdaptiveScience{}). The
+interpretation we favour, which the intervention counts support, is that
+risk-averse routing on hostile terrain is expensive: the risk-aware planners
+detour around suspect ground, and on Mars almost all ground is suspect, so
+they travel further, request far more ground interventions
+(\MainMarsOODFixedInterventions{} per mission against
+\MainMarsOODAstarInterventions{} for distance-only), and more often run the
+battery down before getting home. The short, blunt route is more dangerous per
+metre but involves fewer metres.
+
+This is a genuine limitation of the risk formulation rather than a curiosity.
+A planner that treats caution as free will over-pay for it when the whole map
+is dangerous.
+
+\subsection{Generalization gap}
+
+The generalization gap $G$ is largest for the adaptive planner
+(\MainGapAdaptive{}) and smallest for distance-only A* (\MainGapAstar{}).
+This ranking should not be read as adaptation generalizing worst. $G$ is a
+difference, and the adaptive planner starts from the highest in-distribution
+score, so the metric mechanically rewards planners that are poor at home.
+Reported for completeness, it is uninformative for ranking here.
+
 \begin{table}[htbp]
 \centering
 \caption{Outcomes by condition and planner. Immob.\ and Energy out are counts
@@ -410,8 +514,8 @@ $^{*}$ marks $p_{\mathrm{Holm}} < 0.05$.}
 \begin{table}[htbp]
 \centering
 \caption{Generalization gap in science fraction between the in-distribution
-lunar condition and the out-of-distribution Martian condition. Smaller is
-better.}
+lunar condition and the out-of-distribution Martian condition. See
+Section~\ref{sec:results} for why this ranking is not informative.}
 \small
 \input{tables/exonaut_main_gap.tex}
 \end{table}
@@ -425,10 +529,47 @@ better.}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/exonaut_main_terminations.pdf}
-\caption{How missions ended. The mechanism behind the headline numbers is
-visible here as a shift between termination causes rather than a uniform
-improvement.}
+\caption{How missions ended. The effect of adaptation appears as a shift
+between termination causes -- fewer energy exhaustions -- rather than as a
+uniform improvement.}
 \end{figure}
+
+\section{Discussion}
+
+The result we set out to find is not the result we obtained. H2, the
+hypothesis that online adaptation would raise science return under domain
+shift, is not supported: the effect was absent on held-out seeds despite
+appearing clearly during tuning. What survived confirmatory analysis is
+narrower and different in kind --- adaptation improved \emph{survival} under
+hardware faults, and did so by making the robot's energy predictions honest
+enough that it turned back in time.
+
+Three things follow.
+
+First, the value of online adaptation in this testbed is concentrated where
+the robot's own state is degrading, not merely where the terrain is
+unfamiliar. Faults change the vehicle underneath the model; a model that
+cannot be revised keeps planning for a rover that no longer exists.
+
+Second, caution has a price that risk-aware formulations do not currently
+charge. On terrain where most ground is hazardous, detouring is not free, and
+the uninformed planner's survival advantage came from simply spending less
+time exposed. A more complete objective would price route length and exposure
+time against per-cell risk rather than treating risk avoidance as costless.
+
+Third, the gap between the validation and confirmatory estimates is the most
+methodologically useful outcome here. A tuning-set advantage of $+0.125$ to
+$+0.167$ in Martian success became $0.000$ on held-out seeds. Had the seed
+protocol not been frozen in advance, that first number is the one that would
+have been reported.
+
+\subsection{Future work}
+
+The obvious extensions are to adapt the locomotion multiplier as well as the
+slip model, to add exposure time to the planner's objective so that caution is
+priced, and to test transfer in the reverse direction (Mars prior, lunar
+deployment) to check that the effects here are not specific to one direction of
+shift.
 
 \section{Limitations}
 \label{sec:limitations}

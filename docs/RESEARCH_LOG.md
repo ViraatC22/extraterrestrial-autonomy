@@ -90,3 +90,48 @@ planners, leaving the primary outcome with no variance to analyse.
 
 Defect 3 is the one that most affected interpretation: it biased all planners toward over-committing,
 and it did so more severely on Mars, where the true multipliers are highest.
+
+## 2026-09-23 - Confirmatory run executed and interpreted
+
+750 missions on held-out seeds (test 300004-300053, OOD 400004-400053), split
+checksum `c9346c400ce5`, no quarantined seed present, no run excluded.
+
+Provenance note: the metadata sidecar records `dirty_worktree: true`, because
+commits were made during the run. `git diff 063d079 a5e5081 -- src/` shows the
+only change was the addition of `experiments/analysis.py`, which the sweep does
+not import. Every simulation, planner, autonomy, robot, environment and runner
+module was byte-identical throughout, so the results correspond to the frozen
+design.
+
+### Outcome against the stated hypotheses
+
+- **H1 supported.** Lunar success 0.92 adaptive vs 0.90 fixed, differing on 5
+  of 50 seeds, p_Holm = 1.000. Adaptation costs nothing when the prior is right.
+- **H2 not supported.** Martian science fraction moved *against* the
+  hypothesis, -0.015, p_Holm = 1.000, and Martian success was exactly tied
+  (5 discordant seeds each way). The validation-set advantage of +0.125 to
+  +0.167 that motivated H2 did not replicate on held-out seeds.
+- **H3 partially supported.** Mission success under injected faults rose from
+  0.26 to 0.46 (+0.200, p_Holm = 0.020), the only contrast surviving Holm
+  correction across the ten-member primary family. The discordant pairs are
+  one-sided: adaptation won all 10 of them. The other degraded conditions move
+  the same direction without reaching corrected significance.
+- **H4** is descriptive only in this run and is reported in the tables.
+
+### The finding we did not predict
+
+Distance-only A* achieved the *highest* Martian success rate in three of four
+conditions (0.48 vs 0.34 / 0.34 in the baseline OOD condition) while returning
+the least science (0.101 vs 0.173 / 0.158). Ground interventions per mission
+were 57.5 for distance-only against 102.8 for fixed risk-aware. The reading
+supported by those counts is that risk-averse routing is expensive when nearly
+all ground is hazardous: detours cost distance and time, and exposure is paid
+per metre travelled. The current objective treats caution as free, which is a
+real limitation of the formulation rather than an incidental result.
+
+### Methodological value of the frozen protocol
+
+The validation-to-confirmatory divergence is the clearest argument in this
+project for having frozen the splits. A +0.125 to +0.167 tuning-set effect
+became 0.000 on held-out data. Without the split, that first figure is the one
+that would have been reported.
