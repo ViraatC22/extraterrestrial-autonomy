@@ -40,12 +40,7 @@ def _path_cost(planner, wm, path):
 
 def _free_endpoints(wm):
     size = wm.size
-    free = [
-        (r, c)
-        for r in range(size)
-        for c in range(size)
-        if wm.believed_traversable(r, c, 25.0)
-    ]
+    free = [(r, c) for r in range(size) for c in range(size) if wm.believed_traversable(r, c, 25.0)]
     return free[0], free[-1]
 
 

@@ -8,9 +8,9 @@ across processes and record exactly what produced each row.
 from __future__ import annotations
 
 from .astar import ShortestPathPlanner
+from .base import Planner
 from .dijkstra import DijkstraPlanner
 from .dstar_lite import DStarLitePlanner
-from .base import Planner
 from .risk_aware import AdaptiveRiskAwarePlanner, RiskAwarePlanner
 
 _REGISTRY = {
