@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from .stats import holm_bonferroni
+from .stats import bootstrap_paired_difference, holm_bonferroni
 
 #: The proposed method and the control that isolates its single mechanism.
 PRIMARY_TREATMENT = "adaptive_risk_aware_astar"
@@ -70,6 +70,9 @@ def paired_continuous(
     control: str,
     condition: str | None = None,
     alpha: float = 0.05,
+    bootstrap: bool = True,
+    n_resamples: int = 10_000,
+    bootstrap_seed: int = 0,
 ) -> dict | None:
     pair = _paired_frames(df, metric, treatment, control, condition)
     if pair is None or len(pair) < 2:
@@ -101,7 +104,7 @@ def paired_continuous(
     else:
         p_w = float(stats.wilcoxon(a, b).pvalue)
 
-    return {
+    row = {
         "condition": condition or "ALL",
         "metric": metric,
         "treatment": treatment,
@@ -119,6 +122,16 @@ def paired_continuous(
         "n_discordant": int(np.count_nonzero(np.abs(diff) > 1e-12)),
         "test": "paired t-test",
     }
+    if bootstrap:
+        # Science fraction is a bounded ratio, so the t-interval can extend
+        # past values the quantity can physically take. The bootstrap interval
+        # is reported alongside it as a distribution-free check; blocks are
+        # resampled, preserving the pairing.
+        boot = bootstrap_paired_difference(a, b, n_resamples=n_resamples, seed=bootstrap_seed)
+        row["boot_ci_low"] = boot["ci_low"]
+        row["boot_ci_high"] = boot["ci_high"]
+        row["p_bootstrap"] = boot["p_bootstrap"]
+    return row
 
 
 def paired_binary(

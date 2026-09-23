@@ -70,7 +70,7 @@ The failure mode that actually strands planetary rovers is not driving off a
 cliff. It is sinking. A rover crossing ground that looks benign can lose
 traction in loose material, dig itself in, and become permanently immobile.
 NASA's \emph{Spirit} ended its driving mission this way in 2009, embedded in
-soft soil. What makes this failure mode interesting for autonomy research is
+soft soil~\cite{nasa_spirit}. What makes this failure mode interesting for autonomy research is
 that it is invisible to geometry: the ground that traps a rover is often flat.
 Detecting it requires a model of how terrain \emph{behaves}, not how it
 \emph{looks}, and the only direct measurement of behaviour is slip observed
@@ -116,13 +116,14 @@ isolate what that single mechanism is worth under a realistic domain shift.
 \label{sec:related}
 
 Slip has long been treated as the operative traversability signal for Mars
-rovers rather than slope alone; Angelova et al. learned to predict slip from
-terrain appearance, and Helmick et al. built terrain-adaptive navigation
-around slip-aware models. More recent work makes the uncertainty explicit
-rather than producing a single traversability score: Endo et al. fuse
+rovers rather than slope alone; Angelova et al.~\cite{angelova2006slip} learned to predict slip from
+terrain appearance, and Helmick et al.~\cite{helmick2007terrain} built
+terrain-adaptive navigation around slip-aware models. More recent work makes the uncertainty explicit
+rather than producing a single traversability score: Endo et al.~\cite{endo2023riskaware} fuse
 probabilistic traversability predictions for risk-aware planning on
-heterogeneous terrain, and extend this with test-time adaptation so that a
-traversability model can be corrected during deployment. Sanchez-Ibanez et al.
+heterogeneous terrain, and extend this with test-time
+adaptation~\cite{endo2024deepprob} so that a traversability model can be
+corrected during deployment. Sanchez-Ibanez et al.~\cite{sanchez2022riskaware}
 address a complementary risk, planning under localization uncertainty for
 space exploration rovers.
 
@@ -377,8 +378,8 @@ the Martian conditions are genuine domain shifts.
 Because planners share terrain within a condition, all contrasts are paired.
 Science fraction uses a paired $t$-test with a Wilcoxon signed-rank companion,
 Cohen's $d_z$, and a 95\% confidence interval. Mission success is binary and
-paired, so it uses McNemar's exact test, which conditions on the seeds where
-the two planners actually disagreed. Holm--Bonferroni correction is applied
+paired, so it uses McNemar's exact test~\cite{mcnemar1947}, which conditions on the
+seeds where the two planners actually disagreed. Holm--Bonferroni correction~\cite{holm1979} is applied
 across the prespecified primary family; secondary contrasts against the
 distance-only control are corrected separately and never pooled with it.
 
@@ -617,24 +618,7 @@ python scripts/run_exonaut_experiments.py       # confirmatory sweep
 python scripts/make_exonaut_paper_assets.py     # tables, figures, macros
 \end{verbatim}
 
-\section*{References}
-
-\begin{enumerate}[leftmargin=2em]
-  \item A. Angelova, L. Matthies, D. Helmick, G. Sibley, P. Perona.
-  ``Learning to Predict Slip for Ground Robots.'' ICRA, 2006.
-  \item D. Helmick, A. Angelova, M. Livianu, L. Matthies. ``Terrain Adaptive
-  Navigation for Mars Rovers.'' IEEE Aerospace Conference, 2007.
-  \item M. Endo, T. Taniai, R. Yonetani, G. Ishigami. ``Risk-aware Path
-  Planning via Probabilistic Fusion of Traversability Prediction for Planetary
-  Rovers on Heterogeneous Terrains.'' ICRA, 2023. arXiv:2303.01169.
-  \item M. Endo, T. Taniai, G. Ishigami. ``Deep Probabilistic Traversability
-  with Test-time Adaptation for Uncertainty-aware Planetary Rover
-  Navigation.'' 2024. arXiv:2409.00641.
-  \item J. R. Sanchez-Ibanez, P. J. Sanchez-Cuevas, M. A. Olivares Mendez.
-  ``Optimal and Risk-Aware Path Planning considering Localization Uncertainty
-  for Space Exploration Rovers.'' IROS, 2022.
-  \item NASA. ``Spirit.'' Mission page documenting the 2009 loss of traction
-  in soft soil.
-\end{enumerate}
+\bibliographystyle{plain}
+\bibliography{references}
 
 \end{document}

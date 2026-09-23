@@ -108,3 +108,69 @@ def test_summarize_ci_contains_mean():
     for _, row in out.iterrows():
         assert row["ci95_low"] <= row["mean"] <= row["ci95_high"]
         assert row["n"] == 20
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap
+# ---------------------------------------------------------------------------
+def test_bootstrap_ci_covers_true_mean():
+    from exonaut.experiments.stats import bootstrap_ci
+
+    rng = np.random.default_rng(0)
+    covered = 0
+    trials = 40
+    for trial in range(trials):
+        sample = rng.normal(5.0, 1.0, 50)
+        out = bootstrap_ci(sample, n_resamples=1000, seed=trial)
+        if out["ci_low"] <= 5.0 <= out["ci_high"]:
+            covered += 1
+    # nominal 95%; allow sampling slack but catch a badly broken interval
+    assert covered >= trials * 0.8, f"coverage {covered}/{trials}"
+
+
+def test_bootstrap_ci_matches_scipy_percentile():
+    from scipy.stats import bootstrap as scipy_bootstrap
+
+    from exonaut.experiments.stats import bootstrap_ci
+
+    rng = np.random.default_rng(1)
+    sample = rng.normal(0.4, 0.1, 60)
+    mine = bootstrap_ci(sample, n_resamples=6000, seed=7, method="percentile")
+    ref = scipy_bootstrap(
+        (sample,), np.mean, n_resamples=6000, method="percentile",
+        random_state=np.random.default_rng(7),
+    )
+    assert mine["ci_low"] == pytest.approx(ref.confidence_interval.low, abs=0.01)
+    assert mine["ci_high"] == pytest.approx(ref.confidence_interval.high, abs=0.01)
+
+
+def test_bootstrap_paired_recovers_known_difference():
+    from exonaut.experiments.stats import bootstrap_paired_difference
+
+    rng = np.random.default_rng(2)
+    block = rng.normal(0, 1.0, 40)          # large between-block variance
+    control = 0.5 + block
+    treatment = control + 0.09 + rng.normal(0, 0.01, 40)
+    out = bootstrap_paired_difference(treatment, control, n_resamples=2000)
+    assert out["statistic"] == pytest.approx(0.09, abs=0.02)
+    assert out["ci_low"] < out["statistic"] < out["ci_high"]
+    assert out["p_bootstrap"] < 0.01
+
+
+def test_bootstrap_paired_reports_null_when_no_effect():
+    from exonaut.experiments.stats import bootstrap_paired_difference
+
+    rng = np.random.default_rng(3)
+    block = rng.normal(0, 1.0, 40)
+    control = 0.5 + block + rng.normal(0, 0.05, 40)
+    treatment = 0.5 + block + rng.normal(0, 0.05, 40)
+    out = bootstrap_paired_difference(treatment, control, n_resamples=2000)
+    assert out["p_bootstrap"] > 0.05
+    assert out["ci_low"] <= 0.0 <= out["ci_high"]
+
+
+def test_bootstrap_paired_requires_equal_arms():
+    from exonaut.experiments.stats import bootstrap_paired_difference
+
+    with pytest.raises(ValueError):
+        bootstrap_paired_difference([1.0, 2.0, 3.0], [1.0, 2.0])

@@ -252,3 +252,113 @@ def two_way_anova(
     table["partial_eta_sq"] = table["sum_sq"] / (table["sum_sq"] + ss_resid)
     table.loc["Residual", "partial_eta_sq"] = np.nan
     return table
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap
+# ---------------------------------------------------------------------------
+def bootstrap_ci(
+    values,
+    statistic=np.mean,
+    n_resamples: int = 10_000,
+    alpha: float = 0.05,
+    seed: int = 0,
+    method: str = "bca",
+) -> dict:
+    """Bootstrap confidence interval for a statistic of one sample.
+
+    Used where the t-interval's assumptions are uncomfortable: science
+    fraction is a bounded ratio and mission success is a proportion, so
+    neither is normally distributed, and for small samples a t-interval can
+    extend past the range the quantity can physically take.
+
+    `method="bca"` applies bias-correction and acceleration, which adjusts for
+    skew in the bootstrap distribution; `method="percentile"` is the plain
+    interval. BCa is the default because these outcomes are skewed near their
+    bounds, which is exactly where the percentile interval misbehaves.
+    """
+    values = np.asarray(values, dtype=float)
+    n = len(values)
+    if n < 2:
+        point = float(statistic(values)) if n else float("nan")
+        return {"statistic": point, "ci_low": point, "ci_high": point,
+                "n": n, "n_resamples": 0, "method": method}
+
+    rng = np.random.default_rng(seed)
+    observed = float(statistic(values))
+    idx = rng.integers(0, n, size=(n_resamples, n))
+    replicates = np.array([statistic(values[row]) for row in idx], dtype=float)
+
+    if method == "percentile":
+        low, high = np.quantile(replicates, [alpha / 2, 1 - alpha / 2])
+    elif method == "bca":
+        # bias correction from the fraction of replicates below the observed
+        proportion = float(np.mean(replicates < observed))
+        proportion = min(max(proportion, 1e-9), 1 - 1e-9)
+        z0 = stats.norm.ppf(proportion)
+        # acceleration from jackknife skew
+        jackknife = np.array(
+            [statistic(np.delete(values, i)) for i in range(n)], dtype=float
+        )
+        deviations = jackknife.mean() - jackknife
+        denominator = 6.0 * (np.sum(deviations**2) ** 1.5)
+        acceleration = float(np.sum(deviations**3) / denominator) if denominator > 0 else 0.0
+
+        z_alpha = stats.norm.ppf(alpha / 2)
+        z_upper = stats.norm.ppf(1 - alpha / 2)
+
+        def _adjust(z):
+            return float(stats.norm.cdf(z0 + (z0 + z) / (1 - acceleration * (z0 + z))))
+
+        low, high = np.quantile(replicates, [_adjust(z_alpha), _adjust(z_upper)])
+    else:
+        raise ValueError(f"unknown bootstrap method {method!r}")
+
+    return {
+        "statistic": observed,
+        "ci_low": float(low),
+        "ci_high": float(high),
+        "n": n,
+        "n_resamples": n_resamples,
+        "method": method,
+    }
+
+
+def bootstrap_paired_difference(
+    treatment,
+    control,
+    statistic=np.mean,
+    n_resamples: int = 10_000,
+    alpha: float = 0.05,
+    seed: int = 0,
+    method: str = "bca",
+) -> dict:
+    """Bootstrap CI for a paired difference, resampling *blocks*.
+
+    Blocks are resampled rather than observations, because the experimental
+    unit is one terrain seed observed under both planners. Resampling the two
+    arms independently would destroy the pairing that the whole design exists
+    to exploit, and would give an interval for the wrong quantity.
+    """
+    treatment = np.asarray(treatment, dtype=float)
+    control = np.asarray(control, dtype=float)
+    if len(treatment) != len(control):
+        raise ValueError("paired bootstrap requires equal-length arms")
+    result = bootstrap_ci(
+        treatment - control, statistic=statistic,
+        n_resamples=n_resamples, alpha=alpha, seed=seed, method=method,
+    )
+    result["mean_treatment"] = float(treatment.mean())
+    result["mean_control"] = float(control.mean())
+    # Two-sided bootstrap p-value: the smallest alpha at which the interval
+    # would exclude zero, approximated from the replicate distribution.
+    rng = np.random.default_rng(seed + 1)
+    diff = treatment - control
+    centred = diff - diff.mean()
+    idx = rng.integers(0, len(diff), size=(n_resamples, len(diff)))
+    null_replicates = np.array([statistic(centred[row]) for row in idx], dtype=float)
+    observed = abs(float(statistic(diff)))
+    result["p_bootstrap"] = float(
+        (np.sum(np.abs(null_replicates) >= observed) + 1) / (n_resamples + 1)
+    )
+    return result
