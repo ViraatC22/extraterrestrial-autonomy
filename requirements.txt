@@ -1,0 +1,10 @@
+numpy>=1.26
+scipy>=1.11
+pandas>=2.1
+matplotlib>=3.8
+plotly>=5.20
+streamlit>=1.38
+gymnasium>=0.29
+stable-baselines3>=2.3
+torch>=2.2
+pytest>=8.0
