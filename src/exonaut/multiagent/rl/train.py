@@ -21,7 +21,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from ..environment import EnvConfig
+from ..swarm_env import EnvConfig
 from .policy_env import SingleRoverTrainingEnv
 
 MODELS_DIR = Path(__file__).resolve().parents[3] / "models"

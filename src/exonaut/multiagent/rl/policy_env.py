@@ -23,7 +23,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from ..environment import SwarmEnv, EnvConfig
+from ..swarm_env import SwarmEnv, EnvConfig
 from ..baselines.frontier import frontier_policy
 from ..rover import N_ACTIONS, STAY_ACTION
 

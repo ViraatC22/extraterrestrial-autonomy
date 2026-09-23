@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from .rover import Rover, N_ACTIONS, STAY_ACTION
-from .terrain import Terrain, generate_terrain
+from ..environments.terrain_legacy import Terrain, generate_terrain
 from . import comms
 
 

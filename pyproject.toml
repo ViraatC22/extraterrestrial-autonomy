@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lunar-swarm-nav"
+name = "exonaut"
 version = "0.1.0"
-description = "Decentralized vs. learned swarm coordination for communication-constrained lunar surface exploration"
+description = "EXONAUT: adaptive risk-aware autonomy for robotic exploration of uncertain extraterrestrial terrain"
 requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
