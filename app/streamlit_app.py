@@ -30,7 +30,9 @@ grows as communication range shrinks.
 - **Results Explorer** — summary statistics, distribution plots, and ANOVA / pairwise t-tests on
   any saved sweep.
 
-See `docs/METHODOLOGY.md` in the repo for the full experimental design, and `docs/REFERENCES.md`
+See [`docs/METHODOLOGY.md`](https://github.com/ViraatC22/lunar-swarm-nav/blob/master/docs/METHODOLOGY.md)
+for the full experimental design, and
+[`docs/REFERENCES.md`](https://github.com/ViraatC22/lunar-swarm-nav/blob/master/docs/REFERENCES.md)
 for the research this project builds on.
 """
 )
