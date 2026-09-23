@@ -27,7 +27,7 @@ import numpy as np
 from .autonomy import risk
 from .autonomy.mission_manager import Mission, MissionManager, generate_mission
 from .autonomy.world_model import AdaptiveWorldModel, WorldModel
-from .environments import make_environment
+from .environments import TRUE_CLASS_PARAMS, make_environment
 from .robot import FaultSchedule, Rover, SensorSuite
 from .robot.power import PowerSystem
 
@@ -105,8 +105,18 @@ class MissionResult:
 
 def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
     cls = AdaptiveWorldModel if adaptive else WorldModel
+    # Energy multipliers belong to the prior body, not the simulated body.
+    # Using the target body's true values here would leak ground truth into an
+    # OOD experiment. A lunar-prior robot sent to Mars must initially carry
+    # lunar energy beliefs and update only through permitted observations.
+    prior_params = TRUE_CLASS_PARAMS[config.prior_body]
+    energy_multipliers = {
+        int(klass): params.energy_multiplier
+        for klass, params in prior_params.items()
+    }
     return cls(size=config.size, class_prior=prior["means"],
-               aleatoric_sd=prior["aleatoric_sd"])
+               aleatoric_sd=prior["aleatoric_sd"],
+               energy_multipliers=energy_multipliers)
 
 
 def _make_planner(name: str, config: MissionConfig, gravity: float):

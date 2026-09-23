@@ -25,7 +25,15 @@ from scipy import stats
 
 # Columns that identify an experimental condition (everything except the
 # algorithm, the random seed, and the measured outcomes).
-CONDITION_COLS = ["comm_radius", "n_rovers", "failure_rate", "terrain_size", "max_steps"]
+CONDITION_COLS = [
+    # EXONAUT single-rover experiment
+    "condition", "body", "prior_body", "terrain_uncertainty", "fault_rate",
+    "comm_delay", "sensor_noise_scale", "risk_budget", "size", "n_targets",
+    # Historical multi-rover experiment
+    "comm_radius", "n_rovers", "failure_rate", "terrain_size",
+    # Shared
+    "max_steps",
+]
 
 
 def _present_condition_cols(df: pd.DataFrame) -> list[str]:

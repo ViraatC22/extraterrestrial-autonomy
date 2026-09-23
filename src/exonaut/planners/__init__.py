@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from .astar import ShortestPathPlanner
 from .base import Planner
-from .risk_aware import RiskAwarePlanner
+from .risk_aware import AdaptiveRiskAwarePlanner, RiskAwarePlanner
 
 _REGISTRY = {
     ShortestPathPlanner.name: ShortestPathPlanner,
     RiskAwarePlanner.name: RiskAwarePlanner,
+    AdaptiveRiskAwarePlanner.name: AdaptiveRiskAwarePlanner,
 }
 
 
@@ -31,5 +32,8 @@ def make_planner(name: str, **kwargs) -> Planner:
     return _REGISTRY[name](**kwargs)
 
 
-__all__ = ["Planner", "RiskAwarePlanner", "ShortestPathPlanner",
-           "available_planners", "make_planner", "register_planner"]
+__all__ = [
+    "AdaptiveRiskAwarePlanner", "Planner", "RiskAwarePlanner",
+    "ShortestPathPlanner", "available_planners", "make_planner",
+    "register_planner",
+]

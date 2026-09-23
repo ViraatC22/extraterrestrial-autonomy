@@ -209,7 +209,12 @@ class AdaptiveWorldModel(WorldModel):
     """
 
     def ingest_slip(self, record) -> None:
-        belief = self.class_belief[int(record.terrain_class)]
+        # Update the class the robot currently believes occupies this cell.
+        # ``record.terrain_class`` is simulator truth retained for evaluation;
+        # consulting it here would let the autonomy stack see through sensor
+        # misclassification and would be an information leak.
+        believed_class = int(self.terrain_class[record.row, record.col])
+        belief = self.class_belief[believed_class]
         # remove the slope contribution so the class belief is about the
         # terrain class itself, not about how steep this particular cell was
         slope_adjusted = float(np.clip(record.slip - 0.01 * record.slope, 0.0, 1.0))

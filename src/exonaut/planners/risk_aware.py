@@ -53,3 +53,19 @@ class RiskAwarePlanner(Planner):
         # distance term alone is a valid lower bound: every other term is
         # non-negative, so the heuristic stays admissible
         return self.weights["distance"]
+
+
+class AdaptiveRiskAwarePlanner(RiskAwarePlanner):
+    """Risk-aware A* whose mobility model learns from driven terrain.
+
+    This class deliberately inherits the fixed planner's objective and
+    weights unchanged. The experimental treatment is therefore one switch:
+    after each drive attempt, the adaptive planner incorporates the measured
+    slip into the Bayesian class belief used by future plans.
+    """
+
+    name = "adaptive_risk_aware_astar"
+    adaptive = True
+
+    def observe_slip(self, world_model, record) -> None:
+        world_model.ingest_slip(record)
