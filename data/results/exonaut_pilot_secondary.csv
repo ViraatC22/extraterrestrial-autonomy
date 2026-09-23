@@ -1,0 +1,21 @@
+condition,metric,treatment,control,n_pairs,mean_treatment,mean_control,mean_diff,ci95_low,ci95_high,t_stat,p_value,p_wilcoxon,cohens_dz,n_discordant,test,treatment_only_wins,control_only_wins,p_holm,significant,family
+mars_comm_delay,science_fraction,risk_aware_astar,astar,4,0.3389728004121696,0.26869510415452935,0.07027769625764026,-0.15337729854133764,0.2939326910566181,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,secondary
+mars_comm_delay,success,risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_comm_delay,science_fraction,adaptive_risk_aware_astar,astar,4,0.3957707981104596,0.26869510415452935,0.1270756939559303,-0.10902405084982927,0.3631754387616899,1.7128844127049987,0.18525170876883534,0.5,0.8564422063524993,2,paired t-test,,,1.0,False,secondary
+mars_comm_delay,success,adaptive_risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_faults,science_fraction,risk_aware_astar,astar,4,0.41248023535169,0.26869510415452935,0.1437851311971607,-0.3138033283359765,0.601373590730298,1.0000000000000002,0.3910022189557704,1.0,0.5,1,paired t-test,,,1.0,False,secondary
+mars_faults,success,risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_faults,science_fraction,adaptive_risk_aware_astar,astar,4,0.46927823304998,0.26869510415452935,0.2005831288954507,-0.23175785080938038,0.6329241086002818,1.4764851527407494,0.23630470449511654,0.5,0.7382425763703747,2,paired t-test,,,1.0,False,secondary
+mars_faults,success,adaptive_risk_aware_astar,astar,4,0.25,0.0,0.25,-0.5456115763209269,1.045611576320927,,1.0,,,1,McNemar exact,1.0,0.0,1.0,False,secondary
+mars_high_uncertainty,science_fraction,risk_aware_astar,astar,4,0.3389728004121696,0.26869510415452935,0.07027769625764026,-0.15337729854133764,0.2939326910566181,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,secondary
+mars_high_uncertainty,success,risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_high_uncertainty,science_fraction,adaptive_risk_aware_astar,astar,4,0.3957707981104596,0.26869510415452935,0.1270756939559303,-0.10902405084982927,0.3631754387616899,1.7128844127049987,0.18525170876883534,0.5,0.8564422063524993,2,paired t-test,,,1.0,False,secondary
+mars_high_uncertainty,success,adaptive_risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_ood,science_fraction,risk_aware_astar,astar,4,0.3389728004121696,0.26869510415452935,0.07027769625764026,-0.15337729854133764,0.2939326910566181,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,secondary
+mars_ood,success,risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+mars_ood,science_fraction,adaptive_risk_aware_astar,astar,4,0.3957707981104596,0.26869510415452935,0.1270756939559303,-0.10902405084982927,0.3631754387616899,1.7128844127049987,0.18525170876883534,0.5,0.8564422063524993,2,paired t-test,,,1.0,False,secondary
+mars_ood,success,adaptive_risk_aware_astar,astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+moon_id,science_fraction,risk_aware_astar,astar,4,0.929011751345074,0.929011751345074,0.0,0.0,0.0,0.0,1.0,1.0,0.0,0,paired t-test,,,1.0,False,secondary
+moon_id,success,risk_aware_astar,astar,4,0.75,0.75,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary
+moon_id,science_fraction,adaptive_risk_aware_astar,astar,4,0.929011751345074,0.929011751345074,0.0,0.0,0.0,0.0,1.0,1.0,0.0,0,paired t-test,,,1.0,False,secondary
+moon_id,success,adaptive_risk_aware_astar,astar,4,0.75,0.75,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,secondary

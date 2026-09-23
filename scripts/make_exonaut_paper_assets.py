@@ -88,7 +88,7 @@ def _ordered_conditions(df: pd.DataFrame) -> list[str]:
 def write_descriptive_table(df: pd.DataFrame, path: Path) -> pd.DataFrame:
     desc = descriptive_table(df)
     lines = [
-        r"\begin{tabular}{llrrrrr}",
+        r"\begin{tabular}{@{}llrrrrr@{}}",
         r"\toprule",
         r"Condition & Planner & $n$ & Success & Science frac. & Immob. & Energy out \\",
         r"\midrule",
@@ -111,7 +111,7 @@ def write_descriptive_table(df: pd.DataFrame, path: Path) -> pd.DataFrame:
 
 def write_contrast_table(results: pd.DataFrame, path: Path, caption_metric: str) -> None:
     lines = [
-        r"\begin{tabular}{llrrrl}",
+        r"\begin{tabular}{@{}llr@{~}lll@{}}",
         r"\toprule",
         r"Condition & Outcome & $\Delta$ & 95\% CI & Test & $p_{\mathrm{Holm}}$ \\",
         r"\midrule",

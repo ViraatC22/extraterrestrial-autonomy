@@ -21,13 +21,16 @@ reproducibility, but it is no longer the primary research question.
 ## Current evidence status
 
 - The seed protocol and lunar/Martian priors are frozen and checksummed.
-- The implementation and legacy regression suite pass 56 tests.
+- The implementation and regression suite pass 66 tests.
 - A 60-mission pilot is committed under `data/results/exonaut_pilot.csv`.
 - Pilot results are descriptive only: four matched seeds per condition are insufficient for a
   confirmatory claim.
 - The preregistered 50-seed-per-condition run has not yet been designated as final evidence.
 
-The LaTeX source is `paper/paper.tex`; the compiled deliverable is `paper/paper.pdf`.
+The EXONAUT paper is `paper/exonaut.tex`. Every number it reports is generated from the
+row-level results CSV by `scripts/make_exonaut_paper_assets.py`; no value is typed into the
+document. The completed write-up for the earlier swarm study is kept separately under
+`paper/swarm_extension/` so its figures can never be mistaken for EXONAUT results.
 
 ## Setup
 

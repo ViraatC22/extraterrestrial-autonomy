@@ -1,0 +1,11 @@
+condition,metric,treatment,control,n_pairs,mean_treatment,mean_control,mean_diff,ci95_low,ci95_high,t_stat,p_value,p_wilcoxon,cohens_dz,n_discordant,test,treatment_only_wins,control_only_wins,p_holm,significant,family
+mars_comm_delay,science_fraction,adaptive_risk_aware_astar,risk_aware_astar,4,0.3957707981104596,0.3389728004121696,0.05679799769829003,-0.12395858022414563,0.23755457562072568,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,primary
+mars_comm_delay,success,adaptive_risk_aware_astar,risk_aware_astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,primary
+mars_faults,science_fraction,adaptive_risk_aware_astar,risk_aware_astar,4,0.46927823304998,0.41248023535169,0.05679799769829003,-0.12395858022414563,0.23755457562072568,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,primary
+mars_faults,success,adaptive_risk_aware_astar,risk_aware_astar,4,0.25,0.0,0.25,-0.5456115763209269,1.045611576320927,,1.0,,,1,McNemar exact,1.0,0.0,1.0,False,primary
+mars_high_uncertainty,science_fraction,adaptive_risk_aware_astar,risk_aware_astar,4,0.3957707981104596,0.3389728004121696,0.05679799769829003,-0.12395858022414563,0.23755457562072568,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,primary
+mars_high_uncertainty,success,adaptive_risk_aware_astar,risk_aware_astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,primary
+mars_ood,science_fraction,adaptive_risk_aware_astar,risk_aware_astar,4,0.3957707981104596,0.3389728004121696,0.05679799769829003,-0.12395858022414563,0.23755457562072568,1.0,0.3910022189557705,1.0,0.5,1,paired t-test,,,1.0,False,primary
+mars_ood,success,adaptive_risk_aware_astar,risk_aware_astar,4,0.0,0.0,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,primary
+moon_id,science_fraction,adaptive_risk_aware_astar,risk_aware_astar,4,0.929011751345074,0.929011751345074,0.0,0.0,0.0,0.0,1.0,1.0,0.0,0,paired t-test,,,1.0,False,primary
+moon_id,success,adaptive_risk_aware_astar,risk_aware_astar,4,0.75,0.75,0.0,0.0,0.0,,1.0,,,0,McNemar exact,0.0,0.0,1.0,False,primary

@@ -1,0 +1,26 @@
+\begin{tabular}{llrrrrr}
+\toprule
+Condition & Planner & $n$ & Success & Science frac. & Immob. & Energy out \\
+\midrule
+Moon (in-distribution) & Adaptive risk-aware A* & 4 & 0.75 & 0.929 & 0 & 0 \\
+ & Distance-only A* & 4 & 0.75 & 0.929 & 0 & 1 \\
+ & Fixed risk-aware A* & 4 & 0.75 & 0.929 & 0 & 0 \\
+\addlinespace
+Mars (OOD) & Adaptive risk-aware A* & 4 & 0.00 & 0.396 & 1 & 0 \\
+ & Distance-only A* & 4 & 0.00 & 0.269 & 1 & 2 \\
+ & Fixed risk-aware A* & 4 & 0.00 & 0.339 & 0 & 3 \\
+\addlinespace
+Mars, 1.5x slip dispersion & Adaptive risk-aware A* & 4 & 0.00 & 0.396 & 0 & 2 \\
+ & Distance-only A* & 4 & 0.00 & 0.269 & 0 & 3 \\
+ & Fixed risk-aware A* & 4 & 0.00 & 0.339 & 0 & 3 \\
+\addlinespace
+Mars, fault injection & Adaptive risk-aware A* & 4 & 0.25 & 0.469 & 0 & 1 \\
+ & Distance-only A* & 4 & 0.00 & 0.269 & 0 & 3 \\
+ & Fixed risk-aware A* & 4 & 0.00 & 0.412 & 0 & 3 \\
+\addlinespace
+Mars, 20-step intervention delay & Adaptive risk-aware A* & 4 & 0.00 & 0.396 & 0 & 0 \\
+ & Distance-only A* & 4 & 0.00 & 0.269 & 0 & 2 \\
+ & Fixed risk-aware A* & 4 & 0.00 & 0.339 & 0 & 3 \\
+\addlinespace
+\bottomrule
+\end{tabular}
