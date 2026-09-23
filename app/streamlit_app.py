@@ -8,7 +8,7 @@ st.subheader("Decentralized vs. learned swarm coordination for communication-con
 st.markdown(
     """
 **Motivation.** NASA's [CADRE mission](https://www.jpl.nasa.gov/missions/cadre/) will land three
-autonomous rovers on the Moon in 2026 that navigate, communicate over a mesh network, and make
+autonomous rovers on the Moon (launch currently scheduled for early 2027) that navigate, communicate over a mesh network, and make
 decisions cooperatively with no real-time human input — because Earth-Moon communication has
 latency and dropout that rules out remote-control. This project asks: **when the communication
 range between rovers shrinks, how much better does a *learned* decentralized coordination policy

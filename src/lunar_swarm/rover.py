@@ -7,6 +7,7 @@ meaningful: shrink it and rovers act on staler, more local information.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -20,9 +21,10 @@ ACTIONS = [
 N_ACTIONS = len(ACTIONS)
 STAY_ACTION = N_ACTIONS - 1
 
-MOVE_COST = 1.0          # battery units per grid-cell moved
-IDLE_COST = 0.1          # battery units per step while stationary
-SOLAR_RECHARGE = 0.6     # battery units per step when in sunlight
+MOVE_COST = 1.0                  # battery units per grid-cell moved (axial)
+DIAGONAL_COST = math.sqrt(2.0)   # diagonal moves cover sqrt(2) cells of ground
+IDLE_COST = 0.1                  # battery units per step while stationary
+SOLAR_RECHARGE = 0.6             # battery units per step when in sunlight
 MAX_BATTERY = 100.0
 
 
@@ -75,6 +77,10 @@ class Rover:
     max_slope_deg: float = 25.0
     battery: float = MAX_BATTERY
     alive: bool = True
+    # Cumulative battery units drawn for locomotion and idling over the whole
+    # episode. Tracked separately from `battery` because solar recharge means
+    # the final battery level does NOT reveal how much energy was expended.
+    energy_spent: float = 0.0
     # known[(row, col)] = True if that cell has been confirmed explored,
     # either by this rover's own sensor or received from a peer.
     known: dict = field(default_factory=dict)
@@ -116,16 +122,19 @@ class Rover:
         dr, dc = ACTIONS[action]
         if dr == 0 and dc == 0:
             self.battery = min(MAX_BATTERY, self.battery - IDLE_COST)
+            self.energy_spent += IDLE_COST
             return False
         new_r, new_c = self.row + dr, self.col + dc
         if not terrain.is_traversable(new_r, new_c, self.max_slope_deg):
             self.battery = min(MAX_BATTERY, self.battery - IDLE_COST)
+            self.energy_spent += IDLE_COST
             return False
-        step_cost = MOVE_COST * (1.4142 if dr != 0 and dc != 0 else 1.0)
+        step_cost = MOVE_COST * (DIAGONAL_COST if dr != 0 and dc != 0 else 1.0)
         if self.battery < step_cost:
             return False
         self.row, self.col = new_r, new_c
         self.battery -= step_cost
+        self.energy_spent += step_cost
         self.path.append((self.row, self.col))
         return True
 

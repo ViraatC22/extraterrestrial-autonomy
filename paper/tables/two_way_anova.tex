@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Factorial ANOVA of final coverage. The interaction row tests whether the ranking of algorithms depends on communication radius.}
+\label{tab:two-way}
+\begin{tabular}{lrrrrr}
+\toprule
+Source & SS & df & $F$ & $p$ & $\eta^2_p$ \\
+\midrule
+algorithm & 0.3680 & 2 & 7.41 & 0.0008 & 0.082 \\
+comm\_radius & 0.4546 & 4 & 4.57 & 0.0016 & 0.100 \\
+algorithm $\times$ comm\_radius (interaction) & 1.0602 & 8 & 5.33 & <0.0001 & 0.205 \\
+Residual & 4.1001 & 165 & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -185,18 +185,24 @@ class SwarmEnv:
         }
 
     def metrics(self) -> dict:
+        """Episode outcome measures.
+
+        `energy_spent` is the true cumulative battery draw summed over the
+        swarm (locomotion + idle), NOT the end-of-episode battery deficit -
+        solar recharge means a rover can spend far more energy than its
+        final battery level suggests. Rover survival is reported separately
+        rather than folded into the energy figure, so each dependent
+        variable measures exactly one thing.
+        """
         hist = self._history
         final_coverage = hist[-1]["coverage"] if hist else 0.0
-        energy_used = sum(
-            max(0.0, 100.0 - r.battery) + (100.0 if not r.alive else 0.0)
-            for r in self.rovers
-        )
+        energy_spent = sum(r.energy_spent for r in self.rovers)
         return {
             "final_coverage": final_coverage,
             "steps_taken": self.step_count,
             "rovers_alive": sum(1 for r in self.rovers if r.alive),
             "n_rovers": len(self.rovers),
-            "energy_used": energy_used,
-            "coverage_per_energy": final_coverage / max(energy_used, 1e-6),
+            "energy_spent": energy_spent,
+            "coverage_per_energy": final_coverage / max(energy_spent, 1e-9),
             "history": hist,
         }

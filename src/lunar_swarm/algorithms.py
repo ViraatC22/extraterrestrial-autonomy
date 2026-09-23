@@ -1,29 +1,47 @@
-"""Central registry combining classical baselines with any trained RL
-models found under models/, so the Streamlit app and experiment scripts
-discover the same set of algorithms without duplicating logic."""
+"""Discovery of the algorithms available to evaluate.
+
+Algorithms are referred to by short string specs ("frontier",
+"rl:models/ppo_seed0.zip") so they can be passed to worker processes and
+recorded verbatim in the results CSV - every row states exactly which
+policy, and for RL exactly which checkpoint, produced it.
+"""
 from __future__ import annotations
 
 from pathlib import Path
 
 from .baselines import BASELINES
 
-MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODELS_DIR = PROJECT_ROOT / "models"
+
+BASELINE_SPECS = list(BASELINES.keys())
+
+DISPLAY_NAMES = {
+    "frontier": "Frontier (greedy nearest-frontier)",
+    "potential_field": "Artificial potential field",
+    "pheromone": "Pheromone stigmergy (ACO-style)",
+}
 
 
-def discover_rl_models() -> dict[str, Path]:
+def discover_rl_specs() -> list[str]:
+    """Every trained checkpoint under models/, as run-ready specs."""
     if not MODELS_DIR.exists():
-        return {}
-    return {p.stem: p for p in sorted(MODELS_DIR.glob("*.zip"))}
+        return []
+    specs = []
+    for path in sorted(MODELS_DIR.glob("*.zip")):
+        rel = path.relative_to(PROJECT_ROOT)
+        specs.append(f"rl:{rel.as_posix()}")
+    return specs
 
 
-def build_algorithm_registry(include_rl: bool = True) -> dict:
-    """Returns {name: policy_spec}. Classical baselines are returned as-is
-    (functions, or classes for the runner to instantiate per trial). RL
-    models are eagerly loaded (torch import + model deserialization), so
-    only call this once per script/session rather than per trial."""
-    registry: dict = dict(BASELINES)
+def available_algorithm_specs(include_rl: bool = True) -> list[str]:
+    specs = list(BASELINE_SPECS)
     if include_rl:
-        from .rl.rl_policy import RLPolicy  # deferred: heavy torch import
-        for name, path in discover_rl_models().items():
-            registry[f"rl:{name}"] = RLPolicy(path)
-    return registry
+        specs.extend(discover_rl_specs())
+    return specs
+
+
+def display_name(spec: str) -> str:
+    if spec.startswith("rl:"):
+        return f"RL policy ({Path(spec[3:]).stem})"
+    return DISPLAY_NAMES.get(spec, spec)

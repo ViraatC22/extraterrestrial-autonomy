@@ -8,3 +8,10 @@ __pycache__/
 venv/
 .streamlit/
 *.log
+
+# LaTeX build artifacts (paper.pdf is committed deliberately)
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.synctex.gz

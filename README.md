@@ -7,7 +7,7 @@ policy against classical decentralized swarm algorithms as communication range, 
 rover-failure rate change.
 
 Motivated by NASA's [CADRE mission](https://www.jpl.nasa.gov/missions/cadre/) — three autonomous
-rovers landing on the Moon in 2026 that must coordinate over a mesh network with no real-time human
+rovers landing on the Moon (launch currently scheduled for early 2027) that must coordinate over a mesh network with no real-time human
 control, because Earth-Moon communication has latency and dropout. See
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the full hypothesis, experimental design, and
 statistics, and [`docs/REFERENCES.md`](docs/REFERENCES.md) for the research this builds on.

@@ -3,8 +3,9 @@ import time
 import pandas as pd
 import streamlit as st
 
-from lunar_swarm.algorithms import build_algorithm_registry
+from lunar_swarm.algorithms import available_algorithm_specs, display_name
 from lunar_swarm.environment import EnvConfig, SwarmEnv
+from lunar_swarm.experiments.runner import build_policy
 from lunar_swarm.viz.render import render_env
 
 st.set_page_config(page_title="Live Simulation", page_icon="🛰️", layout="wide")
@@ -14,11 +15,11 @@ st.caption(
     "rim). Blue = permanently shadowed (no solar charging). Green lines = active mesh comm links."
 )
 
-registry = build_algorithm_registry()
+specs = available_algorithm_specs()
 
 with st.sidebar:
     st.header("Scenario")
-    algo_name = st.selectbox("Algorithm", list(registry.keys()))
+    algo_name = st.selectbox("Algorithm", specs, format_func=display_name)
     seed = st.number_input("Terrain seed", min_value=0, max_value=10_000, value=1)
     terrain_size = st.slider("Terrain size (cells/side)", 24, 96, 48, step=8)
     n_rovers = st.slider("Swarm size", 1, 8, 4)
@@ -47,8 +48,7 @@ if needs_reset:
     st.session_state["live_env"] = SwarmEnv(EnvConfig(**new_config))
     st.session_state["live_env_config"] = new_config
     st.session_state["live_env_algo"] = algo_name
-    policy_spec = registry[algo_name]
-    st.session_state["live_policy"] = policy_spec() if isinstance(policy_spec, type) else policy_spec
+    st.session_state["live_policy"] = build_policy(algo_name)
 
 env: SwarmEnv = st.session_state["live_env"]
 policy = st.session_state["live_policy"]

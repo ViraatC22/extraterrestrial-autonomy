@@ -1,6 +1,6 @@
 import streamlit as st
 
-from lunar_swarm.algorithms import build_algorithm_registry
+from lunar_swarm.algorithms import available_algorithm_specs, display_name
 from lunar_swarm.experiments.runner import run_sweep
 
 st.set_page_config(page_title="Run Experiments", page_icon="🧪", layout="wide")
@@ -15,11 +15,11 @@ meaningful rather than anecdotal. Results are saved as a CSV under
 """
 )
 
-registry = build_algorithm_registry()
+specs = available_algorithm_specs()
 
 with st.form("sweep_form"):
     algo_names = st.multiselect(
-        "Algorithms to compare", list(registry.keys()), default=list(registry.keys()),
+        "Algorithms to compare", specs, default=specs, format_func=display_name,
     )
     comm_radii = st.multiselect(
         "Communication radii to test (cells)", [3, 6, 10, 16, 24, 40], default=[6, 16, 40],
@@ -50,9 +50,8 @@ if submitted:
         progress.progress(done / total)
         status.text(f"{done}/{total} — {algo_name}, {env_kwargs}, seed={seed}")
 
-    algorithms = {name: registry[name] for name in algo_names}
     df = run_sweep(
-        algorithms=algorithms,
+        algorithms=algo_names,
         comm_radii=comm_radii,
         n_rovers_list=n_rovers_list,
         failure_rates=failure_rates,

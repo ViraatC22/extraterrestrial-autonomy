@@ -3,7 +3,12 @@ import plotly.express as px
 import streamlit as st
 
 from lunar_swarm.experiments.runner import RESULTS_DIR
-from lunar_swarm.experiments.stats import one_way_anova, pairwise_ttests, summarize
+from lunar_swarm.experiments.stats import (
+    paired_comparisons,
+    repeated_measures_anova,
+    summarize,
+    two_way_anova,
+)
 
 st.set_page_config(page_title="Results Explorer", page_icon="📊", layout="wide")
 st.title("Results Explorer")
@@ -20,7 +25,7 @@ df = pd.read_csv(RESULTS_DIR / selected)
 st.caption(f"{len(df)} trials loaded from `{selected}`")
 
 metric = st.selectbox(
-    "Metric", ["final_coverage", "coverage_per_energy", "energy_used", "rovers_alive", "steps_taken"],
+    "Metric", ["final_coverage", "coverage_per_energy", "energy_spent", "rovers_alive", "steps_taken"],
 )
 group_col = st.selectbox("Group by", ["algorithm", "comm_radius", "n_rovers", "failure_rate"])
 
@@ -42,14 +47,37 @@ st.subheader("Statistics")
 if df["algorithm"].nunique() < 2:
     st.info("Need at least two algorithms in this results file to run comparison statistics.")
 else:
-    anova = one_way_anova(df, metric=metric, group_col="algorithm")
-    verdict = "statistically significant" if anova["significant_p<0.05"] else "not statistically significant"
-    st.write(
-        f"One-way ANOVA across algorithms on **{metric}**: F = {anova['f_stat']:.3f}, "
-        f"p = {anova['p_value']:.4g} ({verdict} at α = 0.05)"
+    st.caption(
+        "Every algorithm is run on the same terrain seeds, so these are *paired* "
+        "(randomized block) analyses — matching each algorithm's trial to the other "
+        "algorithms' trials on the identical terrain removes between-terrain variance."
     )
-    st.caption("Pairwise Welch's t-tests (does not assume equal variance)")
-    st.dataframe(pairwise_ttests(df, metric=metric, group_col="algorithm"), width="stretch")
+
+    anova = repeated_measures_anova(df, metric=metric)
+    if "error" in anova:
+        st.warning(anova["error"])
+    else:
+        verdict = "statistically significant" if anova["significant"] else "not statistically significant"
+        st.markdown(
+            f"**Repeated-measures ANOVA** on `{metric}`: "
+            f"F({anova['df_treatment']}, {anova['df_error']}) = {anova['f_stat']:.3f}, "
+            f"p = {anova['p_value']:.4g}, partial η² = {anova['partial_eta_squared']:.3f} "
+            f"— {verdict} at α = 0.05, over {anova['n_blocks']} matched blocks."
+        )
+
+    st.caption(
+        "Pairwise paired t-tests with Holm–Bonferroni correction across the family of "
+        "comparisons. `cohens_dz` is the paired effect size; `p_wilcoxon` is a "
+        "non-parametric companion test."
+    )
+    st.dataframe(paired_comparisons(df, metric=metric), width="stretch")
+
+    if "comm_radius" in df.columns and df["comm_radius"].nunique() > 1:
+        st.caption(
+            "Factorial ANOVA — the interaction row tests whether the gap between "
+            "algorithms *changes* with communication radius."
+        )
+        st.dataframe(two_way_anova(df, metric=metric), width="stretch")
 
 st.download_button(
     "Download this results CSV", df.to_csv(index=False), file_name=selected, mime="text/csv",

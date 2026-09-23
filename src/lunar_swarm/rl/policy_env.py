@@ -31,6 +31,12 @@ PATCH_RADIUS = 5
 PATCH_SIZE = 2 * PATCH_RADIUS + 1
 OBS_DIM = PATCH_SIZE * PATCH_SIZE + 6  # patch + [battery, teammate_dx, teammate_dy, frontier_dx, frontier_dy, steps_frac]
 
+# Training terrains are drawn from a seed pool that is disjoint from the
+# seeds used for evaluation (evaluation uses seeds 0..n_seeds-1). Without
+# this separation the policy would be tested on maps it had trained on.
+TRAIN_SEED_MIN = 100_000
+TRAIN_SEED_MAX = 1_000_000
+
 COVERAGE_REWARD_SCALE = 50.0
 INVALID_MOVE_PENALTY = -0.02
 STEP_PENALTY = -0.001
@@ -96,12 +102,19 @@ class SingleRoverTrainingEnv(gym.Env):
         self.action_space = spaces.Discrete(N_ACTIONS)
         self.env: SwarmEnv | None = None
         self.learner_id: int = 0
+        self._seed_rng = np.random.default_rng()
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
-        cfg = self.env_config
         if seed is not None:
-            cfg = EnvConfig(**{**cfg.__dict__, "seed": seed})
+            # `seed` seeds the terrain *sampler*, not the terrain itself, so
+            # runs stay reproducible while still seeing many maps.
+            self._seed_rng = np.random.default_rng(seed)
+        # A fresh terrain every episode. Reusing one map (the behavior before
+        # this was fixed) let the policy memorize a single layout instead of
+        # learning a general exploration strategy.
+        terrain_seed = int(self._seed_rng.integers(TRAIN_SEED_MIN, TRAIN_SEED_MAX))
+        cfg = EnvConfig(**{**self.env_config.__dict__, "seed": terrain_seed})
         self.env = SwarmEnv(cfg)
         self.learner_id = self.env.rover_ids[0]
         learner = next(r for r in self.env.rovers if r.rover_id == self.learner_id)
