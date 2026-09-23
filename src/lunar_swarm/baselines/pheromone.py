@@ -18,9 +18,13 @@ from ..rover import STAY_ACTION, best_traversable_action
 
 
 class PheromonePolicy:
-    def __init__(self, decay: float = 0.98, deposit: float = 5.0, explore_radius: int = 5):
+    def __init__(self, decay: float = 0.98, deposit: float = 5.0, explore_radius: int | None = None):
         self.decay = decay
         self.deposit = deposit
+        # None means "bounded by the rover's own sensing radius". A rover
+        # cannot perceive pheromone or terrain it cannot sense, so candidate
+        # cells must not extend past R_s - otherwise this policy would be
+        # reading terrain the other policies are not allowed to see.
         self.explore_radius = explore_radius
         self._pheromone: np.ndarray | None = None
         self._last_step = -1
@@ -38,10 +42,11 @@ class PheromonePolicy:
         self._pheromone[rover.row, rover.col] += self.deposit
 
         terrain = env.terrain
-        r0 = max(0, rover.row - self.explore_radius)
-        r1 = min(terrain.size, rover.row + self.explore_radius + 1)
-        c0 = max(0, rover.col - self.explore_radius)
-        c1 = min(terrain.size, rover.col + self.explore_radius + 1)
+        radius = self.explore_radius if self.explore_radius is not None else rover.sensor_radius
+        r0 = max(0, rover.row - radius)
+        r1 = min(terrain.size, rover.row + radius + 1)
+        c0 = max(0, rover.col - radius)
+        c1 = min(terrain.size, rover.col + radius + 1)
 
         best_score, target = np.inf, None
         for r in range(r0, r1):
@@ -49,7 +54,7 @@ class PheromonePolicy:
                 if terrain.hazard_mask[r, c]:
                     continue
                 dist = ((r - rover.row) ** 2 + (c - rover.col) ** 2) ** 0.5
-                if dist == 0 or dist > self.explore_radius:
+                if dist == 0 or dist > radius:
                     continue
                 known_penalty = 4.0 if (r, c) in rover.known else 0.0
                 score = self._pheromone[r, c] + known_penalty * 5.0 + dist * 0.1

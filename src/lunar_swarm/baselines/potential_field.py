@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..comms import observable_teammates
 from ..rover import STAY_ACTION, best_traversable_action
 
 ATTRACT_GAIN = 1.0
@@ -36,9 +37,10 @@ def potential_field_policy(env, rover_id: int) -> int:
             fx += ATTRACT_GAIN * dr / dist ** 1.5
             fy += ATTRACT_GAIN * dc / dist ** 1.5
 
-    for other in env.rovers:
-        if other.rover_id == rover_id or not other.alive:
-            continue
+    # Only repel from teammates this rover could actually locate - ones it can
+    # see, or ones reachable over the mesh. Using every rover's true position
+    # would make dispersion immune to the communication radius under study.
+    for other in observable_teammates(env, rover):
         dr, dc = other.row - rr, other.col - rc
         dist = (dr ** 2 + dc ** 2) ** 0.5
         if 0 < dist <= ROVER_REPEL_RADIUS:

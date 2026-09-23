@@ -1,0 +1,23 @@
+{
+  "total_timesteps": 500000,
+  "n_envs": 8,
+  "seed": 0,
+  "env": {
+    "n_rovers": 4,
+    "terrain_size": 48,
+    "comm_radius": 12,
+    "max_steps": 250,
+    "seed": 0
+  },
+  "algorithm": "PPO",
+  "policy": "MlpPolicy",
+  "net_arch": [
+    128,
+    128
+  ],
+  "n_steps": 512,
+  "batch_size": 512,
+  "gamma": 0.995,
+  "learning_rate": 0.0003,
+  "teammate_policy_during_training": "frontier"
+}

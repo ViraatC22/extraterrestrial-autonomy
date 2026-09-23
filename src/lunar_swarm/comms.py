@@ -42,6 +42,34 @@ def connected_components(rovers, comm_radius: int) -> list[list[int]]:
     return components
 
 
+def observable_teammates(env, rover) -> list:
+    """The teammates whose position `rover` could legitimately know right now.
+
+    A rover knows a teammate's location if it can either see it (within its
+    own sensing radius) or reach it over the mesh network (same connected
+    component, so the position can be relayed). Policies must use this
+    rather than reading every rover's position out of the simulator: doing
+    the latter makes a policy's coordination immune to the communication
+    radius, which is precisely the variable under study.
+    """
+    others = [r for r in env.rovers if r.alive and r.rover_id != rover.rover_id]
+    if not rover.alive or not others:
+        return []
+
+    reachable: set[int] = set()
+    for component in connected_components(env.rovers, env.config.comm_radius):
+        if rover.rover_id in component:
+            reachable.update(component)
+            break
+
+    visible = []
+    for other in others:
+        dist = ((other.row - rover.row) ** 2 + (other.col - rover.col) ** 2) ** 0.5
+        if other.rover_id in reachable or dist <= rover.sensor_radius:
+            visible.append(other)
+    return visible
+
+
 def sync_mesh(rovers, comm_radius: int) -> None:
     """Merge the known-cell maps of every rover within the same connected
     mesh component, in place."""
