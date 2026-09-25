@@ -19,22 +19,23 @@ not a fault effect (H3 not supported). See `docs/RESEARCH_LOG.md`.
 
 ## 1. Screenshots (`screenshots/`)
 
-All captured from the running app at 1600×1000 by `capture_screenshots.py`.
+Captured from the running app at 1600×1000 by `capture_screenshots.py`.
 
-| File | Page | What to look at |
-|---|---|---|
-| `01_mission_control_idle.png` | Mission Control | Setup controls; the frozen seed protocol panel (bottom left) |
-| `02_mission_control_launched.png` | Mission Control | 3D Mars terrain, rover route (cyan), targets, live telemetry, belief-vs-truth bars |
-| `03_mission_control_layer_slope.png` | Mission Control | Same mission with the slope layer |
-| `03_mission_control_layer_light.png` | Mission Control | Same mission with the illumination layer |
-| `04_autonomy_inspector.png` | Autonomy Inspector | Every candidate target the planner scored, and which it picked |
-| `05_experiments.png` | Experiments | Confirmatory statistics, read from the committed results file |
-| `06_failure_analysis.png` | Failure Analysis | Failure modes, and where the proposed method loses |
-| `07_scenario_lab_setup.png` | Scenario Lab | Sweep configuration |
-| `08_scenario_lab_results.png` | Scenario Lab | A small exploratory sweep (2 missions per point) |
-
-To regenerate them (both servers must be running):
-`python review/capture_screenshots.py`
+| File | What it shows |
+|---|---|
+| `01_mission_control_surface.png` | Mars surface. Rocks sit only on cells the simulator classes as rocky or rim talus; the outline marks the edge of the simulated area |
+| `02_camera_chase.png` / `03_camera_rover_pov.png` | Chase and rover-mast cameras |
+| `04_camera_planner_candidate_routes.png` | Planner view: every route evaluated at the current decision, with P(fail) and the risk budget |
+| `05_layer_knowledge.png` | What the rover has seen: unexplored (dark), confident (teal), uncertain (amber) |
+| `06_layer_belief_error.png` | Belief minus truth. Blue = the rover thinks ground is better than it is |
+| `07_layer_risk.png` | The planner's P(entry ends mission), log scale |
+| `08_terrain_probe.png` | Hover probe; every value tagged GENERATED / SIMULATED / INFERRED / ASSUMED |
+| `09_presentation_mode.png` | Full-screen demo mode with live captions |
+| `10_autonomy_inspector.png` | Decision rule, risk-budget check, and every candidate's scores |
+| `11_experiments_intervals.png` / `12_experiments_pareto_forest_seeds.png` | Confirmatory results as plots, with intervals from the engine |
+| `13_failure_case_studies.png` | One verified, replayable case per failure mode |
+| `14_case_study_replay.png` | A case study opened in Mission Control, with provenance |
+| `15_scenario_lab_sensitivity.png` | Sensitivity sweep on validation seeds, 95% bands |
 
 ## 2. Real API responses (`api_samples/`)
 
@@ -103,42 +104,40 @@ from.
 
 ## 5. Things a reviewer should push on
 
-These came up while making this package. I've written them down rather than
-cleaning them up, because they're the questions a judge would ask.
+Found while building this interface. Each one is logged with numbers in
+`docs/RESEARCH_LOG.md`, and each is reflected in the paper.
 
-1. **"SUCCESS" with zero science.** `02_mission_control_launched.png` shows a
-   green SUCCESS badge while science is 0.00, targets 0, and interventions 15.
-   In this project "success" means *returned to the lander alive*, and science
-   is a separate measure. That definition is intentional and stated in the
-   paper, but a big green badge on a mission that collected nothing may read
-   as misleading. Consider showing science next to the badge.
-2. **The belief overshoots the truth, and the learner is overconfident.**
-   The rover believes loose-fines slip is 0.776 against a true 0.620. The
-   cause is diagnosed (`docs/RESEARCH_LOG.md`, 2026-09-25). That belief rests
-   on only 3 readings, and the learning rule treats each reading as nearly
-   noise-free. On 40 validation missions its 95% intervals contain the truth
-   only 20% of the time. A corrected rule reaches 85%. The confirmatory result
-   was produced with the uncorrected rule. An earlier guess here ("selection
-   bias from retried cells") was wrong.
-3. **Scenario Lab values look too uniform.** Investigated. Fault rates 0.5
-   and 1 often draw the same number of faults from a shared random stream,
-   which gives identical missions. A related design weakness: a zero fault
-   rate also shifts every later slip draw. Primary results are unaffected;
-   details are in `docs/RESEARCH_LOG.md` (2026-09-25).
-4. **Pre-registration status.** `docs/PREREGISTRATION.md` was written after the
-   adaptive planner existed and after an 8-seed pilot. The document says so,
-   and those seeds are quarantined. It's a confirmatory analysis plan, not a
-   true pre-registration. Full timeline is in `docs/RESEARCH_LOG.md`.
-5. **Known dev-only console error.** On first page load, one
-   `Cannot read properties of undefined (reading 'length')` appears from
-   `next/dist/compiled` (the dev overlay). It doesn't recur during use and
-   pages work. It hasn't been checked against a production build.
-6. **Folder name contains a colon** (`Science Fair 26:27`). That's why npm
-   scripts call `node` directly, and it will break some JS tooling.
+1. **H3 was wrong, and has been corrected.** The one significant result
+   (success in the "hardware faults" condition, 0.26 → 0.46) was presented
+   as fault tolerance. `scripts/audit_confirmatory.py` shows faults fired in
+   only 16% of adaptive and 26% of fixed missions, and in neither mission on 5
+   of the 10 seeds that drove the result. It is now reported as not supported.
+2. **The adaptive learner is ~7× overconfident.** Its 95% intervals contain
+   the true slip only 20% of the time; a corrected update reaches 85%. All
+   confirmatory results use the flawed rule.
+3. **Intervention relaxation ratchets.** Every request for ground help raises
+   the hazard threshold by 0.15, up to 0.95, and it never resets.
+4. **Most timeouts are a livelock.** In 35 of 44 timeouts, the rover sat at
+   the lander requesting help hundreds of times.
+5. **One random stream serves everything,** so changing the fault rate also
+   changes every slip draw. Paired contrasts are unaffected; cross-condition
+   comparisons are noisier than they should be.
+6. **Pre-registration status.** `docs/PREREGISTRATION.md` is a confirmatory
+   analysis plan written after the method and an 8-seed pilot existed. It says
+   so.
 
-## 6. Fixed while preparing this package
+None of the engine defects have been fixed. Fixing them and re-running on the
+same held-out seeds would be post-hoc tuning. The proposed route is a
+separately declared v2 study on held-out seeds not yet used.
 
-- The Mission Control header divided the mission timestep by the number of
-  recorded telemetry frames (showing e.g. `STEP 0055/0040`). Steps spent
-  waiting on mission control don't produce frames, so these are different
-  units. It now divides by total mission steps (`0055/0056`).
+## 6. Design rules the interface follows
+
+- The browser computes no statistics. Intervals and contrasts come from
+  `src/exonaut/experiments/analysis.py` through the API.
+- Recording data for the interface never changes a mission. Outcomes are
+  verified byte-identical, and every case study re-run is checked against its
+  committed row.
+- Exploratory sweeps use validation seeds chosen by the engine, never by the
+  browser.
+- Visual-only elements (sub-cell texture, land beyond the map) are labelled
+  as such.

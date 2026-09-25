@@ -9,8 +9,10 @@
  * explanation once you can see what A scored.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { StatusBadge } from "@/components/MapOverlays";
 import { Nav } from "@/components/Nav";
 import { Panel, Readout } from "@/components/Panels";
 import { ApiError, DEFAULT_MISSION, getPlanners, getTelemetry, startMission } from "@/lib/api";
@@ -36,8 +38,9 @@ function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
       }`}
     >
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="font-mono text-[11px] tracking-[0.16em] text-slate-200">
+        <span className="flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-slate-200">
           TARGET {String(candidate.target_id).padStart(2, "0")}
+          <StatusBadge status="INFERRED" />
         </span>
         <span
           className={`font-mono text-[9px] tracking-[0.16em] ${
@@ -103,6 +106,90 @@ function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
   );
 }
 
+/**
+ * The decision rule, stated once, and every candidate checked against the
+ * risk budget. Explains the choice before the reader reaches the cards.
+ */
+function RiskBudgetCheck({
+  candidates,
+  riskBudget,
+  viewHref,
+}: {
+  candidates: CandidateEvaluation[];
+  riskBudget: number;
+  viewHref: string | null;
+}) {
+  const top = Math.max(riskBudget * 1.6, ...candidates.map((c) => c.p_failure ?? 0), 1e-6);
+  return (
+    <Panel
+      title="Decision rule"
+      right={
+        viewHref ? (
+          <Link
+            href={viewHref}
+            className="rounded-sm border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 font-mono text-[9px] tracking-[0.16em] text-orange-300 hover:bg-orange-500/20"
+          >
+            VIEW THESE ROUTES IN 3D
+          </Link>
+        ) : null
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-[1fr_1.4fr]">
+        <div className="font-mono text-[11px] leading-relaxed text-slate-300">
+          <p>
+            choose the target with the largest
+            <span className="mx-1 text-orange-300">science value ÷ expected energy</span>
+          </p>
+          <p className="mt-1">
+            subject to <span className="text-slate-100">P(fail) ≤ ε = {riskBudget.toFixed(2)}</span>
+          </p>
+          <p className="mt-2 text-[9px] text-slate-500">
+            P(fail) combines terrain risk (embedding) and energy risk (battery below reserve) over the
+            full round trip, from the rover&apos;s belief, not from truth.
+          </p>
+        </div>
+        <div className="space-y-1">
+          {candidates.map((c) => {
+            const p = c.p_failure;
+            const ok = c.reachable && p !== null && p <= riskBudget;
+            return (
+              <div key={c.target_id} className="flex items-center gap-2 font-mono text-[10px]">
+                <span className="w-9 text-slate-400">T{String(c.target_id).padStart(2, "0")}</span>
+                <div className="relative h-2.5 flex-1 rounded-[1px] bg-white/5">
+                  {p !== null ? (
+                    <div
+                      className={`h-full rounded-[1px] ${ok ? "bg-emerald-400/70" : "bg-rose-400/80"}`}
+                      style={{ width: `${Math.min(100, (p / top) * 100)}%` }}
+                    />
+                  ) : null}
+                  <div
+                    className="absolute top-[-3px] h-[16px] w-[2px] bg-white/70"
+                    style={{ left: `${(riskBudget / top) * 100}%` }}
+                    title={`risk budget ε = ${riskBudget}`}
+                  />
+                </div>
+                <span className="w-16 text-right tabular-nums text-slate-200">
+                  {p !== null ? p.toFixed(3) : "—"}
+                </span>
+                <span className={`w-40 ${ok ? "text-emerald-300" : "text-rose-300"}`}>
+                  {!c.reachable
+                    ? "✕ no believed route"
+                    : ok
+                      ? c.selected
+                        ? "✓ within budget · CHOSEN"
+                        : "✓ within budget"
+                      : "✕ exceeds risk limit"}
+                </span>
+              </div>
+            );
+          })}
+          <p className="pt-1 font-mono text-[8.5px] text-slate-500">white line = risk budget ε</p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 export default function Inspector() {
   const [planners, setPlanners] = useState<PlannerInfo[]>([]);
   const [request, setRequest] = useState<MissionRequest>({
@@ -112,6 +199,7 @@ export default function Inspector() {
   });
   const [frames, setFrames] = useState<TelemetryFrame[]>([]);
   const [summary, setSummary] = useState<MissionSummary | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [decisionIndex, setDecisionIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -127,6 +215,7 @@ export default function Inspector() {
       const started = await startMission(request);
       const telemetry = await getTelemetry(started.session_id);
       setSummary(started.summary);
+      setSessionId(started.session_id);
       setFrames(telemetry);
       setDecisionIndex(0);
     } catch (caught) {
@@ -308,6 +397,16 @@ export default function Inspector() {
                 ) : null}
               </Panel>
 
+              <RiskBudgetCheck
+                candidates={decision.candidates}
+                riskBudget={request.risk_budget}
+                viewHref={
+                  sessionId
+                    ? `/?session=${encodeURIComponent(sessionId)}&frame=${frames.indexOf(decision)}&camera=planner`
+                    : null
+                }
+              />
+
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {decision.candidates.map((candidate) => (
                   <CandidateCard key={candidate.target_id} candidate={candidate} />
@@ -319,7 +418,7 @@ export default function Inspector() {
                   <div className="grid grid-cols-2 gap-x-6 md:grid-cols-4">
                     <Readout
                       label="Ended"
-                      value={summary.success ? "SUCCESS" : summary.termination.toUpperCase()}
+                      value={summary.success ? "RETURNED SAFELY" : summary.termination.replace("_", " ").toUpperCase()}
                       tone={summary.success ? "good" : "bad"}
                     />
                     <Readout

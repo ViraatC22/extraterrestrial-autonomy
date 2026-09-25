@@ -15,6 +15,7 @@ import { verticalExaggeration } from "@/components/TerrainMesh";
 import {
   CameraBar,
   LayerBar,
+  StatusBadge,
   Legend,
   ProbePanel,
   ProvenancePanel,
@@ -138,8 +139,11 @@ export default function MissionControl() {
   // Deep link: /?session=<id> opens a mission the engine already ran (for
   // example a case study from Failure Analysis) instead of starting a new one.
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("session");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("session");
     if (!id) return;
+    const startFrame = Number(params.get("frame") ?? 0);
+    const startCamera = params.get("camera") as CameraMode | null;
     let cancelled = false;
     (async () => {
       try {
@@ -160,7 +164,10 @@ export default function MissionControl() {
         setSummary(loaded);
         setTerrain(layers);
         setFrames(telemetry);
-        setIndex(0);
+        setIndex(Math.min(Math.max(0, Number.isFinite(startFrame) ? startFrame : 0), telemetry.length - 1));
+        if (startCamera && ["orbit", "chase", "top", "pov", "planner"].includes(startCamera)) {
+          setCameraMode(startCamera);
+        }
         setStatus(`replaying ${id.slice(0, 24)}… · ${telemetry.length} frames`);
       } catch (caught) {
         if (cancelled) return;
@@ -579,17 +586,25 @@ export default function MissionControl() {
 
         {/* ---------------- right: telemetry ---------------- */}
         <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-          <Panel title="Rover Status">
+          <Panel title="Rover Status" right={<StatusBadge status="SIMULATED" />}>
             <RoverStatus frame={frame} />
           </Panel>
-          <Panel title="Autonomy">
+          <Panel title="Autonomy" right={<StatusBadge status="INFERRED" />}>
             <AutonomyPanel
               frame={frame}
               plannerLabel={plannerInfo?.label ?? request.planner}
               adaptive={plannerInfo?.adaptive ?? false}
             />
           </Panel>
-          <Panel title="Terrain Model">
+          <Panel
+            title="Terrain Model"
+            right={
+              <span className="flex gap-1">
+                <StatusBadge status="INFERRED" />
+                <StatusBadge status="SIMULATED" />
+              </span>
+            }
+          >
             <BeliefPanel
               frame={frame}
               trueSlip={summary?.true_class_slip ?? {}}
