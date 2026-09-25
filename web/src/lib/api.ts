@@ -76,6 +76,7 @@ export const DEFAULT_MISSION: MissionRequest = {
   solar_rate: 2,
   energy_reserve_fraction: 0.25,
   prior_body: "moon",
+  engine: "v1",
 };
 
 export const getHealth = () => request<{ status: string }>("/health");

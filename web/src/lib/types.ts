@@ -24,6 +24,7 @@ export interface MissionRequest {
   solar_rate: number;
   energy_reserve_fraction: number;
   prior_body: Body;
+  engine: "v1" | "v2";
 }
 
 export interface TerrainLayers {

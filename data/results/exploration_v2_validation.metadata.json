@@ -1,0 +1,138 @@
+{
+  "base_config": {
+    "energy_reserve_fraction": 0.25,
+    "max_steps": 800,
+    "n_targets": 5,
+    "size": 64,
+    "solar_rate": 2.0
+  },
+  "conditions": [
+    {
+      "body": "moon",
+      "name": "moon_id",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "test"
+    },
+    {
+      "body": "mars",
+      "name": "mars_ood",
+      "overrides": {},
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_high_uncertainty",
+      "overrides": {
+        "terrain_uncertainty": 1.5
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_faults",
+      "overrides": {
+        "fault_rate": 1.0
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    },
+    {
+      "body": "mars",
+      "name": "mars_comm_delay",
+      "overrides": {
+        "comm_delay": 20
+      },
+      "prior_body": "moon",
+      "split": "ood"
+    }
+  ],
+  "design_digest": "bffb155d9258",
+  "design_name": "exonaut-explore-v2-validation",
+  "engines": [
+    "v1",
+    "v2"
+  ],
+  "generated_utc": "2026-09-25T18:28:54.606493+00:00",
+  "git": {
+    "branch": "master",
+    "commit": "34ff4177d9bf11ea770e8151c635c5f713192620",
+    "dirty_files": [
+      "rc/exonaut/api/app.py",
+      "scripts/analyze_exploration.py",
+      "scripts/explore_v2.py",
+      "src/exonaut/api/models.py",
+      "src/exonaut/api/sweep.py",
+      "web/src/app/page.tsx",
+      "web/src/app/scenario/page.tsx",
+      "web/src/components/Charts.tsx",
+      "web/src/components/MapOverlays.tsx",
+      "web/src/lib/api.ts",
+      "web/src/lib/types.ts"
+    ],
+    "dirty_worktree": true
+  },
+  "planners": [
+    "astar",
+    "risk_aware_astar",
+    "adaptive_risk_aware_astar"
+  ],
+  "run_id": "exonaut-explore-v2-validation-bffb155d9258",
+  "seeds": [
+    200000,
+    200001,
+    200002,
+    200003,
+    200004,
+    200005,
+    200006,
+    200007,
+    200008,
+    200009,
+    200010,
+    200011,
+    200012,
+    200013,
+    200014,
+    200015,
+    200016,
+    200017,
+    200018,
+    200019,
+    200020,
+    200021,
+    200022,
+    200023,
+    200024,
+    200025,
+    200026,
+    200027,
+    200028,
+    200029,
+    200030,
+    200031,
+    200032,
+    200033,
+    200034,
+    200035,
+    200036,
+    200037,
+    200038,
+    200039
+  ],
+  "software": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "platform": "macOS-26.1-arm64-arm-64bit-Mach-O",
+    "pyarrow": "25.0.1",
+    "python": "3.13.9",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.1",
+    "statsmodels": "0.15.0",
+    "torch": "2.14.0"
+  },
+  "split": "validation",
+  "status": "EXPLORATORY - validation seeds only; not confirmatory evidence"
+}

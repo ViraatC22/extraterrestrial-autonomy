@@ -359,7 +359,7 @@ export function SensitivityChart({
   width = 760,
   height = 340,
 }: {
-  series: { planner: string; points: SeriesPoint[] }[];
+  series: { planner: string; dashed?: boolean; key?: string; points: SeriesPoint[] }[];
   xLabel: string;
   yLabel: string;
   yMax?: number;
@@ -414,13 +414,16 @@ export function SensitivityChart({
           " " +
           [...pts].reverse().map((p) => `${sx(p.x)},${sy(p.low)}`).join(" ");
         return (
-          <g key={s.planner}>
-            {pts.length > 1 ? <polygon points={band} fill={color} opacity={0.14} /> : null}
+          <g key={s.key ?? s.planner}>
+            {pts.length > 1 ? (
+              <polygon points={band} fill={color} opacity={s.dashed ? 0.06 : 0.14} />
+            ) : null}
             <polyline
               points={pts.map((p) => `${sx(p.x)},${sy(p.mean)}`).join(" ")}
               fill="none"
               stroke={color}
               strokeWidth={2}
+              strokeDasharray={s.dashed ? "5 4" : undefined}
             />
             {pts.map((p) => (
               <g key={p.x}>

@@ -293,3 +293,36 @@ zero range, are attributed to the wrong class and contaminate that class's
 belief. The paper quotes these numbers through generated macros, so it updated
 automatically; the typed figure in the reviewer README and in an earlier
 message to the project owner (0.85) was wrong and has been corrected here.
+
+## 2026-09-25 - Engine v2 and an exploratory comparison on validation seeds
+
+Decision (project owner): fix the engine and explore on validation seeds only,
+without running a new confirmatory study.
+
+The fixes are behind `MissionConfig.engine = "v2"`; the default stays "v1".
+`scripts/verify_v1_reproduction.py` re-ran all 750 committed confirmatory
+missions after the change: 750/750 reproduce exactly.
+
+`scripts/explore_v2.py` ran the confirmatory design (same conditions, mission
+size and planners) on 40 validation seeds under both engines - 1,200 missions.
+`scripts/analyze_exploration.py` writes `docs/EXPLORATION_V2.md` from the data;
+the headline points, all exploratory:
+
+- The fixes do what they claim: faults fire in 62% of fault-condition missions
+  (v1: 22%); median help requests per Mars mission 0 (v1: 11); lander timeouts
+  no longer involve help requests (median 0, v1: 343); learner coverage 0.53
+  (v1: 0.23), still well short of a calibrated 0.95.
+- Once the engine is fixed, adaptation's survival advantage largely
+  disappears. Under v1 on these validation seeds, adaptive beat fixed in
+  Martian success by about +0.23 to +0.25; under v2 the differences are +0.00
+  to +0.10, with intervals spanning or touching zero. Science fraction is
+  essentially unchanged by adaptation under either engine.
+- Under v2 the comm-delay condition is degenerate (missions identical to plain
+  Mars OOD), because delay only binds when the rover asks for help and v2
+  almost never does.
+- Detecting differences of the size v2 shows would need roughly 80-270
+  matched seeds per condition, against the 50 used in v1.
+
+A caution on reading v1 here: the v1 advantage on validation seeds (+0.225 in
+Mars OOD) did not appear on the held-out confirmatory seeds (exactly 0.000),
+which is another reminder that validation-set effects are optimistic.

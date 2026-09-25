@@ -400,6 +400,27 @@ export default function MissionControl() {
 
               <label className="block">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  Engine
+                </span>
+                <select
+                  value={request.engine}
+                  onChange={(e) =>
+                    setRequest({ ...request, engine: e.target.value as MissionRequest["engine"] })
+                  }
+                  className="mt-1 w-full rounded-sm border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-slate-200"
+                >
+                  <option value="v1">v1 · confirmatory engine</option>
+                  <option value="v2">v2 · fixed (exploratory)</option>
+                </select>
+              </label>
+              <p className="font-mono text-[9px] leading-relaxed text-slate-500">
+                {request.engine === "v1"
+                  ? "The engine the published results were produced with, including its known defects."
+                  : "Calibrated learner, faults inside the mission, independent random streams, no intervention ratchet, no lander livelock. Exploratory: no confirmatory result uses it."}
+              </p>
+
+              <label className="block">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
                   Terrain seed
                 </span>
                 <input

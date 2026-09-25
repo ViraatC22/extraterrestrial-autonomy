@@ -344,6 +344,7 @@ def sweep_point(
     planner: str = Query("adaptive_risk_aware_astar"),
     body: str = Query("mars"),
     n_seeds: int = Query(6, ge=2, le=20),
+    engine: str = Query("v1", pattern="^v[12]$"),
 ) -> dict:
     """One Scenario Lab point: n complete missions on VALIDATION seeds."""
     from .sweep import run_point
@@ -351,7 +352,7 @@ def sweep_point(
     if body not in ("moon", "mars"):
         raise HTTPException(400, "body must be 'moon' or 'mars'")
     try:
-        return run_point(variable, value, planner, body, n_seeds)
+        return run_point(variable, value, planner, body, n_seeds, engine)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

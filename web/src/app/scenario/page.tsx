@@ -68,6 +68,7 @@ interface Interval {
 interface PointResult {
   value: number;
   planner: string;
+  engine: "v1" | "v2";
   n: number;
   seeds: number[];
   success: Interval;
@@ -83,6 +84,7 @@ export default function ScenarioLab() {
   const [nSeeds, setNSeeds] = useState(6);
   const [body, setBody] = useState("mars");
   const [outcome, setOutcome] = useState("success");
+  const [engineMode, setEngineMode] = useState<"v1" | "v2" | "both">("both");
   const [points, setPoints] = useState<PointResult[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,14 +94,17 @@ export default function ScenarioLab() {
     setError(null);
     setPoints([]);
     const values = SWEEPS[variable].values;
-    const jobs = values.flatMap((value) => planners.map((planner) => ({ value, planner })));
+    const engines: ("v1" | "v2")[] = engineMode === "both" ? ["v1", "v2"] : [engineMode];
+    const jobs = values.flatMap((value) =>
+      planners.flatMap((planner) => engines.map((engine) => ({ value, planner, engine }))),
+    );
     setProgress({ done: 0, total: jobs.length });
     const collected: PointResult[] = [];
     try {
       for (const [i, job] of jobs.entries()) {
         const url =
           `${API_BASE}/sweep-point?variable=${variable}&value=${job.value}` +
-          `&planner=${job.planner}&body=${body}&n_seeds=${nSeeds}`;
+          `&planner=${job.planner}&body=${body}&n_seeds=${nSeeds}&engine=${job.engine}`;
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) throw new ApiError((await response.json()).detail ?? response.statusText);
         collected.push((await response.json()) as PointResult);
@@ -112,16 +117,21 @@ export default function ScenarioLab() {
     } finally {
       setProgress(null);
     }
-  }, [variable, planners, nSeeds, body]);
+  }, [variable, planners, nSeeds, body, engineMode]);
 
   const shownVariable = swept?.variable ?? variable;
   const series = planners
-    .map((planner) => ({
-      planner,
-      points: points
-        .filter((p) => p.planner === planner)
-        .map((p) => ({ x: p.value, ...(p[outcome as keyof PointResult] as Interval) })),
-    }))
+    .flatMap((planner) =>
+      (["v1", "v2"] as const).map((engine) => ({
+        planner,
+        engine,
+        key: `${planner}-${engine}`,
+        dashed: engine === "v1",
+        points: points
+          .filter((p) => p.planner === planner && p.engine === engine)
+          .map((p) => ({ x: p.value, ...(p[outcome as keyof PointResult] as Interval) })),
+      })),
+    )
     .filter((s) => s.points.length);
 
   return (
@@ -156,6 +166,18 @@ export default function ScenarioLab() {
                 >
                   <option value="mars">MARS (lunar prior)</option>
                   <option value="moon">MOON</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">Engine</span>
+                <select
+                  value={engineMode}
+                  onChange={(e) => setEngineMode(e.target.value as "v1" | "v2" | "both")}
+                  className="mt-1 w-full rounded-sm border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-slate-200"
+                >
+                  <option value="both">compare v1 (dashed) and v2 (solid)</option>
+                  <option value="v1">v1 · confirmatory engine</option>
+                  <option value="v2">v2 · fixed (exploratory)</option>
                 </select>
               </label>
               <div>
@@ -254,9 +276,19 @@ export default function ScenarioLab() {
                 />
                 <div className="mt-1 flex flex-wrap gap-3 font-mono text-[9px] text-slate-400">
                   {series.map((s) => (
-                    <span key={s.planner} className="flex items-center gap-1">
-                      <span className="h-2 w-3" style={{ background: PLANNER_COLOR[s.planner] }} />
-                      {PLANNER_SHORT[s.planner]}
+                    <span key={s.key} className="flex items-center gap-1">
+                      <svg width="18" height="6">
+                        <line
+                          x1="0"
+                          x2="18"
+                          y1="3"
+                          y2="3"
+                          stroke={PLANNER_COLOR[s.planner]}
+                          strokeWidth="2"
+                          strokeDasharray={s.dashed ? "4 3" : undefined}
+                        />
+                      </svg>
+                      {PLANNER_SHORT[s.planner]} · {s.engine}
                     </span>
                   ))}
                   <span className="text-slate-500">
@@ -278,7 +310,7 @@ export default function ScenarioLab() {
                 <table className="w-full font-mono text-[10px]">
                   <thead>
                     <tr className="text-slate-500">
-                      {["value", "planner", "n", "success [95%]", "science", "energy Wh", "interventions"].map((h) => (
+                      {["value", "planner", "engine", "n", "success [95%]", "science", "energy Wh", "interventions"].map((h) => (
                         <th key={h} className="px-2 py-1 text-left font-normal">
                           {h}
                         </th>
@@ -287,9 +319,10 @@ export default function ScenarioLab() {
                   </thead>
                   <tbody>
                     {points.map((p) => (
-                      <tr key={`${p.value}-${p.planner}`} className="border-t border-white/5">
+                      <tr key={`${p.value}-${p.planner}-${p.engine}`} className="border-t border-white/5">
                         <td className="px-2 py-1 tabular-nums text-slate-300">{p.value}</td>
                         <td className="px-2 py-1 text-slate-200">{PLANNER_SHORT[p.planner]}</td>
+                        <td className="px-2 py-1 text-slate-400">{p.engine}</td>
                         <td className="px-2 py-1 tabular-nums text-slate-400">{p.n}</td>
                         <td className="px-2 py-1 tabular-nums text-slate-100">
                           {p.success.mean.toFixed(2)} [{p.success.low.toFixed(2)}, {p.success.high.toFixed(2)}]

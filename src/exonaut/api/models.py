@@ -28,6 +28,12 @@ class MissionRequest(BaseModel):
     solar_rate: float = Field(2.0, ge=0.1, le=10.0)
     energy_reserve_fraction: float = Field(0.25, ge=0.0, le=0.9)
     prior_body: str = Field("moon", description="body the world-model prior came from")
+    engine: str = Field(
+        "v1",
+        pattern="^v[12]$",
+        description="v1 = the engine the confirmatory study ran on; v2 = with the fixes "
+        "in docs/RESEARCH_LOG.md (exploratory)",
+    )
 
     def to_config_dict(self) -> dict:
         data = self.model_dump()

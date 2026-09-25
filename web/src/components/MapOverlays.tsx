@@ -325,7 +325,7 @@ export function ProvenancePanel({ provenance }: { provenance: Provenance }) {
     ["RUN ID", provenance.run_id],
     ["CONFIG DIGEST", provenance.config_digest],
     ["GIT COMMIT", `${provenance.git_commit?.slice(0, 10) ?? "unknown"}${provenance.git_dirty ? " (dirty)" : ""}`],
-    ["ENGINE", `v${provenance.engine_version}`],
+    ["ENGINE", `v${provenance.engine_version} · profile ${String(provenance.config.engine ?? "v1")}`],
     ["PLANNER", `${provenance.planner}${provenance.planner_adaptive ? " (adaptive)" : ""}`],
     ["SEED", String(provenance.seed)],
     ["EXECUTED", provenance.executed_utc.replace("T", " ").replace("+00:00", " UTC")],

@@ -38,6 +38,12 @@ a descriptive, untested pattern: adaptation trades a little science for survival
 found the adaptive learner is about 7× overconfident. See `docs/RESEARCH_LOG.md` and
 `scripts/audit_confirmatory.py`.
 
+**Engine v2 (exploratory).** Four engine defects found after the confirmatory run are fixed
+behind `engine="v2"`; the default stays v1, and all 750 committed missions still reproduce
+(`scripts/verify_v1_reproduction.py`). On validation seeds, the fixes work. But with them in place,
+adaptation's survival advantage largely disappears. See `docs/EXPLORATION_V2.md`, which is
+generated from the data.
+
 An unpredicted result: distance-only A* had the highest Martian success rate in three of four
 conditions while returning the least science, indicating that the risk formulation prices caution
 as free when nearly all terrain is hazardous.

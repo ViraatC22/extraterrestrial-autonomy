@@ -65,7 +65,9 @@ def _t_interval(values: np.ndarray, alpha: float = 0.05) -> tuple[float, float, 
     return mean, mean - half, mean + half
 
 
-def run_point(variable: str, value: float, planner: str, body: str, n_seeds: int) -> dict:
+def run_point(
+    variable: str, value: float, planner: str, body: str, n_seeds: int, engine: str = "v1"
+) -> dict:
     from ..experiments.protocol import load_splits
 
     if variable not in SWEEPABLE:
@@ -81,6 +83,7 @@ def run_point(variable: str, value: float, planner: str, body: str, n_seeds: int
         "body": body,
         "planner": planner,
         "prior_body": "moon",
+        "engine": engine,
         variable: cast(value),
     }
     missions = list(_pool().map(_one, [(config, s) for s in seeds]))
@@ -91,6 +94,7 @@ def run_point(variable: str, value: float, planner: str, body: str, n_seeds: int
         "value": value,
         "planner": planner,
         "body": body,
+        "engine": engine,
         "n": len(missions),
         "seeds": seeds,
         "config": config,
