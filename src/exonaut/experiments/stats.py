@@ -281,8 +281,14 @@ def bootstrap_ci(
     n = len(values)
     if n < 2:
         point = float(statistic(values)) if n else float("nan")
-        return {"statistic": point, "ci_low": point, "ci_high": point,
-                "n": n, "n_resamples": 0, "method": method}
+        return {
+            "statistic": point,
+            "ci_low": point,
+            "ci_high": point,
+            "n": n,
+            "n_resamples": 0,
+            "method": method,
+        }
 
     rng = np.random.default_rng(seed)
     observed = float(statistic(values))
@@ -297,9 +303,7 @@ def bootstrap_ci(
         proportion = min(max(proportion, 1e-9), 1 - 1e-9)
         z0 = stats.norm.ppf(proportion)
         # acceleration from jackknife skew
-        jackknife = np.array(
-            [statistic(np.delete(values, i)) for i in range(n)], dtype=float
-        )
+        jackknife = np.array([statistic(np.delete(values, i)) for i in range(n)], dtype=float)
         deviations = jackknife.mean() - jackknife
         denominator = 6.0 * (np.sum(deviations**2) ** 1.5)
         acceleration = float(np.sum(deviations**3) / denominator) if denominator > 0 else 0.0
@@ -345,8 +349,12 @@ def bootstrap_paired_difference(
     if len(treatment) != len(control):
         raise ValueError("paired bootstrap requires equal-length arms")
     result = bootstrap_ci(
-        treatment - control, statistic=statistic,
-        n_resamples=n_resamples, alpha=alpha, seed=seed, method=method,
+        treatment - control,
+        statistic=statistic,
+        n_resamples=n_resamples,
+        alpha=alpha,
+        seed=seed,
+        method=method,
     )
     result["mean_treatment"] = float(treatment.mean())
     result["mean_control"] = float(control.mean())

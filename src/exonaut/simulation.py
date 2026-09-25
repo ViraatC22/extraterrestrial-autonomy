@@ -100,6 +100,10 @@ class MissionResult:
     final_distance_from_home: float
     belief_snapshot: dict = field(default_factory=dict)
     history: list = field(default_factory=list)
+    #: one record per planning decision, including every candidate's route
+    decisions: list = field(default_factory=list)
+    #: sparse per-frame snapshots of the whole-map belief (visualisation only)
+    belief_frames: list = field(default_factory=list)
     #: home position and science-target layout, so a replay can be rendered
     #: without re-deriving the mission
     mission_layout: dict = field(default_factory=dict)
@@ -108,7 +112,15 @@ class MissionResult:
         row = {
             k: v
             for k, v in self.__dict__.items()
-            if k not in ("config", "history", "belief_snapshot", "mission_layout")
+            if k
+            not in (
+                "config",
+                "history",
+                "belief_snapshot",
+                "mission_layout",
+                "decisions",
+                "belief_frames",
+            )
         }
         row.update(self.config)
         row["seed"] = self.seed
@@ -140,7 +152,12 @@ def _make_planner(name: str, config: MissionConfig, gravity: float):
 
 
 def run_mission(
-    config: MissionConfig, seed: int, prior: dict | None = None, collect_history: bool = False
+    config: MissionConfig,
+    seed: int,
+    prior: dict | None = None,
+    collect_history: bool = False,
+    collect_belief: bool = False,
+    belief_stride: int = 3,
 ) -> MissionResult:
     from .autonomy.priors import default_prior
 
@@ -209,6 +226,9 @@ def run_mission(
     objective_goal = None
     decision_reason = None
     last_candidates: list = []
+    decisions: list[dict] = []
+    decision_index = -1
+    belief_frames: list[dict] = []
     slips: list[float] = []
     history: list[dict] = []
     termination = TERMINATION_TIMEOUT
@@ -244,7 +264,26 @@ def run_mission(
             path_index = 1 if len(path) > 1 else 0
             objective_goal = objective.get("goal")
             decision_reason = objective.get("reason")
-            last_candidates = list(manager.last_candidates)
+            # Routes are kept once per decision rather than copied into every
+            # frame; frames point at their decision by index.
+            last_candidates = [
+                {k: v for k, v in c.items() if k != "route"} for c in manager.last_candidates
+            ]
+            if collect_history:
+                decisions.append(
+                    {
+                        "index": len(decisions),
+                        "step": step,
+                        "row": rover.row,
+                        "col": rover.col,
+                        "charge_fraction": rover.power.fraction,
+                        "reason": decision_reason,
+                        "risk_budget": mission.risk_budget,
+                        "chosen_route": [tuple(c) for c in (objective["path"] or [])],
+                        "candidates": [dict(c) for c in manager.last_candidates],
+                    }
+                )
+                decision_index = len(decisions) - 1
             predicted_failure_prob = objective.get("p_failure", predicted_failure_prob)
 
             if not path or len(path) < 2:
@@ -331,8 +370,26 @@ def run_mission(
                     "predicted_failure_prob": predicted_failure_prob,
                     "decision_reason": decision_reason,
                     "candidates": last_candidates,
+                    "decision_index": decision_index,
+                    "sensing_radius": rover.sensors.effective_radius(),
                 }
             )
+            if collect_belief and (len(history) - 1) % max(belief_stride, 1) == 0:
+                from .autonomy import risk as _risk
+
+                belief_frames.append(
+                    {
+                        "frame_index": len(history) - 1,
+                        "step": step,
+                        "observed": world_model.observed.copy(),
+                        "believed_class": world_model.terrain_class.astype(np.int8).copy(),
+                        "expected_slip": world_model.expected_slip_grid().astype(np.float32),
+                        "slip_sd": world_model.total_slip_sd_grid().astype(np.float32),
+                        "risk": _risk.cell_risk_grid(world_model).astype(np.float32),
+                        "hazard_prob": world_model.hazard_prob.astype(np.float32).copy(),
+                        "hazard_threshold": float(planner.hazard_threshold),
+                    }
+                )
 
         if not rover.operational:
             termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
@@ -376,6 +433,8 @@ def run_mission(
         ),
         belief_snapshot=world_model.snapshot(),
         history=history,
+        decisions=decisions,
+        belief_frames=belief_frames,
         mission_layout={
             "home": mission.home,
             "targets": [

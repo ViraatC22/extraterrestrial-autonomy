@@ -111,17 +111,19 @@ cleaning them up, because they're the questions a judge would ask.
    is a separate measure. That definition is intentional and stated in the
    paper, but a big green badge on a mission that collected nothing may read
    as misleading. Consider showing science next to the badge.
-2. **The belief overshoots the truth.** In the same screenshot the rover
-   believes loose-fines slip is 0.776, but the true value is 0.620. The pitch
-   is that belief converges on truth, so this needs an explanation. The
-   likeliest cause is selection bias: a rover stuck on slippery ground retries
-   the same cell, so high-slip readings get sampled more often than the
-   terrain average. This is **not yet verified**.
-3. **Scenario Lab science values look too uniform.** In
-   `08_scenario_lab_results.png` both planners report exactly `sci 0.243` at
-   fault rates 0.5, 1 and 2. With only 2 missions per point that's possible,
-   but it's worth checking that the sweep variable actually reaches the
-   simulation for every value.
+2. **The belief overshoots the truth, and the learner is overconfident.**
+   The rover believes loose-fines slip is 0.776 against a true 0.620. The
+   cause is diagnosed (`docs/RESEARCH_LOG.md`, 2026-09-25). That belief rests
+   on only 3 readings, and the learning rule treats each reading as nearly
+   noise-free. On 40 validation missions its 95% intervals contain the truth
+   only 20% of the time. A corrected rule reaches 85%. The confirmatory result
+   was produced with the uncorrected rule. An earlier guess here ("selection
+   bias from retried cells") was wrong.
+3. **Scenario Lab values look too uniform.** Investigated. Fault rates 0.5
+   and 1 often draw the same number of faults from a shared random stream,
+   which gives identical missions. A related design weakness: a zero fault
+   rate also shifts every later slip draw. Primary results are unaffected;
+   details are in `docs/RESEARCH_LOG.md` (2026-09-25).
 4. **Pre-registration status.** `docs/PREREGISTRATION.md` was written after the
    adaptive planner existed and after an 8-seed pilot. The document says so,
    and those seeds are quarantined. It's a confirmatory analysis plan, not a

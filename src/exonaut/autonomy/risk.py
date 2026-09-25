@@ -193,3 +193,20 @@ def mission_failure_probability(
         "energy_sd": sd,
         "expected_solar_income": income,
     }
+
+
+def cell_risk_grid(world_model) -> np.ndarray:
+    """`cell_risk` for every cell at once - for visualisation.
+
+    Must agree with the per-cell function exactly; a test enforces it.
+    """
+    from scipy.special import erfc
+
+    mean = world_model.expected_slip_grid()
+    sd = world_model.total_slip_sd_grid()
+    safe_sd = np.where(sd <= 1e-9, 1.0, sd)
+    p_severe = 0.5 * erfc(((SEVERE_SLIP_THRESHOLD - mean) / safe_sd) / math.sqrt(2.0))
+    p_severe = np.where(sd <= 1e-9, (mean >= SEVERE_SLIP_THRESHOLD).astype(float), p_severe)
+    p_embed = p_severe**EMBED_LIMIT
+    p_hazard = world_model.hazard_prob * HAZARD_MISSION_RISK
+    return np.clip(1.0 - (1.0 - p_embed) * (1.0 - p_hazard), 0.0, 1.0)

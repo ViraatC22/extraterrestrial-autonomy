@@ -111,6 +111,10 @@ class TelemetryFrame(BaseModel):
     belief_sd: dict[int, float]
     decision_reason: str | None = None
     candidates: list[CandidateEvaluation] = []
+    #: index into /missions/{id}/decisions for the decision in force this frame
+    decision_index: int = -1
+    #: sensing radius actually in effect (sensor faults shrink it)
+    sensing_radius: int | None = None
 
 
 class MissionSummary(BaseModel):
@@ -142,6 +146,71 @@ class MissionSummary(BaseModel):
     targets: list[ScienceTargetOut]
     true_class_slip: dict[int, float]
     n_frames: int
+    n_decisions: int = 0
+    provenance: Provenance | None = None
+
+
+class Provenance(BaseModel):
+    """Where a displayed mission came from, precisely enough to reproduce it.
+
+    `seed_split` matters for honesty: a seed from the held-out test or OOD
+    splits is flagged, because viewing one in the interface means its terrain
+    has been seen, even though viewing cannot change any committed result.
+    """
+
+    run_id: str
+    config_digest: str
+    config: dict
+    git_commit: str | None
+    git_dirty: bool | None
+    engine_version: str
+    planner: str
+    planner_adaptive: bool
+    seed: int
+    seed_split: str
+    seed_quarantined: bool
+    executed_utc: str
+
+
+class CandidateRoute(CandidateEvaluation):
+    route: list[tuple[int, int]] = []
+
+
+class Decision(BaseModel):
+    """One planning decision, with the route evaluated for every candidate."""
+
+    index: int
+    step: int
+    row: int
+    col: int
+    charge_fraction: float
+    reason: str | None
+    risk_budget: float
+    chosen_route: list[tuple[int, int]]
+    candidates: list[CandidateRoute]
+
+
+class BeliefSnapshot(BaseModel):
+    """Whole-map belief at (or just before) a frame, next to ground truth.
+
+    Everything under "belief" is what the planner itself consults; the
+    `true_slip` grid is simulator ground truth, which the rover never sees.
+    Snapshots are recorded every few frames, so `frame_index` may be earlier
+    than the frame requested - the UI shows which one it is.
+    """
+
+    frame_index: int
+    step: int
+    requested_index: int
+    observed: list[list[int]]
+    believed_class: list[list[int]]
+    expected_slip: list[list[float]]
+    slip_sd: list[list[float]]
+    risk: list[list[float]]
+    hazard_prob: list[list[float]]
+    hazard_threshold: float
+    true_slip: list[list[float]]
+    true_class: list[list[int]]
 
 
 class MissionStarted(BaseModel):

@@ -202,6 +202,10 @@ class MissionManager:
         mission = self.mission
         candidates = mission.remaining
         at_home = start == mission.home
+        # Cleared on every call: the early-return branches below (going home,
+        # nothing left) evaluate no candidates, and leaving the previous list in
+        # place made those decisions display another decision's reasoning.
+        self.last_candidates = []
 
         if not candidates:
             path = self.planner.plan(self.world_model, start, mission.home)
@@ -261,6 +265,8 @@ class MissionManager:
                     "science_value": target.value,
                     "reachable": True,
                     "path_cells": len(assessment["round_trip"]),
+                    # the route actually evaluated, so it can be drawn
+                    "route": [tuple(cell) for cell in assessment["outbound"]],
                     "expected_energy": assessment["expected_energy"],
                     "energy_sd": assessment["energy_sd"],
                     "expected_solar_income": assessment.get("expected_solar_income", 0.0),

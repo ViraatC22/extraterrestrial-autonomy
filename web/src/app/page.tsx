@@ -11,6 +11,14 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { verticalExaggeration } from "@/components/TerrainMesh";
+import {
+  CameraBar,
+  LayerBar,
+  Legend,
+  ProbePanel,
+  ProvenancePanel,
+} from "@/components/MapOverlays";
 import { Nav } from "@/components/Nav";
 import {
   AutonomyPanel,
@@ -23,6 +31,8 @@ import {
 } from "@/components/Panels";
 import {
   DEFAULT_MISSION,
+  getBelief,
+  getDecisions,
   getPlanners,
   getSplits,
   getTerrain,
@@ -30,7 +40,11 @@ import {
   getTelemetry,
   ApiError,
 } from "@/lib/api";
+import { LAYER_BY_KEY } from "@/lib/layers";
 import type {
+  BeliefSnapshot,
+  CameraMode,
+  Decision,
   MissionRequest,
   MissionSummary,
   PlannerInfo,
@@ -54,13 +68,7 @@ function SceneFallback({ label }: { label: string }) {
   );
 }
 
-const LAYERS: { key: TerrainLayerName; label: string }[] = [
-  { key: "terrain_class", label: "TERRAIN" },
-  { key: "elevation", label: "ELEVATION" },
-  { key: "slope", label: "SLOPE" },
-  { key: "roughness", label: "ROUGHNESS" },
-  { key: "illumination", label: "LIGHT" },
-];
+
 
 interface LoggedEvent {
   step: number;
@@ -78,7 +86,13 @@ export default function MissionControl() {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(90);
-  const [layer, setLayer] = useState<TerrainLayerName>("terrain_class");
+  const [layer, setLayer] = useState<TerrainLayerName>("surface");
+  const [opacity, setOpacity] = useState(0.85);
+  const [cameraMode, setCameraMode] = useState<CameraMode>("orbit");
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [belief, setBelief] = useState<BeliefSnapshot | null>(null);
+  const [probeCell, setProbeCell] = useState<[number, number] | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -100,7 +114,13 @@ export default function MissionControl() {
         startMission(request),
         getTerrain(request.body, request.seed, request.size),
       ]);
-      const telemetry = await getTelemetry(started.session_id);
+      const [telemetry, decisionList] = await Promise.all([
+        getTelemetry(started.session_id),
+        getDecisions(started.session_id),
+      ]);
+      setSessionId(started.session_id);
+      setDecisions(decisionList);
+      setBelief(null);
       setSummary(started.summary);
       setTerrain(layers);
       setFrames(telemetry);
@@ -136,6 +156,43 @@ export default function MissionControl() {
   }, [playing, speed, frames.length]);
 
   const frame = frames[index] ?? null;
+
+  // One fetch in flight at a time. When it lands, if the playhead has moved,
+  // fetch again for wherever it is now - so the belief keeps up with playback
+  // without firing a request per frame. Cancelled only when the session
+  // changes; cancelling on every frame (the first version) stranded the view
+  // on a stale snapshot.
+  const beliefInFlight = useRef(false);
+  const wantedIndex = useRef(0);
+  const beliefSession = useRef<string | null>(null);
+  const pullBelief = useCallback(async (sid: string) => {
+    if (beliefInFlight.current) return;
+    beliefInFlight.current = true;
+    let target = wantedIndex.current;
+    try {
+      for (;;) {
+        const snap = await getBelief(sid, target);
+        if (beliefSession.current !== sid) return;
+        setBelief(snap);
+        if (wantedIndex.current === target) return;
+        target = wantedIndex.current;
+      }
+    } catch {
+      /* belief only decorates the view; the mission still plays without it */
+    } finally {
+      beliefInFlight.current = false;
+    }
+  }, []);
+  useEffect(() => {
+    beliefSession.current = sessionId;
+  }, [sessionId]);
+  useEffect(() => {
+    wantedIndex.current = index;
+    if (sessionId) void pullBelief(sessionId);
+  }, [index, sessionId, pullBelief]);
+
+  const decision =
+    frame && frame.decision_index >= 0 ? (decisions[frame.decision_index] ?? null) : null;
   const trail = useMemo(
     () => frames.slice(0, index + 1).map((f) => [f.row, f.col] as [number, number]),
     [frames, index],
@@ -280,6 +337,12 @@ export default function MissionControl() {
             </div>
           </Panel>
 
+          {summary?.provenance ? (
+            <Panel title="Provenance">
+              <ProvenancePanel provenance={summary.provenance} />
+            </Panel>
+          ) : null}
+
           {splits.length ? (
             <Panel title="Seed Protocol">
               {splits.map((split) => (
@@ -307,40 +370,74 @@ export default function MissionControl() {
               frame={frame}
               trail={trail}
               layer={layer}
+              belief={belief}
+              opacity={opacity}
+              cameraMode={cameraMode}
+              decision={decision}
+              showCandidates={cameraMode === "planner"}
+              probeCell={probeCell}
+              onProbe={setProbeCell}
             />
           ) : (
             <SceneFallback label="launch a mission to render the surface" />
           )}
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
-            <div className="pointer-events-auto flex gap-1">
-              {LAYERS.map((entry) => (
-                <button
-                  key={entry.key}
-                  onClick={() => setLayer(entry.key)}
-                  className={`rounded-sm border px-2 py-1 font-mono text-[9px] tracking-[0.16em] transition ${
-                    layer === entry.key
-                      ? "border-orange-500/50 bg-orange-500/15 text-orange-300"
-                      : "border-white/10 bg-black/50 text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  {entry.label}
-                </button>
-              ))}
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
+            <div className="pointer-events-auto rounded-sm border border-white/10 bg-black/45 p-1.5 backdrop-blur-sm">
+              <LayerBar
+                layer={layer}
+                onLayer={setLayer}
+                opacity={opacity}
+                onOpacity={setOpacity}
+                hasBelief={Boolean(belief)}
+              />
             </div>
-            {summary ? (
-              <div className="pointer-events-auto rounded-sm border border-white/10 bg-black/60 px-3 py-1.5 text-right">
-                <div className="font-mono text-[9px] tracking-[0.16em] text-slate-500">OUTCOME</div>
-                <div
-                  className={`font-mono text-[12px] tracking-[0.12em] ${
-                    summary.success ? "text-emerald-300" : "text-rose-400"
-                  }`}
-                >
-                  {summary.success ? "SUCCESS" : summary.termination.toUpperCase()}
+            <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+              <CameraBar mode={cameraMode} onMode={setCameraMode} />
+              {summary ? (
+                <div className="rounded-sm border border-white/10 bg-black/60 px-3 py-1.5 text-right">
+                  <div className="font-mono text-[9px] tracking-[0.16em] text-slate-500">OUTCOME</div>
+                  <div
+                    className={`font-mono text-[12px] tracking-[0.12em] ${
+                      summary.success ? "text-emerald-300" : "text-rose-400"
+                    }`}
+                  >
+                    {summary.success ? "RETURNED SAFELY" : summary.termination.replace("_", " ").toUpperCase()}
+                  </div>
+                  <div className="font-mono text-[10px] tabular-nums text-slate-300">
+                    science {(summary.science_fraction * 100).toFixed(0)}% · {summary.targets_visited}/
+                    {summary.targets_total} targets
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+              {cameraMode === "planner" && decision ? (
+                <div className="max-w-[260px] rounded-sm border border-white/10 bg-black/60 px-2 py-1.5 font-mono text-[9px] leading-snug text-slate-400">
+                  Decision at T+{String(decision.step).padStart(4, "0")}: every route evaluated.
+                  <span className="text-emerald-300"> Solid green</span> = chosen,
+                  <span className="text-slate-300"> dashed grey</span> = within budget,
+                  <span className="text-rose-300"> dashed red</span> = P(fail) over ε = {decision.risk_budget}.
+                </div>
+              ) : null}
+            </div>
           </div>
+
+          {terrain ? (
+            <div className="pointer-events-none absolute bottom-12 left-2 flex flex-col gap-2">
+              <div className="pointer-events-auto">
+                <Legend
+                  layer={layer}
+                  terrain={terrain}
+                  exaggeration={verticalExaggeration(terrain)}
+                  beliefStep={LAYER_BY_KEY[layer].needsBelief ? (belief?.step ?? null) : null}
+                />
+              </div>
+            </div>
+          ) : null}
+          {terrain && probeCell ? (
+            <div className="pointer-events-none absolute bottom-12 right-2">
+              <ProbePanel terrain={terrain} belief={belief} cell={probeCell} request={request} />
+            </div>
+          ) : null}
 
           {frames.length > 0 ? (
             <div className="absolute inset-x-0 bottom-0 flex items-center gap-3 border-t border-white/10 bg-[#0b0e14]/92 px-3 py-2">

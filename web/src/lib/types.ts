@@ -87,6 +87,54 @@ export interface TelemetryFrame {
   belief_sd: Record<string, number>;
   decision_reason: string | null;
   candidates: CandidateEvaluation[];
+  decision_index: number;
+  sensing_radius: number | null;
+}
+
+export interface Provenance {
+  run_id: string;
+  config_digest: string;
+  config: Record<string, number | string | null>;
+  git_commit: string | null;
+  git_dirty: boolean | null;
+  engine_version: string;
+  planner: string;
+  planner_adaptive: boolean;
+  seed: number;
+  seed_split: "train" | "validation" | "test" | "ood" | "none";
+  seed_quarantined: boolean;
+  executed_utc: string;
+}
+
+export interface CandidateRoute extends CandidateEvaluation {
+  route: [number, number][];
+}
+
+export interface Decision {
+  index: number;
+  step: number;
+  row: number;
+  col: number;
+  charge_fraction: number;
+  reason: string | null;
+  risk_budget: number;
+  chosen_route: [number, number][];
+  candidates: CandidateRoute[];
+}
+
+export interface BeliefSnapshot {
+  frame_index: number;
+  step: number;
+  requested_index: number;
+  observed: number[][];
+  believed_class: number[][];
+  expected_slip: number[][];
+  slip_sd: number[][];
+  risk: number[][];
+  hazard_prob: number[][];
+  hazard_threshold: number;
+  true_slip: number[][];
+  true_class: number[][];
 }
 
 export interface MissionSummary {
@@ -118,6 +166,8 @@ export interface MissionSummary {
   targets: ScienceTarget[];
   true_class_slip: Record<string, number>;
   n_frames: number;
+  n_decisions: number;
+  provenance: Provenance | null;
 }
 
 export interface MissionStarted {
@@ -141,12 +191,20 @@ export interface SplitInfo {
 }
 
 export type TerrainLayerName =
+  | "surface"
   | "terrain_class"
   | "elevation"
   | "slope"
   | "roughness"
   | "illumination"
-  | "hazard";
+  | "hazard"
+  | "knowledge"
+  | "belief_slip"
+  | "true_slip"
+  | "slip_error"
+  | "risk";
+
+export type CameraMode = "orbit" | "chase" | "top" | "pov" | "planner";
 
 export interface ResultsPayload {
   name: string;

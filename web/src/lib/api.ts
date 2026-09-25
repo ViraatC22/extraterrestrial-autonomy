@@ -7,6 +7,8 @@
  */
 
 import type {
+  BeliefSnapshot,
+  Decision,
   MissionRequest,
   MissionStarted,
   MissionSummary,
@@ -97,6 +99,12 @@ export const getTelemetry = async (sessionId: string) => {
   // field it has not heard of.
   return frames.map((frame) => ({ ...frame, candidates: frame.candidates ?? [] }));
 };
+
+export const getDecisions = (sessionId: string) =>
+  request<Decision[]>(`/missions/${sessionId}/decisions`);
+
+export const getBelief = (sessionId: string, index: number) =>
+  request<BeliefSnapshot>(`/missions/${sessionId}/belief?index=${index}`);
 
 export const getResults = (name = "exonaut_main") =>
   request<ResultsPayload>(`/results?name=${encodeURIComponent(name)}`);

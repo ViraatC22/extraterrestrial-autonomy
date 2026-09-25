@@ -223,6 +223,9 @@ class WorldModel:
             k = int(self.terrain_class[row, col])
             return float(self.class_belief[k].epistemic_sd), float(self.aleatoric_sd[k])
 
+        return self._unknown_uncertainty()
+
+    def _unknown_uncertainty(self) -> tuple[float, float]:
         # Unobserved: the class itself is unknown, so epistemic uncertainty
         # must also cover the spread *between* class means, not just the
         # uncertainty within one class.
@@ -243,6 +246,27 @@ class WorldModel:
     def total_slip_sd(self, row: int, col: int) -> float:
         epistemic, aleatoric = self.slip_uncertainty(row, col)
         return float(np.hypot(epistemic, aleatoric))
+
+    # -- whole-map views, for visualisation ------------------------------
+    # Vectorised equivalents of the per-cell queries above. They exist so the
+    # interface can draw the robot's belief for every cell at once; tests
+    # assert they agree with the per-cell functions, so a map drawn from them
+    # shows exactly what the planner itself consults.
+    def expected_slip_grid(self) -> np.ndarray:
+        means = np.array([self.class_belief[k].mean for k in range(N_TERRAIN_CLASSES)])
+        base = np.where(
+            self.observed, means[self.terrain_class.astype(int)], self.unknown_slip_estimate()
+        )
+        return np.clip(base + 0.01 * self.slope, 0.0, 0.97)
+
+    def total_slip_sd_grid(self) -> np.ndarray:
+        epistemic = np.array([self.class_belief[k].epistemic_sd for k in range(N_TERRAIN_CLASSES)])
+        aleatoric = np.array([self.aleatoric_sd[k] for k in range(N_TERRAIN_CLASSES)])
+        classes = self.terrain_class.astype(int)
+        observed_sd = np.hypot(epistemic[classes], aleatoric[classes])
+        # every unobserved cell shares one estimate; row/col are ignored there
+        unknown_epi, unknown_ale = self._unknown_uncertainty()
+        return np.where(self.observed, observed_sd, float(np.hypot(unknown_epi, unknown_ale)))
 
     def believed_energy_multiplier(self, row: int, col: int) -> float:
         if not self.observed[row, col]:

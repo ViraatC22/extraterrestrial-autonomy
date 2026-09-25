@@ -19,15 +19,22 @@ from __future__ import annotations
 
 import threading
 from collections import OrderedDict
+from datetime import UTC, datetime
+
+import numpy as np
 
 from ..environments import TRUE_CLASS_PARAMS, TerrainClass, make_environment
 from ..planners import available_planners, make_planner
 from ..simulation import MissionConfig, run_mission
 from .models import (
+    BeliefSnapshot,
     CandidateEvaluation,
+    CandidateRoute,
+    Decision,
     MissionRequest,
     MissionSummary,
     PlannerInfo,
+    Provenance,
     ScienceTargetOut,
     TelemetryFrame,
     TerrainLayers,
@@ -85,8 +92,12 @@ class MissionStore:
                 return key, self._sessions[key]
 
         config = MissionConfig(**request.to_config_dict())
-        result = run_mission(config, seed=request.seed, collect_history=True)
-        session = {"request": request, "result": result}
+        result = run_mission(config, seed=request.seed, collect_history=True, collect_belief=True)
+        session = {
+            "request": request,
+            "result": result,
+            "executed_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+        }
 
         with self._lock:
             self._sessions[key] = session
@@ -129,6 +140,120 @@ def terrain_payload(body: str, seed: int, size: int) -> TerrainLayers:
         hazard=terrain.hazard.tolist(),
         class_labels=CLASS_LABELS,
         elevation_range=(float(elevation.min()), float(elevation.max())),
+    )
+
+
+_GIT_CACHE: dict = {}
+
+
+def _git() -> dict:
+    """Commit the engine is running from, read once per process."""
+    if not _GIT_CACHE:
+        from ..experiments.provenance import git_provenance
+
+        _GIT_CACHE.update(git_provenance())
+    return _GIT_CACHE
+
+
+def seed_membership(seed: int) -> tuple[str, bool]:
+    from ..experiments.protocol import load_quarantine, load_splits
+
+    splits = load_splits()
+    quarantine = load_quarantine()
+    for name in ("train", "validation", "test", "ood"):
+        if seed in splits.get(name, exclude_quarantined=False):
+            return name, seed in quarantine.get(name, set())
+    return "none", False
+
+
+def provenance_for(session_id: str, session: dict) -> Provenance:
+    from .. import __version__
+    from ..experiments.provenance import design_digest
+
+    request: MissionRequest = session["request"]
+    config = request.to_config_dict()
+    split, quarantined = seed_membership(request.seed)
+    git = _git()
+    return Provenance(
+        run_id=session_id,
+        config_digest=design_digest(config),
+        config=config,
+        git_commit=git.get("commit"),
+        git_dirty=git.get("dirty_worktree"),
+        engine_version=__version__,
+        planner=request.planner,
+        planner_adaptive=make_planner(request.planner).adaptive,
+        seed=request.seed,
+        seed_split=split,
+        seed_quarantined=quarantined,
+        executed_utc=session.get("executed_utc", ""),
+    )
+
+
+def decisions_payload(session: dict) -> list[Decision]:
+    out = []
+    for d in session["result"].decisions:
+        out.append(
+            Decision(
+                index=d["index"],
+                step=d["step"],
+                row=d["row"],
+                col=d["col"],
+                charge_fraction=d["charge_fraction"],
+                reason=d["reason"],
+                risk_budget=d["risk_budget"],
+                chosen_route=[tuple(c) for c in d["chosen_route"]],
+                candidates=[
+                    CandidateRoute(**{**c, "route": [tuple(x) for x in c.get("route", [])]})
+                    for c in d["candidates"]
+                ],
+            )
+        )
+    return out
+
+
+def _truth_grids(session: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Ground-truth mean slip per cell, computed exactly as the simulator
+    draws it (class mean + 0.01 per degree of slope, capped at 0.97)."""
+    cached = session.get("_truth")
+    if cached is not None:
+        return cached
+    request: MissionRequest = session["request"]
+    terrain = make_environment(request.body, seed=request.seed, size=request.size)
+    class_means = np.array(
+        [terrain.class_params[TerrainClass(k)].slip_mean for k in range(len(TerrainClass))]
+    )
+    truth = np.clip(class_means[terrain.terrain_class.astype(int)] + 0.01 * terrain.slope, 0, 0.97)
+    session["_truth"] = (truth, terrain.terrain_class.astype(int))
+    return session["_truth"]
+
+
+def belief_payload(session: dict, index: int) -> BeliefSnapshot | None:
+    snapshots = session["result"].belief_frames
+    eligible = [s for s in snapshots if s["frame_index"] <= index]
+    if not eligible:
+        if not snapshots:
+            return None
+        eligible = snapshots[:1]
+    snap = eligible[-1]
+    truth, true_class = _truth_grids(session)
+
+    def grid(a, digits=4):
+        return np.round(np.asarray(a, dtype=float), digits).tolist()
+
+    return BeliefSnapshot(
+        frame_index=snap["frame_index"],
+        step=snap["step"],
+        requested_index=index,
+        observed=snap["observed"].astype(int).tolist(),
+        believed_class=snap["believed_class"].astype(int).tolist(),
+        expected_slip=grid(snap["expected_slip"]),
+        slip_sd=grid(snap["slip_sd"]),
+        risk=grid(snap["risk"], 6),
+        hazard_prob=grid(snap["hazard_prob"]),
+        hazard_threshold=snap["hazard_threshold"],
+        true_slip=grid(truth),
+        true_class=true_class.tolist(),
     )
 
 
@@ -177,6 +302,8 @@ def summarize(session_id: str, session: dict) -> MissionSummary:
         targets=targets,
         true_class_slip=true_slip,
         n_frames=len(result.history),
+        n_decisions=len(result.decisions),
+        provenance=provenance_for(session_id, session),
     )
 
 
@@ -201,6 +328,8 @@ def frame_payload(frame: dict) -> TelemetryFrame:
         belief_sd={int(k): float(v) for k, v in frame["belief_sd"].items()},
         decision_reason=frame.get("decision_reason"),
         candidates=[CandidateEvaluation(**c) for c in frame.get("candidates", [])],
+        decision_index=frame.get("decision_index", -1),
+        sensing_radius=frame.get("sensing_radius"),
     )
 
 

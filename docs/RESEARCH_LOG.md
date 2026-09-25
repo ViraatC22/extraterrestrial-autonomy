@@ -135,3 +135,82 @@ The validation-to-confirmatory divergence is the clearest argument in this
 project for having frozen the splits. A +0.125 to +0.167 tuning-set effect
 became 0.000 on held-out data. Without the split, that first figure is the one
 that would have been reported.
+
+## 2026-09-25 - Defect: the adaptive learner is ~7x overconfident
+
+Found while preparing a truth-vs-belief visualization. A screenshot showed the
+rover believing Martian loose-fines slip was 0.776 against a true 0.620. That
+belief rested on only three slip readings.
+
+The Normal-Normal update in `autonomy/world_model.py` uses
+`SLIP_OBS_VARIANCE = 0.02**2` as the noise on each reading. That treats a slip
+reading as a precise measurement of the class *mean*. It is not: individual
+readings scatter around the mean by the terrain's own dispersion (0.04-0.18 sd
+depending on class). With the variance understated ~50x, a single reading moves
+the belief ~90% of the way to that reading, and the reported uncertainty is far
+too small.
+
+Measured on 40 Martian validation missions (173 class beliefs):
+
+| | 95% interval coverage | median abs. error | median reported sd |
+|---|---|---|---|
+| current rule | **0.20** | 0.060 | 0.0089 |
+| per-reading variance = class aleatoric + sensor | 0.85 | 0.017 | 0.0250 |
+
+(A calibrated model would give coverage 0.95.) The residual shortfall under the
+corrected rule is expected: the rover takes its aleatoric spread from the lunar
+prior (0.14 for fines) while Martian fines disperse at 0.18.
+
+**Consequence for the confirmatory result.** The 750-mission run evaluated the
+adaptive planner *with this overconfident rule*. That result is not invalid - it
+is an honest test of the method as specified - but it tests a learner that
+over-reacts to single readings, which may explain part of why adaptation did not
+improve science return. The earlier README guess that the overshoot came from
+"selection bias from retried cells" was wrong and has been corrected.
+
+**Not yet changed.** Altering the rule and re-evaluating on the same held-out
+seeds would be post-hoc tuning. Open decision: evaluate a corrected learner as a
+separately declared study on held-out seeds not yet used (test 300054+,
+OOD 400054+), with the plan frozen before it runs.
+
+## 2026-09-25 - Shared random stream couples fault draws to slip draws
+
+`run_mission` draws terrain, mission layout, the fault schedule and every wheel
+slip from one `numpy` Generator in sequence. Two consequences, found while
+checking why a small Scenario Lab sweep looked flat:
+
+1. With `fault_rate` 0.5 and 1.0 the Poisson fault count often coincides, and
+   the fault details are then drawn from the same stream state, so the two
+   missions are byte-identical. This is a common-random-numbers effect, not a
+   wiring bug.
+2. With `fault_rate` 0 the fault draw is skipped, so every later slip draw is
+   shifted. A "faults vs no faults" comparison therefore also changes the entire
+   slip-noise realisation.
+
+The primary confirmatory contrasts are unaffected: they compare planners within
+one condition, and both members of a pair share one stream. Cross-condition
+comparisons are valid in expectation but noisier than necessary. The fix -
+independent streams per purpose via `numpy.random.SeedSequence.spawn` - changes
+every mission outcome, so it would break reproduction of the committed results.
+Deferred to any v2 study, to be declared before that study runs.
+
+## 2026-09-25 - Defect: ground-intervention relaxation never resets
+
+The mission loop's comment says that on an intervention "ground relaxes the
+hazard threshold for one planning cycle". The code adds 0.15 to
+`planner.hazard_threshold` and never restores it, so it ratchets:
+0.50 -> 0.65 -> 0.80 -> 0.95 after three interventions, and stays there.
+Verified on validation seed 200000 (Mars, adaptive): 15 interventions, threshold
+at 0.95 for the remainder of the mission.
+
+At 0.95 the planner treats a cell it believes 94% likely to be impassable as
+routable. Martian confirmatory missions averaged 57-103 interventions, so in most
+of them the planners' hazard avoidance was effectively disabled early; only the
+rover's onboard geometric check (which refuses true hazards) prevented worse
+outcomes.
+
+Applied identically to every planner, so it does not favour one method within a
+paired contrast. It does change what the Martian results describe, and it is a
+plausible contributor to the very high intervention counts and to distance-only
+A* surviving as well as it did. Recorded here; not changed, for the same reason
+as the calibration defect above.

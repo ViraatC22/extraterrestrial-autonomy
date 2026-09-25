@@ -217,3 +217,55 @@ def test_frames_carry_auditable_candidate_evaluations(client):
         assert best["target_id"] == selected[0]["target_id"], (
             "selected candidate is not the highest-utility eligible one"
         )
+
+
+def _start(client, seed=200000, **extra):
+    body = {"seed": seed, "body": "mars", "planner": "adaptive_risk_aware_astar",
+            "size": 40, "n_targets": 3, "max_steps": 250, **extra}
+    return client.post("/start-mission", json=body).json()
+
+
+def test_provenance_identifies_the_run_and_its_seed_split(client):
+    started = _start(client, seed=200000)
+    prov = started["summary"]["provenance"]
+    assert prov["seed_split"] == "validation"
+    assert prov["seed_quarantined"] is False
+    assert prov["planner_adaptive"] is True
+    assert len(prov["config_digest"]) == 12
+    assert prov["config"]["body"] == "mars"
+
+
+def test_held_out_and_quarantined_seeds_are_flagged(client):
+    test_seed = _start(client, seed=300010)["summary"]["provenance"]
+    assert test_seed["seed_split"] == "test"
+    burned = _start(client, seed=300000)["summary"]["provenance"]
+    assert burned["seed_split"] == "test" and burned["seed_quarantined"] is True
+
+
+def test_decisions_carry_a_route_for_every_reachable_candidate(client):
+    started = _start(client)
+    decisions = client.get(f"/missions/{started['session_id']}/decisions").json()
+    assert decisions and len(decisions) == started["summary"]["n_decisions"]
+    for decision in decisions:
+        for cand in decision["candidates"]:
+            if cand["reachable"]:
+                route = cand["route"]
+                assert route[0] == [decision["row"], decision["col"]], "route must start at rover"
+                assert route[-1] == [cand["row"], cand["col"]], "route must end at target"
+
+
+def test_belief_snapshot_separates_belief_from_truth(client):
+    started = _start(client)
+    sid, n = started["session_id"], started["summary"]["n_frames"]
+    early = client.get(f"/missions/{sid}/belief", params={"index": 0}).json()
+    late = client.get(f"/missions/{sid}/belief", params={"index": n - 1}).json()
+    assert early["frame_index"] <= 0 + 0 or early["frame_index"] == 0
+    assert late["frame_index"] <= n - 1
+    # the rover learns about more of the map over time
+    seen_early = sum(map(sum, early["observed"]))
+    seen_late = sum(map(sum, late["observed"]))
+    assert seen_late >= seen_early > 0
+    # truth is identical across frames; belief is not
+    assert early["true_slip"] == late["true_slip"]
+    size = started["summary"]["provenance"]["config"]["size"]
+    assert len(late["risk"]) == size and all(0 <= v <= 1 for row in late["risk"] for v in row)

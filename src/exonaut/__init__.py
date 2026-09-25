@@ -6,4 +6,4 @@ historical multi-rover lunar-swarm experiment is retained under
 ``exonaut.multiagent`` so its published artifacts remain reproducible.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

@@ -17,6 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..experiments.protocol import load_quarantine, load_splits
 from .models import (
+    BeliefSnapshot,
+    Decision,
     MissionRequest,
     MissionStarted,
     MissionSummary,
@@ -25,14 +27,22 @@ from .models import (
     TelemetryFrame,
     TerrainLayers,
 )
-from .service import MissionStore, frame_payload, planner_catalogue, summarize, terrain_payload
+from .service import (
+    MissionStore,
+    belief_payload,
+    decisions_payload,
+    frame_payload,
+    planner_catalogue,
+    summarize,
+    terrain_payload,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RESULTS_DIR = PROJECT_ROOT / "data" / "results"
 
 app = FastAPI(
     title="EXONAUT mission control",
-    version="0.2.0",
+    version="0.3.0",
     description=(
         "Read-only window onto the EXONAUT research engine. Missions are run by "
         "the same code path as the experiments and replayed frame by frame."
@@ -143,6 +153,27 @@ def mission_telemetry(
         raise HTTPException(404, "unknown session")
     history = session["result"].history[start : start + limit]
     return [frame_payload(frame) for frame in history]
+
+
+@app.get("/missions/{session_id}/decisions", response_model=list[Decision])
+def mission_decisions(session_id: str) -> list[Decision]:
+    """Every planning decision, with the route evaluated for each candidate."""
+    session = store.get(session_id)
+    if session is None:
+        raise HTTPException(404, "unknown session")
+    return decisions_payload(session)
+
+
+@app.get("/missions/{session_id}/belief", response_model=BeliefSnapshot)
+def mission_belief(session_id: str, index: int = Query(0, ge=0)) -> BeliefSnapshot:
+    """The rover's whole-map belief at a frame, beside simulator ground truth."""
+    session = store.get(session_id)
+    if session is None:
+        raise HTTPException(404, "unknown session")
+    payload = belief_payload(session, index)
+    if payload is None:
+        raise HTTPException(404, "no belief snapshots recorded for this mission")
+    return payload
 
 
 @app.get("/robot-state", response_model=TelemetryFrame)
