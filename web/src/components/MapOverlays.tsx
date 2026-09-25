@@ -318,7 +318,9 @@ const SPLIT_TONE: Record<string, string> = {
 };
 
 export function ProvenancePanel({ provenance }: { provenance: Provenance }) {
-  const heldOut = provenance.seed_split === "test" || provenance.seed_split === "ood";
+  const heldOut =
+    (provenance.seed_split === "test" || provenance.seed_split === "ood") &&
+    !provenance.seed_in_confirmatory_run;
   const rows: [string, string][] = [
     ["RUN ID", provenance.run_id],
     ["CONFIG DIGEST", provenance.config_digest],
@@ -345,6 +347,12 @@ export function ProvenancePanel({ provenance }: { provenance: Provenance }) {
           {provenance.seed_quarantined ? " · quarantined" : ""}
         </span>
       </div>
+      {provenance.seed_in_confirmatory_run ? (
+        <p className="mt-1 rounded-sm border border-sky-400/30 bg-sky-400/10 p-1.5 font-mono text-[8.5px] leading-snug text-sky-200">
+          Replay of a mission from the completed confirmatory run. The engine is deterministic,
+          so this reproduces the committed result.
+        </p>
+      ) : null}
       {heldOut ? (
         <p className="mt-1 rounded-sm border border-amber-400/30 bg-amber-400/10 p-1.5 font-mono text-[8.5px] leading-snug text-amber-200">
           Held-out seed. Viewing it cannot change any committed result, but this terrain has now

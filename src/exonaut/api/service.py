@@ -166,6 +166,24 @@ def seed_membership(seed: int) -> tuple[str, bool]:
     return "none", False
 
 
+_CONFIRMATORY_SEEDS: set | None = None
+
+
+def confirmatory_seeds() -> set:
+    global _CONFIRMATORY_SEEDS
+    if _CONFIRMATORY_SEEDS is None:
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parents[3] / "data" / "results" / "exonaut_main.csv"
+        try:
+            import pandas as pd
+
+            _CONFIRMATORY_SEEDS = set(pd.read_csv(path, usecols=["seed"])["seed"].astype(int))
+        except FileNotFoundError:
+            _CONFIRMATORY_SEEDS = set()
+    return _CONFIRMATORY_SEEDS
+
+
 def provenance_for(session_id: str, session: dict) -> Provenance:
     from .. import __version__
     from ..experiments.provenance import design_digest
@@ -186,6 +204,7 @@ def provenance_for(session_id: str, session: dict) -> Provenance:
         seed=request.seed,
         seed_split=split,
         seed_quarantined=quarantined,
+        seed_in_confirmatory_run=request.seed in confirmatory_seeds(),
         executed_utc=session.get("executed_utc", ""),
     )
 

@@ -253,3 +253,19 @@ A fair test of H3 needs faults scheduled within the time a mission actually
 lasts. That, the calibration fix, and independent random streams belong in a
 separately declared v2 study on held-out seeds not yet used (test 300054+,
 OOD 400054+).
+
+## 2026-09-25 - Defect: timeout is mostly a livelock at the lander
+
+Found while building the failure case studies. Of the 44 timeouts in the
+confirmatory run, 35 ended 0 m from the lander, with a median of about 357
+ground-intervention requests. When the rover is home and no target fits the
+risk budget, the objective is a zero-length path home. The loop treats that as
+"no believable route" and requests an intervention, which relaxes the hazard
+threshold (see the ratchet above) and waits. Targets are not written off, so the
+mission neither succeeds nor progresses until the step limit.
+
+This inflates intervention counts, and it converts what should arguably be
+"returned early - no safe objective" (a success) into a timeout (a failure). It
+affects planners differently, because they reach the stuck state at different
+rates. It is not fixed here, for the same reason as the other engine defects;
+it belongs in the v2 changes, declared before any v2 run.

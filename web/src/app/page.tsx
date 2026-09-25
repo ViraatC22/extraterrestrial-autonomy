@@ -35,6 +35,7 @@ import {
   getDecisions,
   getPlanners,
   getSplits,
+  getSummary,
   getTerrain,
   startMission,
   getTelemetry,
@@ -133,6 +134,48 @@ export default function MissionControl() {
       setBusy(false);
     }
   }, [request]);
+
+  // Deep link: /?session=<id> opens a mission the engine already ran (for
+  // example a case study from Failure Analysis) instead of starting a new one.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("session");
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await getSummary(id);
+        const config = (loaded.provenance?.config ?? {}) as Partial<MissionRequest>;
+        const body = (config.body ?? loaded.body) as MissionRequest["body"];
+        const size = Number(config.size ?? 56);
+        const [layers, telemetry, decisionList] = await Promise.all([
+          getTerrain(body, loaded.seed, size),
+          getTelemetry(id),
+          getDecisions(id),
+        ]);
+        if (cancelled) return;
+        setRequest((current) => ({ ...current, ...config, body, seed: loaded.seed }) as MissionRequest);
+        setSessionId(id);
+        setDecisions(decisionList);
+        setBelief(null);
+        setSummary(loaded);
+        setTerrain(layers);
+        setFrames(telemetry);
+        setIndex(0);
+        setStatus(`replaying ${id.slice(0, 24)}… · ${telemetry.length} frames`);
+      } catch (caught) {
+        if (cancelled) return;
+        setError(
+          caught instanceof ApiError
+            ? `${caught.message} - the engine keeps only recent missions; reopen it from its source page.`
+            : "could not load that mission",
+        );
+        setStatus("failed");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Playback clock. Frames are already computed; this only paces them.
   useEffect(() => {

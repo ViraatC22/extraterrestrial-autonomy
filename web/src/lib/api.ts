@@ -8,6 +8,7 @@
 
 import type {
   BeliefSnapshot,
+  FailuresPayload,
   Decision,
   MissionRequest,
   MissionStarted,
@@ -105,6 +106,11 @@ export const getDecisions = (sessionId: string) =>
 
 export const getBelief = (sessionId: string, index: number) =>
   request<BeliefSnapshot>(`/missions/${sessionId}/belief?index=${index}`);
+
+export const getFailures = (planner: string, condition: string) =>
+  request<FailuresPayload>(
+    `/failures?planner=${encodeURIComponent(planner)}&condition=${encodeURIComponent(condition)}`,
+  );
 
 export const getResults = (name = "exonaut_main") =>
   request<ResultsPayload>(`/results?name=${encodeURIComponent(name)}`);

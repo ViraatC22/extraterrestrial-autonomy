@@ -169,6 +169,10 @@ class Provenance(BaseModel):
     seed: int
     seed_split: str
     seed_quarantined: bool
+    #: True when this seed was already evaluated in the committed confirmatory
+    #: run, so replaying it reproduces a published row rather than exposing
+    #: an unused held-out terrain
+    seed_in_confirmatory_run: bool = False
     executed_utc: str
 
 

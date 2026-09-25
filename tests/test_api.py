@@ -287,3 +287,21 @@ def test_belief_snapshot_separates_belief_from_truth(client):
     assert early["true_slip"] == late["true_slip"]
     size = started["summary"]["provenance"]["config"]["size"]
     assert len(late["risk"]) == size and all(0 <= v <= 1 for row in late["risk"] for v in row)
+
+
+def test_failure_case_studies_reproduce_their_committed_rows(client):
+    """Every case study shown is a re-run; it must match the committed result."""
+    body = client.get("/failures", params={"condition": "mars_ood"}).json()
+    assert body["n_missions"] > 0
+    seen = 0
+    for cat in body["categories"]:
+        assert 0 <= cat["share"] <= 1
+        rep = cat["representative"]
+        if rep is None:
+            continue
+        seen += 1
+        assert rep["reproduces_committed_row"] is True, cat["key"]
+        summary = client.get(f"/missions/{rep['session_id']}").json()
+        assert summary["seed"] == rep["seed"]
+        assert summary["provenance"]["seed_split"] == "ood"
+    assert seen >= 2

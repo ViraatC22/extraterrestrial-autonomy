@@ -235,6 +235,108 @@ def results(name: str = Query("exonaut_main")) -> dict:
     }
 
 
+_FAILURES_CACHE: dict = {}
+
+
+@app.on_event("startup")
+def _warm_failures() -> None:
+    """Re-running representative missions takes a while, so the default view
+    is computed in the background as soon as the engine starts."""
+    import threading
+
+    def warm():
+        with contextlib.suppress(Exception):
+            failures()
+
+    threading.Thread(target=warm, daemon=True).start()
+
+
+@app.get("/failures")
+def failures(
+    planner: str = Query("adaptive_risk_aware_astar"),
+    condition: str = Query("all_mars"),
+) -> dict:
+    """Failure case studies from the confirmatory results.
+
+    `condition` is a condition name, `all_mars`, or `all`. Each category gets
+    counts, a distribution of its key measure, and one representative mission
+    chosen by rule and re-run for detail.
+    """
+    from .failures import CATEGORIES, diagnostics, histogram, load_main, representative, request_for
+    from .models import MissionRequest
+
+    cache_key = (planner, condition)
+    if cache_key in _FAILURES_CACHE:
+        return _FAILURES_CACHE[cache_key]
+
+    try:
+        frame, meta = load_main(RESULTS_DIR)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+    if condition == "all_mars":
+        scope = frame[frame.body == "mars"]
+    elif condition == "all":
+        scope = frame
+    else:
+        scope = frame[frame.condition == condition]
+    if planner != "all":
+        scope = scope[scope.planner == planner]
+    if scope.empty:
+        raise HTTPException(404, "no missions match that planner and condition")
+
+    out = []
+    for key, spec in CATEGORIES.items():
+        rows = scope[spec["rule"](scope)]
+        entry = {
+            "key": key,
+            "title": spec["title"],
+            "blurb": spec["blurb"],
+            "count": int(len(rows)),
+            "share": float(len(rows) / len(scope)),
+            "key_measure": spec["key"],
+            "key_label": spec["key_label"],
+            "distribution": histogram(rows[spec["key"]]) if len(rows) else None,
+            "median": float(rows[spec["key"]].median()) if len(rows) else None,
+            # facts about the category computed from the rows, not typed
+            "at_lander": int((rows.final_distance_from_home == 0).sum()) if len(rows) else 0,
+            "median_interventions": float(rows.interventions.median()) if len(rows) else None,
+            "selection_rule": (
+                f"mission whose {spec['key_label']} is closest to the category median; "
+                "ties to the lowest seed"
+            ),
+            "representative": None,
+        }
+        rep = representative(rows, spec["key"])
+        if rep is not None:
+            request = MissionRequest(**request_for(rep, meta))
+            session_id, session = store.run(request)
+            entry["representative"] = {
+                "session_id": session_id,
+                "condition": rep["condition"],
+                "planner": rep["planner"],
+                "seed": int(rep["seed"]),
+                "termination": rep["termination"],
+                "steps": int(rep["steps"]),
+                "science_fraction": float(rep["science_fraction"]),
+                "energy_spent": float(rep["energy_spent"]),
+                "energy_generated": float(rep["energy_generated"]),
+                "min_charge": float(rep["min_charge"]),
+                "final_distance_from_home": float(rep["final_distance_from_home"]),
+                "severe_slip_events": int(rep["severe_slip_events"]),
+                "mean_slip": float(rep["mean_slip"]),
+                "interventions": int(rep["interventions"]),
+                **diagnostics(session, rep),
+            }
+        out.append(entry)
+    return {
+        "planner": planner,
+        "condition": condition,
+        "n_missions": int(len(scope)),
+        "categories": out,
+    }
+
+
 @app.get("/results/available")
 def available_results() -> list[str]:
     stems = set()

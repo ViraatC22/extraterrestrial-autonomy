@@ -645,6 +645,12 @@ claim.
   restored. Martian missions requested many interventions, so in most of them
   the planners' hazard avoidance was effectively relaxed early. This applies to
   every planner equally.
+  \item \textbf{Most timeouts are a livelock at the lander.} When the rover is
+  home and no target fits the risk budget, the mission logic neither writes the
+  remaining targets off nor stops. It keeps requesting interventions until the
+  step limit, so most ``timeout'' failures are rovers parked safely at the
+  lander. Planners reach this state at different rates, so it affects the
+  success comparison; the counts are in \texttt{docs/RESEARCH\_LOG.md}.
 \end{enumerate}
 
 \section{Reproducibility}

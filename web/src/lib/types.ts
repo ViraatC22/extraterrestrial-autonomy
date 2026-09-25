@@ -103,6 +103,7 @@ export interface Provenance {
   seed: number;
   seed_split: "train" | "validation" | "test" | "ood" | "none";
   seed_quarantined: boolean;
+  seed_in_confirmatory_run: boolean;
   executed_utc: string;
 }
 
@@ -237,4 +238,62 @@ export interface PairedPoint {
   science_control: number;
   success_treatment: boolean;
   success_control: boolean;
+}
+
+export interface FailureRepresentative {
+  session_id: string;
+  condition: string;
+  planner: string;
+  seed: number;
+  termination: string;
+  steps: number;
+  science_fraction: number;
+  energy_spent: number;
+  energy_generated: number;
+  min_charge: number;
+  final_distance_from_home: number;
+  severe_slip_events: number;
+  mean_slip: number;
+  interventions: number;
+  reproduces_committed_row: boolean;
+  last_trip: {
+    decision_step: number;
+    target_id: number;
+    expected_round_trip_energy: number | null;
+    expected_energy_sd: number | null;
+    p_failure: number | null;
+    energy_spent_after_decision: number | null;
+    mission_ended_step: number | null;
+  } | null;
+  belief_error_driven_classes: {
+    class: number;
+    believed: number;
+    truth: number;
+    error: number;
+    n_observations: number;
+  }[];
+  faults_fired: { step: number; fault: string }[];
+}
+
+export interface FailureCategory {
+  key: string;
+  title: string;
+  blurb: string;
+  count: number;
+  share: number;
+  key_measure: string;
+  key_label: string;
+  distribution: { edges: number[]; counts: number[] } | null;
+  median: number | null;
+  at_lander: number;
+  median_interventions: number | null;
+  selection_rule: string;
+  representative: FailureRepresentative | null;
+}
+
+export interface FailuresPayload {
+  planner: string;
+  condition: string;
+  n_missions: number;
+  categories: FailureCategory[];
 }
