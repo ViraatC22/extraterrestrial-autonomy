@@ -20,10 +20,10 @@ import {
   ProvenancePanel,
 } from "@/components/MapOverlays";
 import { Nav } from "@/components/Nav";
+import { ReplayLog, Timeline } from "@/components/Timeline";
 import {
   AutonomyPanel,
   BeliefPanel,
-  EventLog,
   MissionHeader,
   Panel,
   Readout,
@@ -41,6 +41,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { LAYER_BY_KEY } from "@/lib/layers";
+import { buildReplayEvents, latestEvent } from "@/lib/replay";
 import type {
   BeliefSnapshot,
   CameraMode,
@@ -70,11 +71,7 @@ function SceneFallback({ label }: { label: string }) {
 
 
 
-interface LoggedEvent {
-  step: number;
-  text: string;
-  tone: string;
-}
+
 
 export default function MissionControl() {
   const [planners, setPlanners] = useState<PlannerInfo[]>([]);
@@ -200,37 +197,108 @@ export default function MissionControl() {
 
   const plannerInfo = planners.find((p) => p.name === request.planner);
 
-  const events = useMemo<LoggedEvent[]>(() => {
-    const log: LoggedEvent[] = [];
-    let lastTargets = 0;
-    let lastInterventions = 0;
-    let lastReturning = false;
-    frames.slice(0, index + 1).forEach((f) => {
-      if (f.targets_visited > lastTargets) {
-        log.push({ step: f.step, text: `Science target acquired (${f.targets_visited})`, tone: "good" });
-        lastTargets = f.targets_visited;
-      }
-      if (f.interventions > lastInterventions) {
-        log.push({ step: f.step, text: "No viable route — ground intervention requested", tone: "warn" });
-        lastInterventions = f.interventions;
-      }
-      if (f.returning !== lastReturning) {
-        log.push({
-          step: f.step,
-          text: f.returning ? "Objective abandoned — returning to lander" : "New objective selected",
-          tone: f.returning ? "warn" : "normal",
-        });
-        lastReturning = f.returning;
-      }
-      if (f.reason === "slip_no_progress") {
-        log.push({ step: f.step, text: `Severe slip ${f.slip.toFixed(2)} — replanning`, tone: "bad" });
-      }
-      if (f.reason === "hazard_refused") {
-        log.push({ step: f.step, text: "Hazard refused by onboard check", tone: "warn" });
-      }
-    });
-    return log.slice(-120);
-  }, [frames, index]);
+  const events = useMemo(
+    () => buildReplayEvents(frames, decisions, summary),
+    [frames, decisions, summary],
+  );
+  const caption = latestEvent(events, index);
+
+  const [presenting, setPresenting] = useState(false);
+  const seek = useCallback((i: number) => {
+    setPlaying(false);
+    setIndex(i);
+  }, []);
+
+  // Presentation-mode keys: space play/pause, arrows step, 1-5 camera, Esc exit.
+  useEffect(() => {
+    if (!presenting) return;
+    const cams: CameraMode[] = ["orbit", "chase", "top", "pov", "planner"];
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPresenting(false);
+      else if (e.key === " ") {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      } else if (e.key === "ArrowRight") seek(Math.min(frames.length - 1, index + 1));
+      else if (e.key === "ArrowLeft") seek(Math.max(0, index - 1));
+      else if (/^[1-5]$/.test(e.key)) setCameraMode(cams[Number(e.key) - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [presenting, frames.length, index, seek]);
+
+  if (presenting && terrain && summary) {
+    const chosen = frame && frame.decision_index >= 0 ? decisions[frame.decision_index] : null;
+    const target = chosen?.candidates.find((c) => c.selected);
+    return (
+      <main className="relative flex h-screen flex-col overflow-hidden bg-black">
+        <div className="relative min-h-0 flex-1">
+          <MissionScene
+            terrain={terrain}
+            summary={summary}
+            frame={frame}
+            trail={trail}
+            layer={layer}
+            belief={belief}
+            opacity={opacity}
+            cameraMode={cameraMode}
+            decision={decision}
+            showCandidates={cameraMode === "planner"}
+            probeCell={null}
+            onProbe={() => undefined}
+          />
+          <div className="pointer-events-none absolute left-4 top-4">
+            <div className="font-mono text-[13px] tracking-[0.3em] text-slate-100">EXONAUT</div>
+            <div className="mt-1 font-mono text-[11px] tracking-[0.14em] text-slate-400">
+              {summary.body.toUpperCase()} · {plannerInfo?.label ?? summary.planner} · seed{" "}
+              {summary.seed}
+            </div>
+          </div>
+          <div className="absolute right-4 top-4 flex gap-1">
+            <CameraBar mode={cameraMode} onMode={setCameraMode} />
+            <button
+              onClick={() => setPresenting(false)}
+              className="rounded-sm border border-white/20 bg-black/60 px-2 py-1 font-mono text-[9px] tracking-[0.16em] text-slate-300"
+            >
+              EXIT (ESC)
+            </button>
+          </div>
+          {caption ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+              <div className="rounded-sm border border-white/15 bg-black/70 px-4 py-2 font-mono text-[15px] tracking-[0.06em] text-slate-100">
+                <span className="mr-3 text-slate-500">T+{String(caption.step).padStart(4, "0")}</span>
+                {caption.text}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-6 gap-px border-t border-white/10 bg-white/10">
+          {[
+            ["BATTERY", frame ? `${(frame.charge_fraction * 100).toFixed(0)}%` : "—"],
+            ["LAST TRIP P(FAIL)", frame ? frame.predicted_failure_prob.toFixed(3) : "—"],
+            ["TARGET", target ? `TGT ${String(target.target_id).padStart(2, "0")}` : frame?.returning ? "LANDER" : "—"],
+            ["DECISION", frame ? (frame.returning ? "RETURNING" : frame.reason === "slip_no_progress" ? "REPLANNING" : "PURSUING") : "—"],
+            ["SCIENCE", frame ? `${frame.targets_visited}/${summary.targets_total}` : "—"],
+            ["STEP", frame ? `T+${String(frame.step).padStart(4, "0")}` : "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-[#07090d] px-4 py-3">
+              <div className="font-mono text-[10px] tracking-[0.2em] text-slate-500">{label}</div>
+              <div className="font-mono text-[26px] tabular-nums text-slate-100">{value}</div>
+            </div>
+          ))}
+        </div>
+        <Timeline
+          frameCount={frames.length}
+          index={index}
+          onSeek={seek}
+          playing={playing}
+          onTogglePlay={() => setPlaying((p) => !p)}
+          speed={speed}
+          onSpeed={setSpeed}
+          events={events}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-[#07090d]">
@@ -393,7 +461,18 @@ export default function MissionControl() {
               />
             </div>
             <div className="pointer-events-auto flex flex-col items-end gap-1.5">
-              <CameraBar mode={cameraMode} onMode={setCameraMode} />
+              <div className="flex gap-1">
+                <CameraBar mode={cameraMode} onMode={setCameraMode} />
+                {summary ? (
+                  <button
+                    onClick={() => setPresenting(true)}
+                    className="rounded-sm border border-orange-500/50 bg-orange-500/15 px-2 py-1 font-mono text-[9px] tracking-[0.16em] text-orange-300 hover:bg-orange-500/25"
+                    title="Full-screen view for presenting (Esc to exit)"
+                  >
+                    PRESENT
+                  </button>
+                ) : null}
+              </div>
               {summary ? (
                 <div className="rounded-sm border border-white/10 bg-black/60 px-3 py-1.5 text-right">
                   <div className="font-mono text-[9px] tracking-[0.16em] text-slate-500">OUTCOME</div>
@@ -440,37 +519,17 @@ export default function MissionControl() {
           ) : null}
 
           {frames.length > 0 ? (
-            <div className="absolute inset-x-0 bottom-0 flex items-center gap-3 border-t border-white/10 bg-[#0b0e14]/92 px-3 py-2">
-              <button
-                onClick={() => setPlaying((p) => !p)}
-                className="rounded-sm border border-white/15 px-3 py-1 font-mono text-[10px] tracking-[0.18em] text-slate-200 hover:bg-white/5"
-              >
-                {playing ? "PAUSE" : "PLAY"}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(frames.length - 1, 0)}
-                value={index}
-                onChange={(e) => {
-                  setPlaying(false);
-                  setIndex(Number(e.target.value));
-                }}
-                className="flex-1 accent-orange-500"
+            <div className="absolute inset-x-0 bottom-0">
+              <Timeline
+                frameCount={frames.length}
+                index={index}
+                onSeek={seek}
+                playing={playing}
+                onTogglePlay={() => setPlaying((p) => !p)}
+                speed={speed}
+                onSpeed={setSpeed}
+                events={events}
               />
-              <span className="font-mono text-[10px] tabular-nums text-slate-400">
-                {String(index + 1).padStart(4, "0")}/{String(frames.length).padStart(4, "0")}
-              </span>
-              <select
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-                className="rounded-sm border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] text-slate-300"
-              >
-                <option value={220}>0.5x</option>
-                <option value={90}>1x</option>
-                <option value={40}>2x</option>
-                <option value={14}>6x</option>
-              </select>
             </div>
           ) : null}
         </div>
@@ -494,8 +553,8 @@ export default function MissionControl() {
               adaptive={plannerInfo?.adaptive ?? false}
             />
           </Panel>
-          <Panel title="Event Log">
-            <EventLog events={events} />
+          <Panel title="Mission Replay">
+            <ReplayLog events={events} index={index} onSeek={seek} />
           </Panel>
         </div>
       </div>

@@ -287,3 +287,65 @@ def generalization_gap(
             }
         )
     return pd.DataFrame(rows)
+
+
+def interval_table(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
+    """Per condition and planner: outcome rates with 95% intervals, for plots.
+
+    Mission success is a proportion, so it gets a Wilson score interval, which
+    stays inside [0, 1] and behaves at small counts where the normal
+    approximation does not. Science fraction is a mean over missions, so it
+    gets a t interval. One mission is one observation; timesteps are never
+    counted as independent samples.
+    """
+    df = add_derived_columns(df)
+    rows = []
+    for (condition, planner), group in df.groupby(["condition", "planner"]):
+        n = len(group)
+        k = int(group["success"].sum())
+        wilson = stats.binomtest(k, n).proportion_ci(confidence_level=1 - alpha, method="wilson")
+        sci = group["science_fraction"].to_numpy(float)
+        mean = float(sci.mean())
+        half = (
+            float(stats.t.ppf(1 - alpha / 2, n - 1) * sci.std(ddof=1) / np.sqrt(n))
+            if n > 1
+            else 0.0
+        )
+        rows.append(
+            {
+                "condition": condition,
+                "planner": planner,
+                "n": n,
+                "successes": k,
+                "success_rate": k / n,
+                "success_ci_low": float(wilson.low),
+                "success_ci_high": float(wilson.high),
+                "science_fraction": mean,
+                "science_ci_low": max(0.0, mean - half),
+                "science_ci_high": min(1.0, mean + half),
+            }
+        )
+    return pd.DataFrame(rows).sort_values(["condition", "planner"]).reset_index(drop=True)
+
+
+def paired_points(
+    df: pd.DataFrame, treatment: str = PRIMARY_TREATMENT, control: str = PRIMARY_CONTROL
+) -> pd.DataFrame:
+    """Treatment and control outcomes side by side on each matched seed."""
+    df = add_derived_columns(df)
+    keep = df[df["planner"].isin([treatment, control])]
+    wide = keep.pivot_table(
+        index=["condition", "seed"],
+        columns="planner",
+        values=["science_fraction", "success"],
+        aggfunc="first",
+    )
+    out = pd.DataFrame(
+        {
+            "science_treatment": wide[("science_fraction", treatment)],
+            "science_control": wide[("science_fraction", control)],
+            "success_treatment": wide[("success", treatment)].astype(bool),
+            "success_control": wide[("success", control)].astype(bool),
+        }
+    ).dropna()
+    return out.reset_index()

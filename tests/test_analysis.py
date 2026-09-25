@@ -147,3 +147,28 @@ def test_descriptive_and_gap_are_consistent_with_rows():
         assert row["generalization_gap"] == pytest.approx(
             row["in_distribution"] - row["out_of_distribution"]
         )
+
+
+def test_interval_table_wilson_matches_statsmodels():
+    from statsmodels.stats.proportion import proportion_confint
+
+    from exonaut.experiments.analysis import interval_table
+
+    a = [True] * 7 + [False] * 13
+    b = [True] * 12 + [False] * 8
+    df = _frame(a, b, [0.1 * (i % 7) for i in range(20)], [0.05 * (i % 9) for i in range(20)])
+    out = interval_table(df)
+    for _, row in out.iterrows():
+        lo, hi = proportion_confint(row["successes"], row["n"], alpha=0.05, method="wilson")
+        assert np.isclose(row["success_ci_low"], lo) and np.isclose(row["success_ci_high"], hi)
+        assert row["science_ci_low"] <= row["science_fraction"] <= row["science_ci_high"]
+
+
+def test_paired_points_align_on_seed():
+    from exonaut.experiments.analysis import paired_points
+
+    df = _frame([True, False, True], [False, False, True], [0.3, 0.2, 0.9], [0.1, 0.2, 0.8])
+    pts = paired_points(df)
+    assert len(pts) == 3
+    assert list(pts["science_treatment"]) == [0.3, 0.2, 0.9]
+    assert list(pts["success_control"]) == [False, False, True]

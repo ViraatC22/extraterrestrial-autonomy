@@ -128,11 +128,18 @@ def test_robot_state_defaults_to_the_last_frame(client, session):
 
 def test_adaptive_planner_beliefs_move_and_fixed_ones_do_not(client):
     """The frontend draws this distinction, so the API must actually carry it."""
+
     def belief_span(planner):
         started = client.post(
             "/start-mission",
-            json={"seed": 200000, "body": "mars", "planner": planner, "size": 40,
-                  "n_targets": 3, "max_steps": 300},
+            json={
+                "seed": 200000,
+                "body": "mars",
+                "planner": planner,
+                "size": 40,
+                "n_targets": 3,
+                "max_steps": 300,
+            },
         ).json()
         frames = client.get(f"/missions/{started['session_id']}/telemetry").json()
         first, last = frames[0]["belief"], frames[-1]["belief"]
@@ -186,8 +193,14 @@ def test_frames_carry_auditable_candidate_evaluations(client):
     API has to carry the losing candidates and their rejection reasons too."""
     started = client.post(
         "/start-mission",
-        json={"seed": 200000, "body": "mars", "planner": "adaptive_risk_aware_astar",
-              "size": 44, "n_targets": 4, "max_steps": 300},
+        json={
+            "seed": 200000,
+            "body": "mars",
+            "planner": "adaptive_risk_aware_astar",
+            "size": 44,
+            "n_targets": 4,
+            "max_steps": 300,
+        },
     ).json()
     frames = client.get(f"/missions/{started['session_id']}/telemetry").json()
 
@@ -209,9 +222,7 @@ def test_frames_carry_auditable_candidate_evaluations(client):
         assert candidate["utility"] is not None
 
     # the selected candidate must be the highest-utility one that was not rejected
-    eligible = [
-        c for c in frame["candidates"] if c["reachable"] and c["rejected"] is None
-    ]
+    eligible = [c for c in frame["candidates"] if c["reachable"] and c["rejected"] is None]
     if selected and eligible:
         best = max(eligible, key=lambda c: c["utility"])
         assert best["target_id"] == selected[0]["target_id"], (
@@ -220,8 +231,15 @@ def test_frames_carry_auditable_candidate_evaluations(client):
 
 
 def _start(client, seed=200000, **extra):
-    body = {"seed": seed, "body": "mars", "planner": "adaptive_risk_aware_astar",
-            "size": 40, "n_targets": 3, "max_steps": 250, **extra}
+    body = {
+        "seed": seed,
+        "body": "mars",
+        "planner": "adaptive_risk_aware_astar",
+        "size": 40,
+        "n_targets": 3,
+        "max_steps": 250,
+        **extra,
+    }
     return client.post("/start-mission", json=body).json()
 
 

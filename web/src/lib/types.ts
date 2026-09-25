@@ -213,4 +213,28 @@ export interface ResultsPayload {
   descriptive: Record<string, number | string>[];
   primary: Record<string, number | string | boolean>[];
   generalization_gap: Record<string, number | string>[];
+  intervals: IntervalRow[];
+  paired_points: PairedPoint[];
+}
+
+export interface IntervalRow {
+  condition: string;
+  planner: string;
+  n: number;
+  successes: number;
+  success_rate: number;
+  success_ci_low: number;
+  success_ci_high: number;
+  science_fraction: number;
+  science_ci_low: number;
+  science_ci_high: number;
+}
+
+export interface PairedPoint {
+  condition: string;
+  seed: number;
+  science_treatment: number;
+  science_control: number;
+  success_treatment: boolean;
+  success_control: boolean;
 }

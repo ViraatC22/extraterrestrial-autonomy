@@ -205,7 +205,13 @@ def results(name: str = Query("exonaut_main")) -> dict:
     Served from the same files the paper is generated from, so the interface
     and the paper cannot disagree.
     """
-    from ..experiments.analysis import descriptive_table, generalization_gap, primary_analysis
+    from ..experiments.analysis import (
+        descriptive_table,
+        generalization_gap,
+        interval_table,
+        paired_points,
+        primary_analysis,
+    )
     from ..experiments.io import load_results
 
     try:
@@ -224,6 +230,8 @@ def results(name: str = Query("exonaut_main")) -> dict:
         "descriptive": descriptive_table(frame).to_dict(orient="records"),
         "primary": primary.to_dict(orient="records") if not primary.empty else [],
         "generalization_gap": generalization_gap(frame).to_dict(orient="records"),
+        "intervals": interval_table(frame).to_dict(orient="records"),
+        "paired_points": paired_points(frame).to_dict(orient="records"),
     }
 
 

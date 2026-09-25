@@ -153,8 +153,11 @@ export function AutonomyPanel({
       <Readout label="Planner" value={plannerLabel} tone="accent" />
       <Readout label="Model" value={adaptive ? "ADAPTIVE" : "FIXED"} tone={adaptive ? "good" : "normal"} />
       <Readout label="Decision" value={decision} />
+      {/* The engine computes P(failure) only when it assesses a trip to a
+          target; while returning home the last assessed value carries over.
+          Label it as what it is rather than as the risk of the current leg. */}
       <Readout
-        label="P(failure)"
+        label="P(fail) last trip assessed"
         value={frame.predicted_failure_prob.toFixed(3)}
         tone={frame.predicted_failure_prob > 0.2 ? "warn" : "normal"}
       />

@@ -137,7 +137,10 @@ def test_bootstrap_ci_matches_scipy_percentile():
     sample = rng.normal(0.4, 0.1, 60)
     mine = bootstrap_ci(sample, n_resamples=6000, seed=7, method="percentile")
     ref = scipy_bootstrap(
-        (sample,), np.mean, n_resamples=6000, method="percentile",
+        (sample,),
+        np.mean,
+        n_resamples=6000,
+        method="percentile",
         random_state=np.random.default_rng(7),
     )
     assert mine["ci_low"] == pytest.approx(ref.confidence_interval.low, abs=0.01)
@@ -148,7 +151,7 @@ def test_bootstrap_paired_recovers_known_difference():
     from exonaut.experiments.stats import bootstrap_paired_difference
 
     rng = np.random.default_rng(2)
-    block = rng.normal(0, 1.0, 40)          # large between-block variance
+    block = rng.normal(0, 1.0, 40)  # large between-block variance
     control = 0.5 + block
     treatment = control + 0.09 + rng.normal(0, 0.01, 40)
     out = bootstrap_paired_difference(treatment, control, n_resamples=2000)

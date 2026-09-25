@@ -214,3 +214,14 @@ paired contrast. It does change what the Martian results describe, and it is a
 plausible contributor to the very high intervention counts and to distance-only
 A* surviving as well as it did. Recorded here; not changed, for the same reason
 as the calibration defect above.
+
+## 2026-09-25 - `predicted_failure_prob` is stale while returning home
+
+`run_mission` sets `predicted_failure_prob = objective.get("p_failure",
+predicted_failure_prob)`. Return-home objectives carry no `p_failure`, so while
+the rover is returning the value is the risk of the last *target* trip it
+assessed, not of the leg it is driving. The final value is written to the
+results CSV. It is not an analysed outcome in the confirmatory plan, so no
+reported result depends on it, but anyone reading that column should know what
+it means. The interface now labels it "P(fail) last trip assessed". The engine
+is unchanged so the committed column still reproduces.
