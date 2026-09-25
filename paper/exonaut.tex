@@ -476,8 +476,11 @@ overconfident. On \AuditCalibrationMissions{} Martian validation missions, its
 median error was \AuditErrorCommitted{}, while it reported a median
 uncertainty of just \AuditSdCommitted{}. The cause is that each slip reading is
 treated as near-exact (Section~\ref{sec:limitations}). With the per-reading
-variance set to the terrain's own dispersion, coverage rises to
-\AuditCoverageCorrected{} and median error falls to \AuditErrorCorrected{}. So
+variance set to the terrain's own dispersion, coverage rises only to
+\AuditCoverageCorrected{} and median error falls to \AuditErrorCorrected{}. The
+rest of the miscalibration comes from misclassification: the rover folds each
+reading into the class it \emph{believes} it drove on, and some of those beliefs
+are wrong. So
 the method tested here adapts, but it adapts by over-reacting, and its effects
 should not be read as the effects of a well-calibrated learner.
 
