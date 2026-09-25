@@ -24,6 +24,7 @@ from ..environments import TRUE_CLASS_PARAMS, TerrainClass, make_environment
 from ..planners import available_planners, make_planner
 from ..simulation import MissionConfig, run_mission
 from .models import (
+    CandidateEvaluation,
     MissionRequest,
     MissionSummary,
     PlannerInfo,
@@ -198,6 +199,8 @@ def frame_payload(frame: dict) -> TelemetryFrame:
         predicted_failure_prob=frame["predicted_failure_prob"],
         belief={int(k): float(v) for k, v in frame["belief"].items()},
         belief_sd={int(k): float(v) for k, v in frame["belief_sd"].items()},
+        decision_reason=frame.get("decision_reason"),
+        candidates=[CandidateEvaluation(**c) for c in frame.get("candidates", [])],
     )
 
 

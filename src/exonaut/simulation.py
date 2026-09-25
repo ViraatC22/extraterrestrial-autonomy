@@ -207,6 +207,8 @@ def run_mission(
     min_charge = rover.power.charge
     predicted_failure_prob = 0.0
     objective_goal = None
+    decision_reason = None
+    last_candidates: list = []
     slips: list[float] = []
     history: list[dict] = []
     termination = TERMINATION_TIMEOUT
@@ -241,6 +243,8 @@ def run_mission(
             path = objective["path"] or []
             path_index = 1 if len(path) > 1 else 0
             objective_goal = objective.get("goal")
+            decision_reason = objective.get("reason")
+            last_candidates = list(manager.last_candidates)
             predicted_failure_prob = objective.get("p_failure", predicted_failure_prob)
 
             if not path or len(path) < 2:
@@ -325,6 +329,8 @@ def run_mission(
                     },
                     "interventions": interventions,
                     "predicted_failure_prob": predicted_failure_prob,
+                    "decision_reason": decision_reason,
+                    "candidates": last_candidates,
                 }
             )
 

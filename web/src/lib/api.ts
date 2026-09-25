@@ -91,8 +91,12 @@ export const startMission = (mission: MissionRequest) =>
 export const getSummary = (sessionId: string) =>
   request<MissionSummary>(`/missions/${sessionId}`);
 
-export const getTelemetry = (sessionId: string) =>
-  request<TelemetryFrame[]>(`/missions/${sessionId}/telemetry`);
+export const getTelemetry = async (sessionId: string) => {
+  const frames = await request<TelemetryFrame[]>(`/missions/${sessionId}/telemetry`);
+  // Tolerate an engine older than this build rather than crashing a page on a
+  // field it has not heard of.
+  return frames.map((frame) => ({ ...frame, candidates: frame.candidates ?? [] }));
+};
 
 export const getResults = (name = "exonaut_main") =>
   request<ResultsPayload>(`/results?name=${encodeURIComponent(name)}`);

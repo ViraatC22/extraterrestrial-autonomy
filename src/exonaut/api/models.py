@@ -65,6 +65,30 @@ class ScienceTargetOut(BaseModel):
     visited: bool
 
 
+class CandidateEvaluation(BaseModel):
+    """One science target as the planner scored it at a decision point.
+
+    Rejected candidates are included with their reason: a planner that only
+    reports its winner cannot be audited.
+    """
+
+    target_id: int
+    row: int
+    col: int
+    science_value: float
+    reachable: bool
+    selected: bool = False
+    rejected: str | None = None
+    path_cells: int | None = None
+    expected_energy: float | None = None
+    energy_sd: float | None = None
+    expected_solar_income: float | None = None
+    p_failure: float | None = None
+    p_terrain: float | None = None
+    p_energy: float | None = None
+    utility: float | None = None
+
+
 class TelemetryFrame(BaseModel):
     """One mission step, as the mission-control view consumes it."""
 
@@ -85,6 +109,8 @@ class TelemetryFrame(BaseModel):
     predicted_failure_prob: float
     belief: dict[int, float]
     belief_sd: dict[int, float]
+    decision_reason: str | None = None
+    candidates: list[CandidateEvaluation] = []
 
 
 class MissionSummary(BaseModel):

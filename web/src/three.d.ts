@@ -8,6 +8,10 @@ import type { ThreeElements } from "@react-three/fiber";
 
 declare module "react" {
   namespace JSX {
+    // An empty extending interface is exactly the shape module augmentation
+    // requires here - there are no members to add, only a supertype to merge
+    // into the existing JSX namespace.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends ThreeElements {}
   }
 }

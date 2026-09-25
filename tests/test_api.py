@@ -179,3 +179,41 @@ def test_reset_drops_sessions(client):
     assert client.get(f"/missions/{session_id}").status_code == 200
     assert client.delete(f"/missions/{session_id}").json()["dropped"] is True
     assert client.get(f"/missions/{session_id}").status_code == 404
+
+
+def test_frames_carry_auditable_candidate_evaluations(client):
+    """The Autonomy Inspector claims to show why a target was chosen, so the
+    API has to carry the losing candidates and their rejection reasons too."""
+    started = client.post(
+        "/start-mission",
+        json={"seed": 200000, "body": "mars", "planner": "adaptive_risk_aware_astar",
+              "size": 44, "n_targets": 4, "max_steps": 300},
+    ).json()
+    frames = client.get(f"/missions/{started['session_id']}/telemetry").json()
+
+    scored = [f for f in frames if f["candidates"]]
+    assert scored, "no decision points recorded"
+
+    frame = scored[0]
+    assert len(frame["candidates"]) >= 2, "cannot audit a choice with one option"
+
+    selected = [c for c in frame["candidates"] if c["selected"]]
+    assert len(selected) <= 1, "more than one candidate marked selected"
+
+    for candidate in frame["candidates"]:
+        if not candidate["reachable"]:
+            assert candidate["rejected"], "unreachable candidate lacks a reason"
+            continue
+        assert candidate["expected_energy"] is not None
+        assert 0.0 <= candidate["p_failure"] <= 1.0
+        assert candidate["utility"] is not None
+
+    # the selected candidate must be the highest-utility one that was not rejected
+    eligible = [
+        c for c in frame["candidates"] if c["reachable"] and c["rejected"] is None
+    ]
+    if selected and eligible:
+        best = max(eligible, key=lambda c: c["utility"])
+        assert best["target_id"] == selected[0]["target_id"], (
+            "selected candidate is not the highest-utility eligible one"
+        )

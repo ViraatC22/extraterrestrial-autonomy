@@ -149,6 +149,8 @@ class MissionManager:
         #: consecutive home-and-charged failures before targets are written off
         self.abandon_after = 2
         self.failed_home_assessments = 0
+        #: evaluation of every candidate at the most recent decision point
+        self.last_candidates: list[dict] = []
 
     def _round_trip_assessment(
         self,
@@ -225,19 +227,66 @@ class MissionManager:
                 "reason": "return_home",
             }
 
+        # Every candidate's evaluation is recorded, including the rejected
+        # ones and why they were rejected. A planner that only reports its
+        # winner cannot be audited: "it chose B" is not an explanation until
+        # you can see what A scored and which constraint ruled it out.
+        self.last_candidates = []
         best = None
         for target in candidates:
             assessment = self._round_trip_assessment(
                 start, target.pos, available_energy, solar_efficiency, solar_rate
             )
             if assessment is None:
+                self.last_candidates.append(
+                    {
+                        "target_id": target.target_id,
+                        "row": target.row,
+                        "col": target.col,
+                        "science_value": target.value,
+                        "reachable": False,
+                        "rejected": "no believed route",
+                    }
+                )
                 continue
-            if assessment["p_failure"] > mission.risk_budget:
-                continue
+
             cost = max(assessment["expected_energy"], 1e-6)
             utility = target.value / cost
+            over_budget = assessment["p_failure"] > mission.risk_budget
+            self.last_candidates.append(
+                {
+                    "target_id": target.target_id,
+                    "row": target.row,
+                    "col": target.col,
+                    "science_value": target.value,
+                    "reachable": True,
+                    "path_cells": len(assessment["round_trip"]),
+                    "expected_energy": assessment["expected_energy"],
+                    "energy_sd": assessment["energy_sd"],
+                    "expected_solar_income": assessment.get("expected_solar_income", 0.0),
+                    "p_failure": assessment["p_failure"],
+                    "p_terrain": assessment["p_terrain"],
+                    "p_energy": assessment["p_energy"],
+                    "utility": utility,
+                    "rejected": (
+                        f"P(failure) {assessment['p_failure']:.3f} exceeds "
+                        f"risk budget {mission.risk_budget:.2f}"
+                        if over_budget
+                        else None
+                    ),
+                }
+            )
+            if over_budget:
+                continue
             if best is None or utility > best["utility"]:
                 best = {"target": target, "assessment": assessment, "utility": utility}
+
+        if best is not None:
+            for entry in self.last_candidates:
+                entry["selected"] = entry["target_id"] == best["target"].target_id
+        else:
+            for entry in self.last_candidates:
+                entry["selected"] = False
 
         if best is None:
             self.returning = True

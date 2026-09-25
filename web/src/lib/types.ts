@@ -49,6 +49,24 @@ export interface ScienceTarget {
   visited: boolean;
 }
 
+export interface CandidateEvaluation {
+  target_id: number;
+  row: number;
+  col: number;
+  science_value: number;
+  reachable: boolean;
+  selected: boolean;
+  rejected: string | null;
+  path_cells: number | null;
+  expected_energy: number | null;
+  energy_sd: number | null;
+  expected_solar_income: number | null;
+  p_failure: number | null;
+  p_terrain: number | null;
+  p_energy: number | null;
+  utility: number | null;
+}
+
 export interface TelemetryFrame {
   step: number;
   row: number;
@@ -67,6 +85,8 @@ export interface TelemetryFrame {
   predicted_failure_prob: number;
   belief: Record<string, number>;
   belief_sd: Record<string, number>;
+  decision_reason: string | null;
+  candidates: CandidateEvaluation[];
 }
 
 export interface MissionSummary {

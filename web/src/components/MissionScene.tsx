@@ -189,25 +189,25 @@ export function MissionScene({
       event.preventDefault();
       setContextLost(true);
       if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
-      rebuildTimer.current = setTimeout(() => setGeneration((g) => g + 1), 1200);
+      rebuildTimer.current = setTimeout(() => {
+        // Rebuilding produces a live context, so clear the overlay here
+        // rather than in an effect that reacts to the generation change.
+        setGeneration((g) => g + 1);
+        setContextLost(false);
+      }, 1200);
     });
     canvas.addEventListener("webglcontextrestored", () => {
       if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
       setContextLost(false);
     });
-  }, []);
+  }, [rebuildTimer]);
 
-  // A rebuild produces a live context again.
   useEffect(() => {
-    if (generation > 0) setContextLost(false);
-  }, [generation]);
-
-  useEffect(
-    () => () => {
-      if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
-    },
-    [],
-  );
+    const timer = rebuildTimer;
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [rebuildTimer]);
 
   return (
     <>
