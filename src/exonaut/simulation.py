@@ -69,6 +69,17 @@ class MissionConfig:
     resume_charge_fraction: float = 0.6  # battery level that starts a new sortie
     prior_body: str = "moon"  # body the world-model prior came from
     max_slope_deg: float = 25.0
+    # Engine profile. "v1" is the engine the confirmatory study ran on and is
+    # kept byte-for-byte so every committed result still reproduces. "v2"
+    # switches on the fixes recorded in docs/RESEARCH_LOG.md (2026-09-25):
+    # calibrated learner, faults inside the mission, independent random
+    # streams, one-cycle intervention relaxation, and no livelock at the
+    # lander. v2 is exploratory until a separately declared study uses it.
+    engine: str = "v1"
+    # v2 only: fault times are drawn within the first `fault_window` steps.
+    # v1 drew them over the whole horizon, but missions end long before that,
+    # so most scheduled faults never fired.
+    fault_window: int = 50
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -129,6 +140,7 @@ class MissionResult:
 
 def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
     cls = AdaptiveWorldModel if adaptive else WorldModel
+    extra = {"calibrated_update": True} if (adaptive and config.engine == "v2") else {}
     # Energy multipliers belong to the prior body, not the simulated body.
     # Using the target body's true values here would leak ground truth into an
     # OOD experiment. A lunar-prior robot sent to Mars must initially carry
@@ -142,6 +154,7 @@ def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
         class_prior=prior["means"],
         aleatoric_sd=prior["aleatoric_sd"],
         energy_multipliers=energy_multipliers,
+        **extra,
     )
 
 
@@ -161,7 +174,19 @@ def run_mission(
 ) -> MissionResult:
     from .autonomy.priors import default_prior
 
-    rng = np.random.default_rng(seed)
+    if config.engine not in ("v1", "v2"):
+        raise ValueError(f"unknown engine {config.engine!r}; expected 'v1' or 'v2'")
+    v2 = config.engine == "v2"
+    if v2:
+        # Independent streams, so changing one factor (say, the fault rate)
+        # leaves every other random draw exactly as it was.
+        streams = np.random.SeedSequence(seed).spawn(4)
+        mission_rng, fault_rng, sense_rng, slip_rng = (np.random.default_rng(s) for s in streams)
+    else:
+        # v1: one stream for everything, drawn in sequence (kept for
+        # reproduction of the committed results).
+        rng = np.random.default_rng(seed)
+        mission_rng = fault_rng = sense_rng = slip_rng = rng
     terrain = make_environment(
         config.body, seed=seed, size=config.size, max_slope_deg=config.max_slope_deg
     )
@@ -187,7 +212,7 @@ def run_mission(
 
     mission = generate_mission(
         terrain,
-        rng,
+        mission_rng,
         n_targets=config.n_targets,
         risk_budget=config.risk_budget,
         max_steps=config.max_steps,
@@ -210,9 +235,11 @@ def run_mission(
             class_confusion=0.12 * config.sensor_noise_scale,
         ),
     )
-    faults = FaultSchedule.draw(rng, config.max_steps, config.fault_rate)
+    fault_horizon = min(config.max_steps, config.fault_window) if v2 else config.max_steps
+    faults = FaultSchedule.draw(fault_rng, fault_horizon, config.fault_rate)
     manager = MissionManager(mission, planner, world_model, terrain.gravity)
     manager.resume_charge_fraction = config.resume_charge_fraction
+    base_hazard_threshold = planner.hazard_threshold
 
     path: list = []
     path_index = 0
@@ -244,7 +271,7 @@ def run_mission(
             termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
             break
 
-        world_model.ingest_observations(rover.sense(terrain, rng))
+        world_model.ingest_observations(rover.sense(terrain, sense_rng))
 
         # Waiting on mission control after an intervention request.
         if comm_wait > 0:
@@ -289,11 +316,25 @@ def run_mission(
                 )
                 decision_index = len(decisions) - 1
             predicted_failure_prob = objective.get("p_failure", predicted_failure_prob)
+            if v2 and planner.hazard_threshold != base_hazard_threshold:
+                # The relaxation granted by ground applied to the planning
+                # cycle just completed; restore the planner's own threshold.
+                # (v1 never restored it, so it ratcheted up to 0.95.)
+                planner.hazard_threshold = base_hazard_threshold
 
             if not path or len(path) < 2:
                 if rover.pos == mission.home and not mission.remaining:
                     termination = TERMINATION_SUCCESS
                     break
+                if v2 and rover.pos == mission.home and manager.returning:
+                    # Home, but waiting for charge before another sortie. That
+                    # is not "no believable route", so do not ask for help:
+                    # recharge and reconsider. (v1 requested an intervention
+                    # here on every step, a livelock that ended at the step
+                    # limit in most of its timeouts.)
+                    rover.hold(float(terrain.illumination[rover.pos]))
+                    min_charge = min(min_charge, rover.power.charge)
+                    continue
                 # No believable route: escalate to mission control. The delay
                 # is the cost of not being able to solve it onboard.
                 interventions += 1
@@ -307,7 +348,7 @@ def run_mission(
         target_cell = path[path_index]
         dr = int(np.sign(target_cell[0] - rover.row))
         dc = int(np.sign(target_cell[1] - rover.col))
-        outcome = rover.attempt_move(dr, dc, terrain, rng)
+        outcome = rover.attempt_move(dr, dc, terrain, slip_rng)
 
         if outcome["record"] is not None:
             planner.observe_slip(world_model, outcome["record"])

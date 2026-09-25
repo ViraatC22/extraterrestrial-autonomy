@@ -328,6 +328,11 @@ class AdaptiveWorldModel(WorldModel):
     adaptive experimental conditions.
     """
 
+    def __init__(self, *args, calibrated_update: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        #: v2 engine: per-reading variance includes the terrain's dispersion
+        self.calibrated_update = calibrated_update
+
     def ingest_slip(self, record) -> None:
         # Update the class the robot currently believes occupies this cell.
         # ``record.terrain_class`` is simulator truth retained for evaluation;
@@ -338,5 +343,14 @@ class AdaptiveWorldModel(WorldModel):
         # remove the slope contribution so the class belief is about the
         # terrain class itself, not about how steep this particular cell was
         slope_adjusted = float(np.clip(record.slip - 0.01 * record.slope, 0.0, 1.0))
-        belief.update(slope_adjusted)
+        if self.calibrated_update:
+            # v2: a reading scatters around the class mean by the terrain's own
+            # dispersion, not just by sensor noise. Using only sensor noise
+            # (v1) made one reading move the belief most of the way to itself.
+            belief.update(
+                slope_adjusted,
+                obs_variance=self.aleatoric_sd[believed_class] ** 2 + SLIP_OBS_VARIANCE,
+            )
+        else:
+            belief.update(slope_adjusted)
         self._invalidate()
