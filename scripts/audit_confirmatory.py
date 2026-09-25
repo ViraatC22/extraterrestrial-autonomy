@@ -100,7 +100,12 @@ def _calibration_job(args):
     if corrected:
 
         def ingest(self, record):
-            k = int(record.terrain_class)
+            # Same as the committed rule - it updates the class the rover
+            # BELIEVES it drove on, never the true class - except for the
+            # per-reading variance. (An earlier version of this audit used the
+            # true class here, which leaked ground truth into the "corrected"
+            # arm and flattered it.)
+            k = int(self.terrain_class[record.row, record.col])
             adjusted = float(np.clip(record.slip - 0.01 * record.slope, 0.0, 1.0))
             self.class_belief[k].update(
                 adjusted, obs_variance=self.aleatoric_sd[k] ** 2 + W.SLIP_OBS_VARIANCE

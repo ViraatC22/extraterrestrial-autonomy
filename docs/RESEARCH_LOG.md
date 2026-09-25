@@ -155,7 +155,7 @@ Measured on 40 Martian validation missions (173 class beliefs):
 | | 95% interval coverage | median abs. error | median reported sd |
 |---|---|---|---|
 | current rule | **0.20** | 0.060 | 0.0089 |
-| per-reading variance = class aleatoric + sensor | 0.85 | 0.017 | 0.0250 |
+| per-reading variance = class aleatoric + sensor | 0.85 (see correction below: leaked; true figure 0.52) | 0.017 | 0.0250 |
 
 (A calibrated model would give coverage 0.95.) The residual shortfall under the
 corrected rule is expected: the rover takes its aleatoric spread from the lunar
@@ -269,3 +269,27 @@ This inflates intervention counts, and it converts what should arguably be
 affects planners differently, because they reach the stuck state at different
 rates. It is not fixed here, for the same reason as the other engine defects;
 it belongs in the v2 changes, declared before any v2 run.
+
+
+## 2026-09-25 - Correction: the "corrected learner" figure of 0.85 was inflated
+
+The calibration comparison above, and the first run of
+`scripts/audit_confirmatory.py`, tested the corrected update by folding each
+slip reading into the *true* terrain class of the cell. The committed learner
+(and any fair fix of it) folds readings into the class the rover *believes* it
+drove on, because the true class is simulator truth. The corrected arm
+therefore had information the rover does not have, which flattered it.
+
+With the leak removed, on the same 40 validation missions:
+
+| rule | 95% coverage | median abs. error | median reported sd |
+|---|---|---|---|
+| committed | 0.20 | 0.060 | 0.0089 |
+| per-reading variance = class aleatoric + sensor | **0.52** | 0.044 | 0.0253 |
+
+The variance fix helps but does not calibrate the learner. The rest of the
+miscalibration comes from misclassification: roughly 12% of readings, even at
+zero range, are attributed to the wrong class and contaminate that class's
+belief. The paper quotes these numbers through generated macros, so it updated
+automatically; the typed figure in the reviewer README and in an earlier
+message to the project owner (0.85) was wrong and has been corrected here.

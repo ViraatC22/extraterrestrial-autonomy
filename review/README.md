@@ -113,7 +113,7 @@ Found while building this interface. Each one is logged with numbers in
    only 16% of adaptive and 26% of fixed missions, and in neither mission on 5
    of the 10 seeds that drove the result. It is now reported as not supported.
 2. **The adaptive learner is ~7× overconfident.** Its 95% intervals contain
-   the true slip only 20% of the time; a corrected update reaches 85%. All
+   the true slip only 20% of the time; a variance-corrected update reaches 52%. All
    confirmatory results use the flawed rule.
 3. **Intervention relaxation ratchets.** Every request for ground help raises
    the hazard threshold by 0.15, up to 0.95, and it never resets.
