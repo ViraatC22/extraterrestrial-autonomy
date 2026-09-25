@@ -342,3 +342,97 @@ export function SlopeChart({
     </svg>
   );
 }
+
+export interface SeriesPoint {
+  x: number;
+  mean: number;
+  low: number;
+  high: number;
+}
+
+/** Outcome against a swept parameter, one line per planner with a 95% band. */
+export function SensitivityChart({
+  series,
+  xLabel,
+  yLabel,
+  yMax,
+  width = 760,
+  height = 340,
+}: {
+  series: { planner: string; points: SeriesPoint[] }[];
+  xLabel: string;
+  yLabel: string;
+  yMax?: number;
+  width?: number;
+  height?: number;
+}) {
+  const m = { l: 56, r: 20, t: 14, b: 42 };
+  const xs = series.flatMap((s) => s.points.map((p) => p.x));
+  if (!xs.length) return null;
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const top =
+    yMax ?? Math.max(1e-6, ...series.flatMap((s) => s.points.map((p) => p.high))) * 1.08;
+  const sx = (v: number) => m.l + ((v - xMin) / Math.max(xMax - xMin, 1e-9)) * (width - m.l - m.r);
+  const sy = (v: number) => height - m.b - (Math.max(0, v) / top) * (height - m.t - m.b);
+  const uniqueX = [...new Set(xs)].sort((a, b) => a - b);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * top);
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img">
+      {yTicks.map((t) => (
+        <g key={t}>
+          <line x1={m.l} x2={width - m.r} y1={sy(t)} y2={sy(t)} stroke="#1c2430" />
+          <text x={m.l - 6} y={sy(t) + 3} fill={TEXT} fontSize={9} textAnchor="end" fontFamily="monospace">
+            {top <= 1.5 ? t.toFixed(2) : t.toFixed(0)}
+          </text>
+        </g>
+      ))}
+      {uniqueX.map((x) => (
+        <text key={x} x={sx(x)} y={height - m.b + 14} fill={TEXT} fontSize={9} textAnchor="middle" fontFamily="monospace">
+          {x}
+        </text>
+      ))}
+      <text x={(m.l + width - m.r) / 2} y={height - 6} fill={TEXT} fontSize={10} textAnchor="middle" fontFamily="monospace">
+        {xLabel}
+      </text>
+      <text
+        x={14}
+        y={(m.t + height - m.b) / 2}
+        fill={TEXT}
+        fontSize={10}
+        textAnchor="middle"
+        fontFamily="monospace"
+        transform={`rotate(-90 14 ${(m.t + height - m.b) / 2})`}
+      >
+        {yLabel}
+      </text>
+      {series.map((s) => {
+        const pts = [...s.points].sort((a, b) => a.x - b.x);
+        const color = PLANNER_COLOR[s.planner] ?? "#999";
+        const band =
+          pts.map((p) => `${sx(p.x)},${sy(p.high)}`).join(" ") +
+          " " +
+          [...pts].reverse().map((p) => `${sx(p.x)},${sy(p.low)}`).join(" ");
+        return (
+          <g key={s.planner}>
+            {pts.length > 1 ? <polygon points={band} fill={color} opacity={0.14} /> : null}
+            <polyline
+              points={pts.map((p) => `${sx(p.x)},${sy(p.mean)}`).join(" ")}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+            />
+            {pts.map((p) => (
+              <g key={p.x}>
+                <line x1={sx(p.x)} x2={sx(p.x)} y1={sy(p.low)} y2={sy(p.high)} stroke={color} opacity={0.5} />
+                <circle cx={sx(p.x)} cy={sy(p.mean)} r={3.5} fill={color}>
+                  <title>{`${p.x}: ${p.mean.toFixed(3)} [${p.low.toFixed(3)}, ${p.high.toFixed(3)}]`}</title>
+                </circle>
+              </g>
+            ))}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}

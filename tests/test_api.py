@@ -305,3 +305,23 @@ def test_failure_case_studies_reproduce_their_committed_rows(client):
         assert summary["seed"] == rep["seed"]
         assert summary["provenance"]["seed_split"] == "ood"
     assert seen >= 2
+
+
+def test_sweep_points_use_validation_seeds_only(client):
+    body = client.get(
+        "/sweep-point",
+        params={"variable": "fault_rate", "value": 1.0, "planner": "astar", "n_seeds": 3},
+    ).json()
+    assert body["n"] == 3
+    assert all(200000 <= s < 300000 for s in body["seeds"]), "sweep touched non-validation seeds"
+    s = body["success"]
+    assert 0 <= s["low"] <= s["mean"] <= s["high"] <= 1
+    assert body["config"]["fault_rate"] == 1.0
+
+
+def test_sweep_rejects_unknown_or_out_of_range_variables(client):
+    assert client.get("/sweep-point", params={"variable": "seed", "value": 1}).status_code == 400
+    assert (
+        client.get("/sweep-point", params={"variable": "risk_budget", "value": 7}).status_code
+        == 400
+    )

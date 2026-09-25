@@ -337,6 +337,25 @@ def failures(
     }
 
 
+@app.get("/sweep-point")
+def sweep_point(
+    variable: str,
+    value: float,
+    planner: str = Query("adaptive_risk_aware_astar"),
+    body: str = Query("mars"),
+    n_seeds: int = Query(6, ge=2, le=20),
+) -> dict:
+    """One Scenario Lab point: n complete missions on VALIDATION seeds."""
+    from .sweep import run_point
+
+    if body not in ("moon", "mars"):
+        raise HTTPException(400, "body must be 'moon' or 'mars'")
+    try:
+        return run_point(variable, value, planner, body, n_seeds)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.get("/results/available")
 def available_results() -> list[str]:
     stems = set()
