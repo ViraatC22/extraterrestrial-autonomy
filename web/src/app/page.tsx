@@ -178,7 +178,7 @@ export default function MissionControl() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-[#07090d]">
       <Nav />
-      <MissionHeader summary={summary} step={frame?.step ?? 0} total={frames.length} />
+      <MissionHeader summary={summary} step={frame?.step ?? 0} total={summary?.steps ?? 0} />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 lg:grid-cols-[260px_1fr_280px]">
         {/* ---------------- left: mission setup ---------------- */}

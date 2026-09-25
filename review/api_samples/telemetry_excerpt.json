@@ -1,0 +1,532 @@
+{
+  "n_frames": 110,
+  "note": "first 3 and last 1 frames only; full telemetry is larger",
+  "frames": [
+    {
+      "step": 1,
+      "row": 15,
+      "col": 16,
+      "charge": 410.4015584221236,
+      "charge_fraction": 0.9929069961825572,
+      "science": 0.0,
+      "targets_visited": 0,
+      "slip": 0.21734479877103985,
+      "moved": true,
+      "reason": "ok",
+      "returning": false,
+      "goal": [
+        4,
+        6
+      ],
+      "planned_path": [
+        [
+          14,
+          15
+        ],
+        [
+          13,
+          14
+        ],
+        [
+          12,
+          14
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          10,
+          12
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "interventions": 0,
+      "predicted_failure_prob": 0.024068947148908948,
+      "belief": {
+        "0": 0.15376385565869932,
+        "1": 0.18150081120245556,
+        "2": 0.4240356285990386,
+        "3": 0.03891531854748702,
+        "4": 0.2927890752544622
+      },
+      "belief_sd": {
+        "0": 0.019069251784911846,
+        "1": 0.06324555320336758,
+        "2": 0.06324555320336758,
+        "3": 0.06324555320336758,
+        "4": 0.06324555320336758
+      },
+      "decision_reason": "pursue_target",
+      "candidates": [
+        {
+          "target_id": 0,
+          "row": 25,
+          "col": 43,
+          "science_value": 1.311468786420729,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 55,
+          "expected_energy": 324.8463608987671,
+          "energy_sd": 12.877894145204047,
+          "expected_solar_income": 54.13118621472573,
+          "p_failure": 0.04552518039545217,
+          "p_terrain": 0.04442819830111899,
+          "p_energy": 0.0011479849995394264,
+          "utility": 0.00403719710078398
+        },
+        {
+          "target_id": 1,
+          "row": 23,
+          "col": 33,
+          "science_value": 1.1198432103678038,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 35,
+          "expected_energy": 228.75446764812966,
+          "energy_sd": 11.681136686932147,
+          "expected_solar_income": 34.13118621472573,
+          "p_failure": 0.029981043945896957,
+          "p_terrain": 0.029981043945896957,
+          "p_energy": 2.6591443034592575e-23,
+          "utility": 0.004895393833751687
+        },
+        {
+          "target_id": 2,
+          "row": 14,
+          "col": 36,
+          "science_value": 2.8514312669954434,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 43,
+          "expected_energy": 225.48557006990592,
+          "energy_sd": 9.832491430528307,
+          "expected_solar_income": 42.54252822195755,
+          "p_failure": 0.037650904498575555,
+          "p_terrain": 0.037650904498575555,
+          "p_energy": 1.733027720035879e-38,
+          "utility": 0.012645737224388378
+        },
+        {
+          "target_id": 3,
+          "row": 4,
+          "col": 6,
+          "science_value": 2.252439571912271,
+          "reachable": true,
+          "selected": true,
+          "rejected": null,
+          "path_cells": 25,
+          "expected_energy": 134.54744507558195,
+          "energy_sd": 6.4429929797109144,
+          "expected_solar_income": 24.489356063890405,
+          "p_failure": 0.024068947148908948,
+          "p_terrain": 0.024068947148908948,
+          "p_energy": 1.0834353158737934e-211,
+          "utility": 0.016740857254085834
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "row": 14,
+      "col": 15,
+      "charge": 404.85946105014784,
+      "charge_fraction": 0.9794986960890674,
+      "science": 0.0,
+      "targets_visited": 0,
+      "slip": 0.2263119268034715,
+      "moved": true,
+      "reason": "ok",
+      "returning": false,
+      "goal": [
+        4,
+        6
+      ],
+      "planned_path": [
+        [
+          13,
+          14
+        ],
+        [
+          12,
+          14
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          10,
+          12
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "interventions": 0,
+      "predicted_failure_prob": 0.024068947148908948,
+      "belief": {
+        "0": 0.13510663041619536,
+        "1": 0.18150081120245556,
+        "2": 0.4240356285990386,
+        "3": 0.03891531854748702,
+        "4": 0.2927890752544622
+      },
+      "belief_sd": {
+        "0": 0.013801311186847085,
+        "1": 0.06324555320336758,
+        "2": 0.06324555320336758,
+        "3": 0.06324555320336758,
+        "4": 0.06324555320336758
+      },
+      "decision_reason": "pursue_target",
+      "candidates": [
+        {
+          "target_id": 0,
+          "row": 25,
+          "col": 43,
+          "science_value": 1.311468786420729,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 55,
+          "expected_energy": 324.8463608987671,
+          "energy_sd": 12.877894145204047,
+          "expected_solar_income": 54.13118621472573,
+          "p_failure": 0.04552518039545217,
+          "p_terrain": 0.04442819830111899,
+          "p_energy": 0.0011479849995394264,
+          "utility": 0.00403719710078398
+        },
+        {
+          "target_id": 1,
+          "row": 23,
+          "col": 33,
+          "science_value": 1.1198432103678038,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 35,
+          "expected_energy": 228.75446764812966,
+          "energy_sd": 11.681136686932147,
+          "expected_solar_income": 34.13118621472573,
+          "p_failure": 0.029981043945896957,
+          "p_terrain": 0.029981043945896957,
+          "p_energy": 2.6591443034592575e-23,
+          "utility": 0.004895393833751687
+        },
+        {
+          "target_id": 2,
+          "row": 14,
+          "col": 36,
+          "science_value": 2.8514312669954434,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 43,
+          "expected_energy": 225.48557006990592,
+          "energy_sd": 9.832491430528307,
+          "expected_solar_income": 42.54252822195755,
+          "p_failure": 0.037650904498575555,
+          "p_terrain": 0.037650904498575555,
+          "p_energy": 1.733027720035879e-38,
+          "utility": 0.012645737224388378
+        },
+        {
+          "target_id": 3,
+          "row": 4,
+          "col": 6,
+          "science_value": 2.252439571912271,
+          "reachable": true,
+          "selected": true,
+          "rejected": null,
+          "path_cells": 25,
+          "expected_energy": 134.54744507558195,
+          "energy_sd": 6.4429929797109144,
+          "expected_solar_income": 24.489356063890405,
+          "p_failure": 0.024068947148908948,
+          "p_terrain": 0.024068947148908948,
+          "p_energy": 1.0834353158737934e-211,
+          "utility": 0.016740857254085834
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "row": 13,
+      "col": 14,
+      "charge": 401.24085239309414,
+      "charge_fraction": 0.9707439977252278,
+      "science": 0.0,
+      "targets_visited": 0,
+      "slip": 0.13218894439216491,
+      "moved": true,
+      "reason": "ok",
+      "returning": false,
+      "goal": [
+        4,
+        6
+      ],
+      "planned_path": [
+        [
+          12,
+          14
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          10,
+          12
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "interventions": 0,
+      "predicted_failure_prob": 0.024068947148908948,
+      "belief": {
+        "0": 0.12329046584111733,
+        "1": 0.18150081120245556,
+        "2": 0.4240356285990386,
+        "3": 0.03891531854748702,
+        "4": 0.2927890752544622
+      },
+      "belief_sd": {
+        "0": 0.011359236684941296,
+        "1": 0.06324555320336758,
+        "2": 0.06324555320336758,
+        "3": 0.06324555320336758,
+        "4": 0.06324555320336758
+      },
+      "decision_reason": "pursue_target",
+      "candidates": [
+        {
+          "target_id": 0,
+          "row": 25,
+          "col": 43,
+          "science_value": 1.311468786420729,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 55,
+          "expected_energy": 324.8463608987671,
+          "energy_sd": 12.877894145204047,
+          "expected_solar_income": 54.13118621472573,
+          "p_failure": 0.04552518039545217,
+          "p_terrain": 0.04442819830111899,
+          "p_energy": 0.0011479849995394264,
+          "utility": 0.00403719710078398
+        },
+        {
+          "target_id": 1,
+          "row": 23,
+          "col": 33,
+          "science_value": 1.1198432103678038,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 35,
+          "expected_energy": 228.75446764812966,
+          "energy_sd": 11.681136686932147,
+          "expected_solar_income": 34.13118621472573,
+          "p_failure": 0.029981043945896957,
+          "p_terrain": 0.029981043945896957,
+          "p_energy": 2.6591443034592575e-23,
+          "utility": 0.004895393833751687
+        },
+        {
+          "target_id": 2,
+          "row": 14,
+          "col": 36,
+          "science_value": 2.8514312669954434,
+          "reachable": true,
+          "selected": false,
+          "rejected": null,
+          "path_cells": 43,
+          "expected_energy": 225.48557006990592,
+          "energy_sd": 9.832491430528307,
+          "expected_solar_income": 42.54252822195755,
+          "p_failure": 0.037650904498575555,
+          "p_terrain": 0.037650904498575555,
+          "p_energy": 1.733027720035879e-38,
+          "utility": 0.012645737224388378
+        },
+        {
+          "target_id": 3,
+          "row": 4,
+          "col": 6,
+          "science_value": 2.252439571912271,
+          "reachable": true,
+          "selected": true,
+          "rejected": null,
+          "path_cells": 25,
+          "expected_energy": 134.54744507558195,
+          "energy_sd": 6.4429929797109144,
+          "expected_solar_income": 24.489356063890405,
+          "p_failure": 0.024068947148908948,
+          "p_terrain": 0.024068947148908948,
+          "p_energy": 1.0834353158737934e-211,
+          "utility": 0.016740857254085834
+        }
+      ]
+    },
+    {
+      "step": 181,
+      "row": 16,
+      "col": 16,
+      "charge": 251.19392920638197,
+      "charge_fraction": 0.6077272480799564,
+      "science": 2.252439571912271,
+      "targets_visited": 1,
+      "slip": 0.7701094880733437,
+      "moved": true,
+      "reason": "ok",
+      "returning": true,
+      "goal": [
+        16,
+        16
+      ],
+      "planned_path": [],
+      "interventions": 71,
+      "predicted_failure_prob": 0.046929859264432605,
+      "belief": {
+        "0": 0.19066445913221383,
+        "1": 0.8425367510964932,
+        "2": 0.5806428851462457,
+        "3": 0.2337920920485312,
+        "4": 0.2927890752544622
+      },
+      "belief_sd": {
+        "0": 0.0034762899972549913,
+        "1": 0.013801311186847085,
+        "2": 0.00238875157648325,
+        "3": 0.008856148855400953,
+        "4": 0.06324555320336758
+      },
+      "decision_reason": "no_target_within_budget",
+      "candidates": [
+        {
+          "target_id": 0,
+          "row": 25,
+          "col": 43,
+          "science_value": 1.311468786420729,
+          "reachable": true,
+          "selected": false,
+          "rejected": "P(failure) 1.000 exceeds risk budget 0.20",
+          "path_cells": 57,
+          "expected_energy": 400.18796190172054,
+          "energy_sd": 19.44185366844467,
+          "expected_solar_income": 55.50758491980276,
+          "p_failure": 1.0,
+          "p_terrain": 0.05188051802154647,
+          "p_energy": 1.0,
+          "utility": 0.00327713202613227
+        },
+        {
+          "target_id": 1,
+          "row": 23,
+          "col": 33,
+          "science_value": 1.1198432103678038,
+          "reachable": true,
+          "selected": false,
+          "rejected": "P(failure) 1.000 exceeds risk budget 0.20",
+          "path_cells": 37,
+          "expected_energy": 294.30724750925566,
+          "energy_sd": 17.83926682895382,
+          "expected_solar_income": 36.080109857983686,
+          "p_failure": 0.9999999998453548,
+          "p_terrain": 0.03258662729346762,
+          "p_energy": 0.9999999998401458,
+          "utility": 0.003805014045169193
+        },
+        {
+          "target_id": 2,
+          "row": 14,
+          "col": 36,
+          "science_value": 2.8514312669954434,
+          "reachable": true,
+          "selected": false,
+          "rejected": "P(failure) 1.000 exceeds risk budget 0.20",
+          "path_cells": 43,
+          "expected_energy": 280.2568595317521,
+          "energy_sd": 10.949703561669539,
+          "expected_solar_income": 41.55400739716461,
+          "p_failure": 1.0,
+          "p_terrain": 0.03554779384530227,
+          "p_energy": 1.0,
+          "utility": 0.010174349601146465
+        }
+      ]
+    }
+  ]
+}

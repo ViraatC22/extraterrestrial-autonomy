@@ -1,0 +1,1 @@
+[{"name":"train","size":1000,"first":100000,"last":100999,"quarantined":[]},{"name":"validation","size":200,"first":200000,"last":200199,"quarantined":[]},{"name":"test","size":496,"first":300004,"last":300499,"quarantined":[300000,300001,300002,300003]},{"name":"ood","size":496,"first":400004,"last":400499,"quarantined":[400000,400001,400002,400003]}]
