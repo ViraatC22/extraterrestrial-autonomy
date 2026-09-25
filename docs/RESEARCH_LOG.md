@@ -225,3 +225,31 @@ results CSV. It is not an analysed outcome in the confirmatory plan, so no
 reported result depends on it, but anyone reading that column should know what
 it means. The interface now labels it "P(fail) last trip assessed". The engine
 is unchanged so the committed column still reproduces.
+
+## 2026-09-25 - Audit: the "hardware faults" result is not a fault effect
+
+Found while wiring fault events into mission replay. `FaultSchedule.draw` places
+fault times uniformly over the full horizon (800 steps), but missions in the
+fault condition end after a median of 91 steps, so most scheduled faults never
+fire. `scripts/audit_confirmatory.py` re-ran all 150 missions in that condition
+(100% reproduce the committed rows) and counted faults that actually fired:
+
+- a fault fired in 16% of adaptive, 26% of fixed, 10% of distance-only missions;
+- of the 10 discordant seeds behind the one significant contrast
+  (+0.200, p_Holm = 0.020), a fault fired in both missions on 1 and in neither
+  on 5.
+
+The contrast is a real statistic but cannot be attributed to faults. The plain
+Mars condition showed exactly zero effect; the fault condition differs from it
+mainly through the shifted random stream logged above. H3 is therefore **not
+supported**, and the paper, README, RESULTS.md and interface have been
+corrected - they previously described it as adaptation surviving hardware
+faults, with a mechanism attached.
+
+The same script records the learner-calibration audit (validation seeds only):
+95% coverage 0.20 under the committed rule vs 0.85 corrected.
+
+A fair test of H3 needs faults scheduled within the time a mission actually
+lasts. That, the calibration fix, and independent random streams belong in a
+separately declared v2 study on held-out seeds not yet used (test 300054+,
+OOD 400054+).

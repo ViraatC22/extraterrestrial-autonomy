@@ -18,7 +18,7 @@ const CONDITION_LABELS: Record<string, string> = {
   moon_id: "Moon (in-distribution)",
   mars_ood: "Mars (OOD)",
   mars_high_uncertainty: "Mars · 1.5× dispersion",
-  mars_faults: "Mars · faults",
+  mars_faults: "Mars · faults scheduled",
   mars_comm_delay: "Mars · comm delay",
 };
 const PLANNER_LABELS: Record<string, string> = {

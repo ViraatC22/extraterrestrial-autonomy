@@ -52,7 +52,7 @@ CONDITION_LABELS = {
     "moon_id": "Moon (in-distribution)",
     "mars_ood": "Mars (OOD)",
     "mars_high_uncertainty": "Mars, 1.5x slip dispersion",
-    "mars_faults": "Mars, fault injection",
+    "mars_faults": "Mars, faults scheduled",
     "mars_comm_delay": "Mars, 20-step intervention delay",
 }
 CONDITION_SHORT = {

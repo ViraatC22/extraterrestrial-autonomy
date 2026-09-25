@@ -29,7 +29,7 @@ const CONDITION_LABELS: Record<string, string> = {
   moon_id: "Moon (in-distribution)",
   mars_ood: "Mars (out-of-distribution)",
   mars_high_uncertainty: "Mars · 1.5× slip dispersion",
-  mars_faults: "Mars · hardware faults",
+  mars_faults: "Mars · faults scheduled",
   mars_comm_delay: "Mars · 20-step comm delay",
 };
 const PLANNER_LABELS: Record<string, string> = {
@@ -50,7 +50,7 @@ const SHORT_COND: Record<string, string> = {
   moon_id: "Moon ID",
   mars_ood: "Mars OOD",
   mars_high_uncertainty: "Mars 1.5× disp.",
-  mars_faults: "Mars faults",
+  mars_faults: "Mars faults sched.",
   mars_comm_delay: "Mars comm delay",
 };
 
@@ -188,8 +188,9 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
           </div>
           <p className="mt-1.5 font-mono text-[9px] leading-relaxed text-slate-500">
             No planner dominates. In three of the four Martian conditions the distance-only
-            planner survives most often but returns the least science; under hardware faults
-            the adaptive planner survives most often.
+            planner survives most often but returns the least science. In the condition
+            labelled &ldquo;hardware faults&rdquo; (where faults mostly did not fire) the
+            adaptive planner survives most often.
           </p>
         </Panel>
         <Panel title="Paired effect: adaptive − fixed (95% CI, Holm-corrected p)">
@@ -516,10 +517,11 @@ export default function Experiments() {
                     hypothesis and Martian success was exactly tied. The
                     validation-set advantage did not replicate on held-out seeds.
                   </li>
-                  <li className="text-amber-300">
-                    H3 partially supported — success under injected faults rose, the
-                    only contrast surviving Holm correction; adaptation won every
-                    discordant seed.
+                  <li className="text-rose-300">
+                    H3 not supported as stated. The &ldquo;hardware faults&rdquo; contrast
+                    survived correction, but a post-hoc audit found faults fired in only
+                    16&ndash;26% of those missions, and in neither mission on 5 of the 10
+                    seeds that drove it. It is not a fault effect.
                   </li>
                   <li className="text-slate-400">H4 — reported descriptively above.</li>
                 </ul>

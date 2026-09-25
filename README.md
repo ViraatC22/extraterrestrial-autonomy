@@ -30,11 +30,13 @@ reproducibility, but it is no longer the primary research question.
 ### Headline outcome
 
 Adaptation was **neutral in distribution** (lunar success 0.92 vs 0.90) and did **not** improve
-science return under domain shift, contradicting the stated hypothesis H2. The one contrast
-surviving Holm correction was mission success under injected hardware faults, which rose from 0.26
-to 0.46 (adaptation won all ten discordant seeds). Across Martian conditions adaptation consistently
-bought **survival rather than productivity**, by making energy predictions accurate enough that the
-robot turned back in time.
+science return under domain shift, contradicting hypothesis H2. The one contrast that survived Holm
+correction, success in the condition labelled "hardware faults" (0.26 → 0.46), **is not a fault
+effect**. A post-hoc audit found faults fired in only 16-26% of those missions, and in neither
+mission on 5 of the 10 seeds that drove the result, so H3 is not supported either. What remains is
+a descriptive, untested pattern: adaptation trades a little science for survival. A second audit
+found the adaptive learner is about 7× overconfident. See `docs/RESEARCH_LOG.md` and
+`scripts/audit_confirmatory.py`.
 
 An unpredicted result: distance-only A* had the highest Martian success rate in three of four
 conditions while returning the least science, indicating that the risk formulation prices caution

@@ -53,9 +53,11 @@ driving the conclusions.
   hypothesis (−0.015, p = 1.000) and Martian success was exactly tied, five
   discordant seeds each way. The validation-set advantage of +0.125 to +0.167
   did not replicate on held-out seeds.
-- **H3 — partially supported.** Success under injected faults rose 0.26 → 0.46,
-  the only contrast surviving Holm correction; adaptation won all ten
-  discordant seeds.
+- **H3 — not supported as stated.** Success in the "hardware faults" condition
+  rose 0.26 → 0.46 (the only contrast surviving Holm correction). But a post-hoc
+  audit shows faults fired in only 16% of adaptive and 26% of fixed missions,
+  and in neither mission on 5 of the 10 discordant seeds. It is not evidence
+  of fault tolerance. See `scripts/audit_confirmatory.py`.
 - **H4 —** reported descriptively in the tables.
 
 ## Two findings worth stating plainly

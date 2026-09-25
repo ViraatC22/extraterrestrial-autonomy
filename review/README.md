@@ -10,9 +10,10 @@ differently, and we test whether a planner that revises its terrain model from
 its own driving does better than one that doesn't.
 
 **Headline result (from 750 missions on held-out terrain).** Adaptation did not
-improve science return (the primary hypothesis, H2, was not supported). It did
-improve mission survival under hardware faults: success rose from 0.26 to 0.46,
-Holm-corrected p = 0.020. That's the only contrast that survived correction.
+improve science return (H2 not supported). One contrast survived correction:
+success in the "hardware faults" condition, 0.26 → 0.46, Holm p = 0.020. But
+a later audit showed faults fired in only 16-26% of those missions, so it is
+not a fault effect (H3 not supported). See `docs/RESEARCH_LOG.md`.
 
 ---
 

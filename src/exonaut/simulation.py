@@ -233,8 +233,12 @@ def run_mission(
     history: list[dict] = []
     termination = TERMINATION_TIMEOUT
 
+    pending_faults: list[str] = []
     for step in range(1, config.max_steps + 1):
-        rover.apply_faults(faults, step)
+        fired = rover.apply_faults(faults, step)
+        # Faults can fire on steps that record no frame (waiting on mission
+        # control), so they are held until the next recorded frame.
+        pending_faults.extend(str(event.fault_type) for event in fired)
 
         if not rover.operational:
             termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
@@ -372,8 +376,11 @@ def run_mission(
                     "candidates": last_candidates,
                     "decision_index": decision_index,
                     "sensing_radius": rover.sensors.effective_radius(),
+                    "energy_spent": rover.power.expended,
+                    "faults": pending_faults,
                 }
             )
+            pending_faults = []
             if collect_belief and (len(history) - 1) % max(belief_stride, 1) == 0:
                 from .autonomy import risk as _risk
 
