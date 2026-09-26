@@ -37,6 +37,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = PROJECT_ROOT / "data" / "results"
 TABLE_DIR = PROJECT_ROOT / "paper" / "tables"
 FIGURE_DIR = PROJECT_ROOT / "paper" / "figures"
+# No timestamps in figure files, so a rebuild from the same data is byte-identical.
+_METADATA = {".pdf": {"CreationDate": None, "ModDate": None}, ".png": {"Software": None}}
 
 PLANNER_LABELS = {
     "astar": "Distance-only A*",
@@ -182,7 +184,7 @@ def write_outcome_figure(df: pd.DataFrame, stem: Path) -> None:
     axes[0].legend(fontsize=7, loc="upper right")
     fig.tight_layout()
     for suffix in (".pdf", ".png"):
-        fig.savefig(stem.with_suffix(suffix), dpi=180)
+        fig.savefig(stem.with_suffix(suffix), dpi=180, metadata=_METADATA[suffix])
     plt.close(fig)
 
 
@@ -221,7 +223,7 @@ def write_termination_figure(df: pd.DataFrame, stem: Path) -> None:
     axes[-1].legend(fontsize=6, loc="lower right")
     fig.tight_layout()
     for suffix in (".pdf", ".png"):
-        fig.savefig(stem.with_suffix(suffix), dpi=180)
+        fig.savefig(stem.with_suffix(suffix), dpi=180, metadata=_METADATA[suffix])
     plt.close(fig)
 
 
@@ -295,12 +297,25 @@ def main() -> None:
 
     primary = primary_analysis(df)
     secondary = secondary_analysis(df)
-    if not primary.empty:
-        write_contrast_table(primary, TABLE_DIR / f"exonaut_{tag}_primary.tex", "primary")
-        primary.to_csv(RESULTS_DIR / f"exonaut_{tag}_primary.csv", index=False)
-    if not secondary.empty:
-        write_contrast_table(secondary, TABLE_DIR / f"exonaut_{tag}_secondary.tex", "secondary")
-        secondary.to_csv(RESULTS_DIR / f"exonaut_{tag}_secondary.csv", index=False)
+    for family, frame in (("primary", primary), ("secondary", secondary)):
+        if frame.empty:
+            continue
+        write_contrast_table(frame, TABLE_DIR / f"exonaut_{tag}_{family}.tex", family)
+        committed = RESULTS_DIR / f"exonaut_{tag}_{family}.csv"
+        if tag == "main" and committed.exists():
+            # Study 1's contrast tables are locked (data/results/v1_LOCK.json):
+            # recompute and check, never overwrite.
+            old = pd.read_csv(committed)
+            numeric = old.select_dtypes("number").columns
+            pd.testing.assert_frame_equal(
+                old[numeric].reset_index(drop=True),
+                frame[numeric].reset_index(drop=True),
+                check_dtype=False,
+                rtol=1e-12,
+                atol=1e-12,
+            )
+        else:
+            frame.to_csv(committed, index=False)
 
     write_outcome_figure(df, FIGURE_DIR / f"exonaut_{tag}_outcomes")
     write_termination_figure(df, FIGURE_DIR / f"exonaut_{tag}_terminations")

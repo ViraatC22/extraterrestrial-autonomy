@@ -14,7 +14,7 @@
  * boundary line always marks where simulation stops.
  */
 
-import { useLayoutEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
 
 import { LAYER_BY_KEY, layerUnit } from "@/lib/layers";
@@ -218,6 +218,8 @@ export function TerrainMesh({
     geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(position.count * 3), 3));
     return geo;
   }, [terrain]);
+  // built here rather than in JSX, so React Three Fiber will not free it
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   // Colours change far more often than geometry (every belief snapshot), so
   // they are rewritten in place, after render, rather than rebuilding the mesh.
@@ -331,6 +333,7 @@ export function Surroundings({ terrain }: { terrain: TerrainLayers }) {
     geo.computeVertexNormals();
     return geo;
   }, [terrain]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <mesh geometry={geometry} receiveShadow>

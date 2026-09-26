@@ -22,7 +22,7 @@ reproducibility, but it is no longer the primary research question.
 
 - The seed protocol and lunar/Martian priors are frozen and checksummed; eight seeds consumed by an
   early engineering pilot are permanently quarantined and excluded from all confirmatory results.
-- The implementation and regression suite pass 124 tests.
+- The implementation and regression suite pass 190 tests.
 - The confirmatory run is complete: 750 missions on held-out seeds, committed as
   `data/results/exonaut_main.csv` with a metadata sidecar recording the git commit, split checksum,
   quarantine list and library versions.
@@ -42,8 +42,17 @@ found the adaptive learner is about 7× overconfident. See `docs/RESEARCH_LOG.md
 behind `engine="v2"`; the default stays v1, and all 750 committed missions still reproduce
 (`scripts/verify_v1_reproduction.py`). On validation seeds, the fixes work. But with them in place,
 adaptation's survival advantage largely disappears. See `docs/EXPLORATION_V2.md`, which is
-generated from the data. A v2 confirmatory study is drafted, not frozen, in
-`docs/V2_VALIDATION_PLAN.md`, with the decisions it still needs.
+generated from the data.
+
+**Study 2 (planned, not run).** Study 1's results are locked (`data/results/v1_LOCK.json`).
+Study 2 will test one question - does online slip-belief adaptation improve safe mission
+completion under terrain-model shift - on fresh seeds that the terrain generator refuses to
+build until a frozen plan authorizes it. Preparation on development seeds only:
+`docs/CALIBRATION_AUDIT.md` (the learner was miscalibrated even in distribution, mostly from
+terrain misclassification; no pre-specified correction met the acceptance rule on Mars),
+`docs/POWER_ANALYSIS.md` (230 or 260 matched seeds, depending on the calibration choice),
+`docs/SIMULATOR_VALIDATION.md`, `docs/V2_HYPOTHESES_DRAFT.md`. The gate is
+`docs/V2_FREEZE_CHECKLIST.md`; it is blocked on the calibration decision.
 
 An unpredicted result: distance-only A* had the highest Martian success rate in three of four
 conditions while returning the least science, indicating that the risk formulation prices caution

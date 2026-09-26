@@ -119,7 +119,9 @@ smaller. This is not a mediation analysis and makes no causal claim about mechan
 
 ## Owner decisions still open
 
-1. Accept the calibration method selected in `CALIBRATION_AUDIT.md`, or not.
+1. Calibration: no candidate met the pre-specified rule (`CALIBRATION_AUDIT.md` §4). Choose
+   option A (freeze with the confusion-aware learner M3, Mars shortfall reported), B (Moon-fit
+   scale M2a with a logged exception) or C (develop further on development seeds).
 2. Confirm the minimum effect of interest used for the sample size (`POWER_ANALYSIS.md`).
 3. Confirm H1 two-sided and H2 two-sided (rather than directional / non-inferiority).
 4. Confirm that faults and higher dispersion stay exploratory.

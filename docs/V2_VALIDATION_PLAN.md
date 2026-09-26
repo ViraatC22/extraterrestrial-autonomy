@@ -1,5 +1,12 @@
 # Engine v2: validation status and a draft confirmatory plan
 
+> **Superseded on 2026-09-26** by `V2_HYPOTHESES_DRAFT.md` (question, hypotheses, outcomes),
+> `CALIBRATION_AUDIT.md` (learner calibration), `POWER_ANALYSIS.md` (sample size),
+> `SIMULATOR_VALIDATION.md` (pre-freeze checks) and `V2_FREEZE_CHECKLIST.md` (the gate).
+> Two things below are out of date: v2 now uses fresh confirmatory seeds from
+> `data/splits/v2/seed_manifest.json`, not the unused v1 held-out seeds (section 4), and comm
+> delay is removed from the confirmatory design. Kept as the record of the earlier draft.
+
 Status: **DRAFT. Not frozen. No v2 confirmatory run has been made or scheduled.**
 Sections 3 and 4 hold decisions that belong to the project owner. Nothing in this
 file may be treated as pre-specified until section 5's freeze has happened and

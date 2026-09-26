@@ -117,6 +117,12 @@ def learner_calibration() -> tuple[pd.DataFrame, dict]:
     with ProcessPoolExecutor(max_tasks_per_child=1) as ex:
         rows = [x for chunk in ex.map(_calibration_job, jobs) for x in chunk]
     df = pd.DataFrame(rows, columns=["corrected", "seed", "cls", "n", "mean", "sd", "truth"])
+    return df, calibration_stats(df)
+
+
+def calibration_stats(df: pd.DataFrame) -> dict:
+    """Summary of the learner-calibration audit table (committed vs corrected rule)."""
+    df = df.copy()
     df["covered"] = (df["mean"] - df["truth"]).abs() <= 1.96 * df["sd"]
     df["abs_error"] = (df["mean"] - df["truth"]).abs()
     stats = {}
@@ -125,15 +131,26 @@ def learner_calibration() -> tuple[pd.DataFrame, dict]:
         stats[f"Coverage{name}"] = float(sub.covered.mean())
         stats[f"MedianError{name}"] = float(sub.abs_error.median())
         stats[f"MedianSd{name}"] = float(sub.sd.median())
-    stats["CalibrationMissions"] = len(VALIDATION_SEEDS)
-    return df, stats
+    stats["CalibrationMissions"] = int(df["seed"].nunique())
+    return stats
 
 
 def main() -> None:
-    faults, f = fault_exposure()
-    faults.to_csv(RESULTS / "audit_fault_exposure.csv", index=False)
-    calib, c = learner_calibration()
-    calib.to_csv(RESULTS / "audit_learner_calibration.csv", index=False)
+    """Re-run the audits (slow) and write their tables, or with --render only
+    rebuild the macros from the committed tables (what build_all_figures does;
+    the audit tables are part of the locked v1 record)."""
+    import sys
+
+    if "--render" in sys.argv:
+        faults = pd.read_csv(RESULTS / "audit_fault_exposure.csv")
+        rows = pd.read_csv(RESULTS / "exonaut_main.csv")
+        f = fault_exposure_stats(faults, rows[rows.condition == "mars_faults"])
+        c = calibration_stats(pd.read_csv(RESULTS / "audit_learner_calibration.csv"))
+    else:
+        faults, f = fault_exposure()
+        faults.to_csv(RESULTS / "audit_fault_exposure.csv", index=False)
+        calib, c = learner_calibration()
+        calib.to_csv(RESULTS / "audit_learner_calibration.csv", index=False)
 
     def pct(x):
         return f"{100 * x:.0f}\\%"

@@ -73,7 +73,7 @@ prints setup steps if it can't find one.
 Checks:
 
 ```bash
-pytest tests/ -q                       # 124 tests
+pytest tests/ -q                       # 190 tests
 ruff check src scripts tests app       # Python lint
 cd web && npm run lint && npm run typecheck && npm run build
 ```
@@ -155,6 +155,10 @@ the decisions it needs are listed there.
   browser. Requests that expose an unused held-out seed are logged to
   `data/splits/heldout_access_log.jsonl`, so a future study can show its seeds
   were untouched.
+- One WebGL context per page for the scene, reused across presentation mode, focus mode,
+  layers, cameras and paired-replay switching. `stress_webgl.py` cycles all of them against
+  the production build and counts contexts: the latest result is in
+  `webgl_stress_result.json` (none lost; the count stays flat).
 - The demonstration mission is chosen by a written rule
   (`scripts/select_demo_mission.py`), and the interface shows the rule.
 - Visual-only elements (vehicle motion between cells, wheel rotation, dust,

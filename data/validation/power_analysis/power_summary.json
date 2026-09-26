@@ -1,0 +1,413 @@
+{
+  "pool_size_available": 1000,
+  "M3": {
+    "alpha": 0.05,
+    "target_power": 0.9,
+    "min_effect": 0.1,
+    "mars": {
+      "n_seeds": 200,
+      "success_adaptive": 0.575,
+      "success_fixed": 0.505,
+      "only_adaptive": 24,
+      "only_fixed": 10,
+      "psi_hat": 0.17,
+      "psi_upper80": 0.20669493461399685,
+      "psi_lower80": 0.13868075646850925,
+      "delta_hat_not_used_for_sizing": 0.07
+    },
+    "moon": {
+      "n_seeds": 200,
+      "success_adaptive": 0.95,
+      "success_fixed": 0.955,
+      "only_adaptive": 5,
+      "only_fixed": 6,
+      "psi_hat": 0.055,
+      "psi_upper80": 0.07951645069894114,
+      "psi_lower80": 0.037732587275953466,
+      "delta_hat_not_used_for_sizing": -0.005
+    },
+    "sample_size_table": [
+      {
+        "delta": 0.05,
+        "psi": 0.17,
+        "n_power80": 570,
+        "n_power90": 740
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.2,
+        "n_power80": 660,
+        "n_power90": 870
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.20669493461399685,
+        "n_power80": 680,
+        "n_power90": 900
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.3,
+        "n_power80": 980,
+        "n_power90": null
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.4,
+        "n_power80": null,
+        "n_power90": null
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.5,
+        "n_power80": null,
+        "n_power90": null
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.17,
+        "n_power80": 260,
+        "n_power90": 330
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.2,
+        "n_power80": 300,
+        "n_power90": 390
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.20669493461399685,
+        "n_power80": 310,
+        "n_power90": 400
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.3,
+        "n_power80": 440,
+        "n_power90": 580
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.4,
+        "n_power80": 580,
+        "n_power90": 770
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.5,
+        "n_power80": 720,
+        "n_power90": 960
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.17,
+        "n_power80": 150,
+        "n_power90": 190
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.2,
+        "n_power80": 170,
+        "n_power90": 220
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.20669493461399685,
+        "n_power80": 180,
+        "n_power90": 230
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.3,
+        "n_power80": 250,
+        "n_power90": 330
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.4,
+        "n_power80": 330,
+        "n_power90": 440
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.5,
+        "n_power80": 410,
+        "n_power90": 540
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.17,
+        "n_power80": 90,
+        "n_power90": 120
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.2,
+        "n_power80": 110,
+        "n_power90": 140
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.20669493461399685,
+        "n_power80": 110,
+        "n_power90": 150
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.3,
+        "n_power80": 160,
+        "n_power90": 210
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.4,
+        "n_power80": 220,
+        "n_power90": 280
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.5,
+        "n_power80": 270,
+        "n_power90": 350
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.17,
+        "n_power80": 60,
+        "n_power90": 80
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.2,
+        "n_power80": 80,
+        "n_power90": 90
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.20669493461399685,
+        "n_power80": 80,
+        "n_power90": 100
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.3,
+        "n_power80": 120,
+        "n_power90": 150
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.4,
+        "n_power80": 150,
+        "n_power90": 200
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.5,
+        "n_power80": 190,
+        "n_power90": 250
+      }
+    ],
+    "recommended_n": 230,
+    "recommendation_rule": "smallest n in steps of 10 with exact power >= 0.9 for delta = 0.1 at the one-sided 90% upper Wilson bound of the Mars discordance rate",
+    "power_at_recommended": {
+      "exact": 0.9115957614534027,
+      "simulated": 0.9149,
+      "exact_at_psi_hat": 0.959454727652515
+    },
+    "mars_science": {
+      "sd_paired_difference": 0.06391088632303961,
+      "detectable_difference_80pct_power_at_n": 0.011806325695326086
+    }
+  },
+  "M2a": {
+    "alpha": 0.05,
+    "target_power": 0.9,
+    "min_effect": 0.1,
+    "mars": {
+      "n_seeds": 200,
+      "success_adaptive": 0.57,
+      "success_fixed": 0.56,
+      "only_adaptive": 21,
+      "only_fixed": 19,
+      "psi_hat": 0.2,
+      "psi_upper80": 0.23862592967657265,
+      "psi_lower80": 0.16626106221661474,
+      "delta_hat_not_used_for_sizing": 0.01
+    },
+    "moon": {
+      "n_seeds": 200,
+      "success_adaptive": 0.965,
+      "success_fixed": 0.955,
+      "only_adaptive": 6,
+      "only_fixed": 4,
+      "psi_hat": 0.05,
+      "psi_upper80": 0.0736732640918856,
+      "psi_lower80": 0.03365722374789547,
+      "delta_hat_not_used_for_sizing": 0.01
+    },
+    "sample_size_table": [
+      {
+        "delta": 0.05,
+        "psi": 0.2,
+        "n_power80": 660,
+        "n_power90": 870
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.23862592967657265,
+        "n_power80": 780,
+        "n_power90": null
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.3,
+        "n_power80": 980,
+        "n_power90": null
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.4,
+        "n_power80": null,
+        "n_power90": null
+      },
+      {
+        "delta": 0.05,
+        "psi": 0.5,
+        "n_power80": null,
+        "n_power90": null
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.2,
+        "n_power80": 300,
+        "n_power90": 390
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.23862592967657265,
+        "n_power80": 360,
+        "n_power90": 470
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.3,
+        "n_power80": 440,
+        "n_power90": 580
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.4,
+        "n_power80": 580,
+        "n_power90": 770
+      },
+      {
+        "delta": 0.075,
+        "psi": 0.5,
+        "n_power80": 720,
+        "n_power90": 960
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.2,
+        "n_power80": 170,
+        "n_power90": 220
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.23862592967657265,
+        "n_power80": 200,
+        "n_power90": 260
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.3,
+        "n_power80": 250,
+        "n_power90": 330
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.4,
+        "n_power80": 330,
+        "n_power90": 440
+      },
+      {
+        "delta": 0.1,
+        "psi": 0.5,
+        "n_power80": 410,
+        "n_power90": 540
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.2,
+        "n_power80": 110,
+        "n_power90": 140
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.23862592967657265,
+        "n_power80": 130,
+        "n_power90": 170
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.3,
+        "n_power80": 160,
+        "n_power90": 210
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.4,
+        "n_power80": 220,
+        "n_power90": 280
+      },
+      {
+        "delta": 0.125,
+        "psi": 0.5,
+        "n_power80": 270,
+        "n_power90": 350
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.2,
+        "n_power80": 80,
+        "n_power90": 90
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.23862592967657265,
+        "n_power80": 90,
+        "n_power90": 120
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.3,
+        "n_power80": 120,
+        "n_power90": 150
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.4,
+        "n_power80": 150,
+        "n_power90": 200
+      },
+      {
+        "delta": 0.15,
+        "psi": 0.5,
+        "n_power80": 190,
+        "n_power90": 250
+      }
+    ],
+    "recommended_n": 260,
+    "recommendation_rule": "smallest n in steps of 10 with exact power >= 0.9 for delta = 0.1 at the one-sided 90% upper Wilson bound of the Mars discordance rate",
+    "power_at_recommended": {
+      "exact": 0.9034522254744615,
+      "simulated": 0.90055,
+      "exact_at_psi_hat": 0.9504267676086879
+    },
+    "mars_science": {
+      "sd_paired_difference": 0.07213293742128668,
+      "detectable_difference_80pct_power_at_n": 0.012532877112567673
+    }
+  }
+}

@@ -384,3 +384,84 @@ A reviewer suggested the chain sensing -> knowledge -> belief -> belief error
 is belief minus simulator truth, which the rover never has, so risk is
 computed from belief, not from error. The figure added to the paper draws
 error as an evaluation branch and says why.
+
+## 2026-09-26 - Study 1 locked; Study 2 seeds fresh and guarded
+
+**v1 is now a locked record.** `data/results/v1_LOCK.json` holds a SHA-256 for every Study 1
+artifact (results, contrasts, metadata, audit tables, design, splits, quarantine, priors, the
+analysis plan), with the engine profile, generating commit, design digest and split checksum.
+`tests/test_v1_lock.py` fails if any of them changes. A full re-run
+(`scripts/verify_v1_reproduction.py`, record in `data/results/v1_reproduction.json`) reproduced
+750/750 missions before the lock. The paper-asset script no longer writes Study 1's contrast
+tables; it recomputes and checks them.
+
+**v2 confirmatory seeds are new.** The v1 held-out splits cannot guarantee untouched terrain
+(100 seeds were used in Study 1, and interface access before 2026-09-25 was not recorded), so
+`data/splits/v2/seed_manifest.json` draws two pools of 1,000 seeds from [1,000,000, 100,000,000)
+with master seed 20260925 - disjoint from every v1 split - and reuses the v1 train and
+validation splits for development. The terrain generator itself refuses a v2 confirmatory seed
+unless `docs/PREREGISTRATION_V2.md` exists and the run is authorized with that file's hash; every
+attempt is logged. No v2 confirmatory terrain has been built.
+
+## 2026-09-26 - Simulator validation suite: two defects
+
+Writing `tests/test_simulator_validation.py` (the pre-freeze checklist, `SIMULATOR_VALIDATION.md`)
+found:
+
+1. **Reported minimum charge (v1).** The mission loop could end straight after a draw (a
+   sensing sweep, or a move refused for energy) without updating `min_charge`, so the reported
+   minimum could sit above the final charge. Outcomes are unaffected; Study 1 reported
+   `min_charge` only descriptively. Fixed for v2; v1 left as it was so its rows reproduce.
+2. **`mission_layout` records outcomes.** It stores each target's final visited/abandoned
+   status, so it is not a pure description of the generated mission. Not an engine defect;
+   noted because an early version of a test compared layouts and was wrong for that reason.
+
+The suite also documents three idealisations: the learner removes slope using the true slope
+of the cell driven (standing in for a noise-free attitude sensor); the confusion-aware learner
+uses the nominal classifier error rate; slip is spatially independent.
+
+## 2026-09-26 - Calibration audit of the slip learner
+
+(`CALIBRATION_AUDIT.md`.) Diagnosis on train seeds found the v2 learner's 95% class-mean
+intervals covered the truth about half the time on Mars and about two-thirds on the Moon - it
+is miscalibrated even in distribution. Ablations with simulator truth attributed most of it to
+**misclassification**: about 10% of slip readings are filed under the wrong class, which
+wrecks rare classes (Mars has almost no true bedrock, but the "bedrock" belief absorbed
+thousands of misread readings). The rest, on Mars, is the lunar prior's conflict with Martian
+loose fines - the domain shift itself.
+
+Six candidate fixes and an acceptance rule were written and committed before any validation
+run. One amendment (A1) was made before validation, from train data: the confusion-aware
+method's first form leaked every reading into every class, and was replaced by the standard
+mixture responsibility. The single validation evaluation then found **no candidate accepted**:
+the confusion-aware learner (M3) is calibrated on the Moon at every level but reaches 0.72 at
+95% on Mars; the closest scaled candidate (M2a) reaches 0.945 on Mars but over-covers at 50%
+and widens every interval about fivefold. The rule was not changed after seeing this. The v2
+freeze is blocked until the project owner chooses among the documented options.
+
+## 2026-09-26 - Comm delay removed from the v2 confirmatory design
+
+Under v2 the rover almost never asks for help, and help requests are the only mechanism delay
+has in this model, so the condition produced missions identical to plain Mars. It is dropped
+from the v2 confirmatory design and kept as an exploratory Scenario Lab variable. No
+communications mechanism was invented to keep it (`V2_HYPOTHESES_DRAFT.md`).
+
+## 2026-09-26 - WebGL context loss: cause and fix
+
+A screenshot run had shown one GPU context-loss recovery. Cause: presentation mode rendered the
+3D scene in a separate React tree, so every toggle destroyed and created a WebGL context, and
+browsers cap live contexts. The scene now stays mounted and presentation mode only restyles its
+container. Also: one shared environment map per renderer instead of one per vehicle, cloned
+vehicle materials disposed on unmount, terrain geometry disposed when a mission changes.
+`review/stress_webgl.py` cycles presentation, focus, layers, cameras and paired replay and
+counts contexts created and lost.
+
+## 2026-09-26 - Formal power analysis for Study 2
+
+(`POWER_ANALYSIS.md`.) Supersedes the rough 80-270 estimate in the 2026-09-25 entry, which
+answered a different question (interval width, uncalibrated v2, 40 seeds). The planned
+primary test - McNemar exact, two-sided, alpha 0.05, Mars success - was powered exactly for
+a minimum effect of interest of 0.10 fixed in advance, at the upper 90% bound of the
+discordance rate estimated on all 200 validation seeds, for the two leading calibration
+candidates: 230 matched seeds for M3, 260 for M2a, at power 0.90. The validation effect
+estimates were recorded and deliberately not used for sizing.

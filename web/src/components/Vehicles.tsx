@@ -61,9 +61,16 @@ function terrainPose(t: TerrainLayers, row: number, col: number, yaw: number, sp
  * body's sky and ground colours plus the sun, applied to vehicles only - the
  * terrain keeps its own lighting.
  */
+/** One environment texture per renderer and body, shared by every vehicle. */
+const ENVIRONMENTS = new WeakMap<THREE.WebGLRenderer, Map<string, THREE.Texture>>();
+
 function useVehicleEnvironment(body: string): THREE.Texture {
   const gl = useThree((s) => s.gl);
-  const env = useMemo(() => {
+  return useMemo(() => {
+    const perRenderer = ENVIRONMENTS.get(gl) ?? new Map<string, THREE.Texture>();
+    ENVIRONMENTS.set(gl, perRenderer);
+    const cached = perRenderer.get(body);
+    if (cached) return cached;
     const sky = SKY[body] ?? SKY.moon;
     const pmrem = new THREE.PMREMGenerator(gl);
     const scene = new THREE.Scene();
@@ -95,10 +102,12 @@ function useVehicleEnvironment(body: string): THREE.Texture {
     const texture = pmrem.fromScene(scene, 0.02).texture;
     pmrem.dispose();
     sphere.dispose();
+    (shell.material as THREE.Material).dispose();
+    sun.geometry.dispose();
+    (sun.material as THREE.Material).dispose();
+    perRenderer.set(body, texture);
     return texture;
   }, [gl, body]);
-  useEffect(() => () => env.dispose(), [env]);
-  return env;
 }
 
 /**
@@ -155,6 +164,19 @@ function useDressedModel(url: string, body: string, dustAmount: number) {
     });
     return copy;
   }, [scene, env, body, dustAmount]);
+  // The clone shares geometry with the cached glTF but owns its materials;
+  // release them when this vehicle goes away or is rebuilt.
+  useEffect(
+    () => () => {
+      const seen = new Set<THREE.Material>();
+      model.traverse((node) => {
+        const mesh = node as THREE.Mesh;
+        if (mesh.isMesh) seen.add(mesh.material as THREE.Material);
+      });
+      seen.forEach((m) => m.dispose());
+    },
+    [model],
+  );
   return model;
 }
 

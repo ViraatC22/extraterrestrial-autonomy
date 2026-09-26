@@ -1,0 +1,135 @@
+generated_at_commit: 2a82cb889bbf4c8b94be4f0108f6d7c1945662f5
+note: 'Every generated file the paper uses, with the script, inputs and hashes that produced it. Regenerate
+  with: python scripts/build_all_figures.py'
+steps:
+- step: study1_assets
+  command: python scripts/make_exonaut_paper_assets.py
+  script_sha256: 17b7f0751a24ed89545251c05241129eb8fce82a1b422544467ff5e99d21e820
+  inputs:
+    data/results/exonaut_main.csv: a401c6ee4681e1cdd435357e9aa1b9ee30017dfd81b16e7e1863102d234c03ba
+    data/results/exonaut_main.metadata.json: b4cdbed91fa98f06216fa8df826795ac838eecf759d53f7973f6326bd719078f
+  outputs:
+    paper/tables/exonaut_main_macros.tex: 384638c42ce97c95b3decfe54de12b0947b232f5bd0006278b9a10e2bd1dad80
+    paper/tables/exonaut_main_descriptive.tex: 1ce59c36534b45b3e86c81ab431550b41dec736fb85e1995df1ac31dd6c44647
+    paper/tables/exonaut_main_primary.tex: 1a56d45253200474e9d174cae3087f716b767e1b869272e124258b30421b6fae
+    paper/tables/exonaut_main_secondary.tex: 9c96db3af0688cd54415acfc04a18f19a6e0ee20673f74daf3f44b8aa11c062f
+    paper/tables/exonaut_main_gap.tex: ba94c3e711449c432d2afc2408a47178b2815b3de1baf4b08d7bc2812a85a3c9
+    paper/figures/exonaut_main_outcomes.pdf: b588d0beee6dfd53d1a2a1089d09acbaaf9ffae989dc4bc5a838fcc9791da769
+    paper/figures/exonaut_main_terminations.pdf: 8302fbb6b34567f77c92590a51181cab43636545d0216843d00e3c0d7b1954a3
+- step: study1_audit_macros
+  command: python scripts/audit_confirmatory.py --render
+  script_sha256: 41bf8060ec16f2a36febffedac4da023366f5edcb7571086a182d70c58e4201b
+  inputs:
+    data/results/audit_fault_exposure.csv: 2594d6127a08e0774f66ac9f5afc3fb4cb8f0f8eee07ce223711a05883b5fb2b
+    data/results/audit_learner_calibration.csv: fa7b25b768f4ab8a195ef74f78c4014b0a072fb0c55f999312aba4af3618bd7e
+    data/results/exonaut_main.csv: a401c6ee4681e1cdd435357e9aa1b9ee30017dfd81b16e7e1863102d234c03ba
+  outputs:
+    paper/tables/exonaut_audit_macros.tex: f1e9dbb770b1ca6d5c9f984e64c7d4d57ad00c7911f728372e5b88c91a955d85
+- step: calibration
+  command: python scripts/calibration_paper_assets.py
+  script_sha256: b92214b38fc602ee0673b9015a5eb7307af4bf53cfd29c50c54dded6af484ad2
+  inputs:
+    data/validation/calibration/diagnose_coverage.csv: a1268012473b77aae0e645c6fda5f411fa4f0f73d743176dd0465849dd5e2994
+    data/validation/calibration/diagnose_predictive.csv: 94dc4f9d8d19efbeea1a6f74d3098d5f4d82313cb916b7da010a2761413bbcd0
+    data/validation/calibration/summary.json: a123937b8c2636b2ea3b0856c02fe5bb8b9e907aac9da69e19f6ac2545530d1a
+    data/validation/calibration/fit.json: 7d9cb4ce92f6f89f989ea342470610f4bfd03a20ba88c4f303cd46ebe2c7b9d3
+    data/validation/calibration/evaluate_coverage.csv: 01a87bccfd12b31f5eda3de2679bfc1f3f939a6641bdb10a74b9713af1c8e70e
+    data/validation/calibration/evaluate_coverage_by_class.csv: 72788ebc2e2b12e6c0ecc26679bd654eeb79984b6c0dcc295f01da4bb0c175c8
+    data/validation/calibration/evaluate_predictive.csv: 1d2381e2546861adde0e098f116491a43807eb86a1ab45ca81b133cc0da9eaf7
+    data/validation/calibration/selection.json: b9017b39895f1bd8c936d5667e6843fbae56776324d918fc2ecb45d9f95405cd
+  outputs:
+    paper/tables/exonaut_calibration_macros.tex: 8603b701710991e8894baa7b0e7bdc8f4059272fc9333e44865d07837b20c55e
+    paper/figures/v2_calibration_curve.pdf: bab72b30193c58bd94362427f18d0bcb2bd982e5cd7ab396955cdfb396e5dd2b
+    paper/figures/v2_calibration_by_class.pdf: b414e8b7e3e191cf35f6d83320fa8e7f6f9a9bcf6ccc1f9940dc4a15acf3e26b
+    data/validation/calibration/RESULTS.md: 48fbca7a2051f980dc9638a06471d91c7ecc76eb8c7e4f3975f91daeadeb66fc
+- step: power
+  command: python scripts/power_analysis.py analyze
+  script_sha256: 4b858cd2808d380299c61270115188f7ca03344428c7316c94fdc1df908888d5
+  inputs:
+    data/validation/power_analysis/validation_missions.csv: 981f62a8f8f6c061c180dc0bc2ea3eb74ae72f9765595adaabc3923d7b10f5c0
+  outputs:
+    paper/tables/exonaut_power_macros.tex: 8c728d91dd82081f1bcb73106da524607a71a4fed7efdc6beeb1f421815d7882
+    paper/figures/v2_power_curve.pdf: abf4fa150f529ea10cdad447c2c5028708a53a64ed1043afa8cfd217ae0119d4
+    data/validation/power_analysis/power_summary.json: 52f55f837851a644f1200c70eddec489a00416aee6cc4e6c32c0cb63b97ddc6b
+    data/validation/power_analysis/power_grid.csv: 56ed5d45c121f02a08598db15e9a0ce23e4782eaddd074e6defe47eef80f12be
+    data/validation/power_analysis/sample_size_table.csv: 11bb2e63702603861e9bc518f4cecd75673ff19091addf87f5cc983135b46166
+    data/validation/power_analysis/RESULTS.md: 7e495e7723d0abd696980b34acb61fc2fb90185c6645c3f28d8396238cf18322
+- step: exploration_v2
+  command: python scripts/analyze_exploration.py
+  script_sha256: dedd10411112337c75410a70165922bc0f17fe3bb226fca333027dd8ac463788
+  inputs:
+    data/results/exploration_v2_validation.csv: c289972724e28d39a9be3ff43c74acee3e52934ccc6249e6d1fae0e9c9c84a64
+  outputs:
+    docs/EXPLORATION_V2.md: f601e0be120b970df549e998f5591f7efe410359cc74f96d7103b37a530026e0
+    data/results/exploration_v2_summary.json: 1df07a1825bb33e567ef640ab9db8af7788f3efa7afdb6e2cacb66e24a72ec34
+paper_macros:
+  AuditCalibrationMissions: paper/tables/exonaut_audit_macros.tex
+  AuditCoverageCommitted: paper/tables/exonaut_audit_macros.tex
+  AuditCoverageCorrected: paper/tables/exonaut_audit_macros.tex
+  AuditDiscordant: paper/tables/exonaut_audit_macros.tex
+  AuditDiscordantBoth: paper/tables/exonaut_audit_macros.tex
+  AuditDiscordantNone: paper/tables/exonaut_audit_macros.tex
+  AuditErrorCommitted: paper/tables/exonaut_audit_macros.tex
+  AuditErrorCorrected: paper/tables/exonaut_audit_macros.tex
+  AuditFiredAdaptive: paper/tables/exonaut_audit_macros.tex
+  AuditFiredFixed: paper/tables/exonaut_audit_macros.tex
+  AuditHorizon: paper/tables/exonaut_audit_macros.tex
+  AuditMedianSteps: paper/tables/exonaut_audit_macros.tex
+  AuditReproduced: paper/tables/exonaut_audit_macros.tex
+  AuditSdCommitted: paper/tables/exonaut_audit_macros.tex
+  CalDiagBaseMarsCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalDiagBaseMoonCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalDiagNoMisclassMarsCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalDiagNoMisclassMoonCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalMThreeMarsCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalMThreeMarsFinesCov: paper/tables/exonaut_calibration_macros.tex
+  CalMThreeMoonCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalMTwoAMarsCovFifty: paper/tables/exonaut_calibration_macros.tex
+  CalMTwoAMarsCovNinetyFive: paper/tables/exonaut_calibration_macros.tex
+  CalMisclassShareMars: paper/tables/exonaut_calibration_macros.tex
+  CalMisclassShareMoon: paper/tables/exonaut_calibration_macros.tex
+  CalScaleMTwoMoon: paper/tables/exonaut_calibration_macros.tex
+  MainCommit: paper/tables/exonaut_main_macros.tex
+  MainConditions: paper/tables/exonaut_main_macros.tex
+  MainDeltaMarsCommSuccess: paper/tables/exonaut_main_macros.tex
+  MainDeltaMarsFaultSuccess: paper/tables/exonaut_main_macros.tex
+  MainDeltaMarsOODScience: paper/tables/exonaut_main_macros.tex
+  MainDeltaMarsUncSuccess: paper/tables/exonaut_main_macros.tex
+  MainDeltaMoonIDSuccess: paper/tables/exonaut_main_macros.tex
+  MainGapAdaptive: paper/tables/exonaut_main_macros.tex
+  MainGapAstar: paper/tables/exonaut_main_macros.tex
+  MainMarsFaultAdaptiveSuccess: paper/tables/exonaut_main_macros.tex
+  MainMarsFaultFixedSuccess: paper/tables/exonaut_main_macros.tex
+  MainMarsOODAdaptiveScience: paper/tables/exonaut_main_macros.tex
+  MainMarsOODAdaptiveSuccess: paper/tables/exonaut_main_macros.tex
+  MainMarsOODAstarInterventions: paper/tables/exonaut_main_macros.tex
+  MainMarsOODAstarScience: paper/tables/exonaut_main_macros.tex
+  MainMarsOODAstarSuccess: paper/tables/exonaut_main_macros.tex
+  MainMarsOODFixedInterventions: paper/tables/exonaut_main_macros.tex
+  MainMarsOODFixedScience: paper/tables/exonaut_main_macros.tex
+  MainMarsOODFixedSuccess: paper/tables/exonaut_main_macros.tex
+  MainMissions: paper/tables/exonaut_main_macros.tex
+  MainMoonIDAdaptiveSuccess: paper/tables/exonaut_main_macros.tex
+  MainMoonIDAstarScience: paper/tables/exonaut_main_macros.tex
+  MainMoonIDAstarSuccess: paper/tables/exonaut_main_macros.tex
+  MainMoonIDFixedSuccess: paper/tables/exonaut_main_macros.tex
+  MainPMarsCommSuccess: paper/tables/exonaut_main_macros.tex
+  MainPMarsFaultSuccess: paper/tables/exonaut_main_macros.tex
+  MainPMarsOODScience: paper/tables/exonaut_main_macros.tex
+  MainPMarsUncSuccess: paper/tables/exonaut_main_macros.tex
+  MainPMoonIDSuccess: paper/tables/exonaut_main_macros.tex
+  MainPlanners: paper/tables/exonaut_main_macros.tex
+  MainSeedsPerCondition: paper/tables/exonaut_main_macros.tex
+  MainSplitChecksum: paper/tables/exonaut_main_macros.tex
+  PowAlpha: paper/tables/exonaut_power_macros.tex
+  PowMThreeRecommendedN: paper/tables/exonaut_power_macros.tex
+  PowMThreeValSeeds: paper/tables/exonaut_power_macros.tex
+  PowMTwoARecommendedN: paper/tables/exonaut_power_macros.tex
+  PowMinEffect: paper/tables/exonaut_power_macros.tex
+  PowPool: paper/tables/exonaut_power_macros.tex
+  PowTarget: paper/tables/exonaut_power_macros.tex
+figures_in_paper:
+- figures/exonaut_main_outcomes.pdf
+- figures/exonaut_main_terminations.pdf
+- figures/v2_calibration_curve.pdf
+- figures/v2_power_curve.pdf

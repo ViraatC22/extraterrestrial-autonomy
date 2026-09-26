@@ -4,19 +4,37 @@
     {
       "name": "web",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd web && node node_modules/next/dist/bin/next dev --port 3000"],
+      "runtimeArgs": [
+        "-c",
+        "cd web && node node_modules/next/dist/bin/next dev --port 3000"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd web && node node_modules/next/dist/bin/next build && node node_modules/next/dist/bin/next start --port 3000"
+      ],
       "port": 3000
     },
     {
       "name": "api",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "source $HOME/.venvs/lunar-swarm-nav/bin/activate && python -m uvicorn exonaut.api:app --host 127.0.0.1 --port 8000"],
+      "runtimeArgs": [
+        "-c",
+        "source $HOME/.venvs/lunar-swarm-nav/bin/activate && python -m uvicorn exonaut.api:app --host 127.0.0.1 --port 8000"
+      ],
       "port": 8000
     },
     {
       "name": "streamlit",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "source $HOME/.venvs/lunar-swarm-nav/bin/activate && streamlit run app/streamlit_app.py --server.headless true --server.port 8501"],
+      "runtimeArgs": [
+        "-c",
+        "source $HOME/.venvs/lunar-swarm-nav/bin/activate && streamlit run app/streamlit_app.py --server.headless true --server.port 8501"
+      ],
       "port": 8501
     }
   ]

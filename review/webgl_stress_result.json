@@ -1,0 +1,19 @@
+{
+  "base": "http://localhost:3000",
+  "pages": [
+    {
+      "page": "mission control, one mission",
+      "cycles": 12,
+      "created": 2,
+      "lost": 0
+    },
+    {
+      "page": "paired replay mars_faults:400011",
+      "created": 2,
+      "lost": 0
+    }
+  ],
+  "contexts_lost": 0,
+  "max_contexts_per_page": 2,
+  "passed": true
+}

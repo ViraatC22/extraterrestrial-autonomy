@@ -530,6 +530,7 @@ export default function MissionControl() {
     return () => window.removeEventListener("keydown", onKey);
   }, [presenting, frames.length, index, seek, belief, paired, pairedActive, selectPaired]);
 
+  const presentingNow = presenting && Boolean(terrain && summary);
   const scene = terrain ? (
     <MissionScene
       terrain={terrain}
@@ -542,64 +543,70 @@ export default function MissionControl() {
       cameraMode={cameraMode}
       decision={decision}
       showCandidates={cameraMode === "planner"}
-      hoverCell={presenting ? null : hoverCell}
-      pins={presenting ? [] : pins}
-      onHover={presenting ? () => undefined : setHoverCell}
-      onPin={presenting ? undefined : pin}
+      hoverCell={presentingNow ? null : hoverCell}
+      pins={presentingNow ? [] : pins}
+      onHover={presentingNow ? () => undefined : setHoverCell}
+      onPin={presentingNow ? undefined : pin}
     />
   ) : null;
 
-  if (presenting && terrain && summary) {
-    const target = decision?.candidates.find((c) => c.selected);
-    return (
-      <main className="relative flex h-screen flex-col overflow-hidden bg-black">
-        <div className="relative min-h-0 flex-1">
-          {scene}
+  // Presentation mode reuses the one mounted scene: only its container's
+  // classes change. Rendering it in a separate tree (as the first version
+  // did) created a new WebGL context on every toggle, and browsers cap live
+  // contexts, so repeated toggling ended in "context lost".
+  const presentationTarget = decision?.candidates.find((c) => c.selected);
+  const presentationOverlay =
+    presentingNow && summary ? (
+      <>
           <div className="pointer-events-none absolute left-4 top-4">
-            <div className="font-mono text-[13px] tracking-[0.3em] text-slate-100">EXONAUT</div>
-            <div className="mt-1 font-mono text-[11px] tracking-[0.14em] text-slate-400">
-              {summary.body.toUpperCase()} · {plannerInfo?.label ?? summary.planner} · seed {summary.seed}
-            </div>
-            {demo ? (
-              <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-sky-300">DEMONSTRATION CASE</div>
-            ) : null}
-            {layer !== "surface" ? (
-              <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-slate-300">
-                LAYER {LAYER_BY_KEY[layer].label}
-              </div>
-            ) : null}
+          <div className="font-mono text-[13px] tracking-[0.3em] text-slate-100">EXONAUT</div>
+          <div className="mt-1 font-mono text-[11px] tracking-[0.14em] text-slate-400">
+            {summary.body.toUpperCase()} · {plannerInfo?.label ?? summary.planner} · seed {summary.seed}
           </div>
-          <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
-            <div className="flex gap-1">
-              <CameraBar mode={cameraMode} onMode={setCameraMode} showKeys />
-              <button
-                onClick={() => setPresenting(false)}
-                className="rounded-sm border border-white/20 bg-black/60 px-2 py-1 font-mono text-[9px] tracking-[0.16em] text-slate-300"
-              >
-                EXIT (ESC)
-              </button>
-            </div>
-            {paired ? <PairedBar paired={paired} active={pairedActive} onSelect={selectPaired} /> : null}
-            {cameraMode === "navcam" ? <NavcamReadout frame={frame} /> : null}
-            {cameraMode === "planner" ? <RouteLegend planner riskBudget={riskBudget} /> : null}
-          </div>
-          {caption ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-9 flex justify-center">
-              <div className="rounded-sm border border-white/15 bg-black/70 px-4 py-2 font-mono text-[15px] tracking-[0.06em] text-slate-100">
-                <span className="mr-3 text-slate-500">T+{String(caption.step).padStart(4, "0")}</span>
-                {caption.text}
-              </div>
+          {demo ? (
+            <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-sky-300">DEMONSTRATION CASE</div>
+          ) : null}
+          {layer !== "surface" ? (
+            <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-slate-300">
+              LAYER {LAYER_BY_KEY[layer].label}
             </div>
           ) : null}
-          <div className="pointer-events-none absolute bottom-2 left-4 font-mono text-[9px] tracking-[0.14em] text-slate-500">
-            1–5 CAMERA · SPACE PLAY · ← → STEP · L LAYER{paired ? " · T PLANNER" : ""} · ESC EXIT
-          </div>
         </div>
+        <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
+          <div className="flex gap-1">
+            <CameraBar mode={cameraMode} onMode={setCameraMode} showKeys />
+            <button
+              onClick={() => setPresenting(false)}
+              className="rounded-sm border border-white/20 bg-black/60 px-2 py-1 font-mono text-[9px] tracking-[0.16em] text-slate-300"
+            >
+              EXIT (ESC)
+            </button>
+          </div>
+          {paired ? <PairedBar paired={paired} active={pairedActive} onSelect={selectPaired} /> : null}
+          {cameraMode === "navcam" ? <NavcamReadout frame={frame} /> : null}
+          {cameraMode === "planner" ? <RouteLegend planner riskBudget={riskBudget} /> : null}
+        </div>
+        {caption ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-9 flex justify-center">
+            <div className="rounded-sm border border-white/15 bg-black/70 px-4 py-2 font-mono text-[15px] tracking-[0.06em] text-slate-100">
+              <span className="mr-3 text-slate-500">T+{String(caption.step).padStart(4, "0")}</span>
+              {caption.text}
+            </div>
+          </div>
+        ) : null}
+        <div className="pointer-events-none absolute bottom-2 left-4 font-mono text-[9px] tracking-[0.14em] text-slate-500">
+          1–5 CAMERA · SPACE PLAY · ← → STEP · L LAYER{paired ? " · T PLANNER" : ""} · ESC EXIT
+        </div>
+      </>
+    ) : null;
+  const presentationBar =
+    presentingNow && summary ? (
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-black">
         <div className="grid grid-cols-6 gap-px border-t border-white/10 bg-white/10">
           {[
             ["BATTERY", frame ? `${(frame.charge_fraction * 100).toFixed(0)}%` : "—"],
             ["LAST TRIP P(FAIL)", frame ? frame.predicted_failure_prob.toFixed(3) : "—"],
-            ["TARGET", target ? `TGT ${String(target.target_id).padStart(2, "0")}` : frame?.returning ? "LANDER" : "—"],
+            ["TARGET", presentationTarget ? `TGT ${String(presentationTarget.target_id).padStart(2, "0")}` : frame?.returning ? "LANDER" : "—"],
             ["DECISION", frame ? (frame.returning ? "RETURNING" : frame.reason === "slip_no_progress" ? "REPLANNING" : "PURSUING") : "—"],
             ["SCIENCE", frame ? `${frame.targets_visited}/${summary.targets_total}` : "—"],
             ["STEP", frame ? `T+${String(frame.step).padStart(4, "0")}` : "—"],
@@ -620,9 +627,8 @@ export default function MissionControl() {
           onSpeed={setSpeed}
           events={events}
         />
-      </main>
-    );
-  }
+      </div>
+    ) : null;
 
   const columns = `${leftOpen ? "260px" : "26px"} minmax(0,1fr) ${rightOpen ? "280px" : "26px"}`;
 
@@ -790,9 +796,18 @@ export default function MissionControl() {
         <div className="flex min-h-0 flex-col gap-1.5">
           {demo ? <DemoBanner demo={demo} summary={summary} /> : null}
           {paired ? <PairedBar paired={paired} active={pairedActive} onSelect={selectPaired} /> : null}
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-sm border border-white/10">
+          <div
+            className={
+              presentingNow
+                ? "fixed inset-x-0 top-0 bottom-[152px] z-40 overflow-hidden bg-black"
+                : "relative min-h-0 flex-1 overflow-hidden rounded-sm border border-white/10"
+            }
+          >
             {scene ?? <SceneFallback label="launch a mission, or load the demo mission, to render the surface" />}
+            {presentationOverlay}
 
+            {presentingNow ? null : (
+            <>
             <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
               <div className="pointer-events-auto rounded-sm border border-white/10 bg-black/45 p-1.5 backdrop-blur-sm">
                 <LayerBar
@@ -890,6 +905,8 @@ export default function MissionControl() {
                 />
               </div>
             ) : null}
+            </>
+            )}
           </div>
         </div>
 
@@ -935,6 +952,7 @@ export default function MissionControl() {
           <Rail label="TELEMETRY" side="right" onOpen={() => setRightOpen(true)} />
         )}
       </div>
+      {presentationBar}
     </main>
   );
 }

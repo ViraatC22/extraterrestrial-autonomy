@@ -127,3 +127,73 @@ Reported for every candidate but **not** used for selection: class-stratified an
 observation-count-stratified coverage (any class below 0.80 at the 95% level is flagged),
 median interval width, per-step predictive coverage, and severe-slip reliability and
 Brier score.
+
+## 4. Validation result (added after the single evaluation run)
+
+Full generated tables: `data/validation/calibration/RESULTS.md`. Figures:
+`paper/figures/v2_calibration_curve.pdf`, `v2_calibration_by_class.pdf`. The evaluation
+was run once, on validation seeds 200000-200099, after sections 1-3 and amendment A1 were
+committed (commits 3e154e2, bcea137; train fit committed in 17e0d67). An earlier evaluation
+process was interrupted by a session restart before it wrote any output; nothing from it
+was seen.
+
+**Verdict under the pre-specified rule: NOT ACCEPTED.** No candidate met every criterion.
+
+| Candidate | Mars 50 / 80 / 90 / 95% | Moon 95% | Failed |
+|---|---|---|---|
+| M1 v2 learner | 0.25 / 0.41 / 0.49 / 0.54 | 0.65 | all Mars levels; Moon |
+| M3 confusion-aware | 0.36 / 0.57 / 0.66 / 0.72 | 0.96 | all Mars levels |
+| M4a (= M3; fitted scale 1.00) | same as M3 | 0.96 | all Mars levels |
+| M2a scale 4.77, fit on Moon | 0.69 / 0.88 / 0.92 / **0.945** | 0.97 | Mars 50% (over-covers) |
+| M2b scale 8.49, fit on Mars | 0.88 / 0.97 / 0.97 / 0.98 | 1.00 | Mars 50%, 80% |
+| M4b M3 + scale 2.94, fit on Mars | 0.72 / 0.90 / 0.95 / 0.98 | 1.00 | Mars 50% |
+
+What the result means:
+
+1. **The misclassification defect is fixable, and fixed by M3.** With confusion-aware
+   assignment the learner is calibrated in distribution at every level (Moon 0.55 / 0.83 /
+   0.92 / 0.96 against 0.50 / 0.80 / 0.90 / 0.95), with no fitted parameter; its median
+   error falls from 0.036 to 0.020 on Mars and from 0.029 to 0.008 on the Moon. Bedrock coverage on Mars rises from 0.27 to 0.90.
+2. **What remains on Mars is the domain shift itself.** M3's Mars shortfall is concentrated
+   in loose fines (95% coverage 0.27): the lunar prior is confidently wrong about the class
+   the shift changes most. No method that uses only lunar information can know how wrong a
+   lunar prior will be on Mars, and M4a confirms it - fit on Moon data, the extra scale is
+   exactly 1.
+3. **A single scale cannot calibrate every level.** The residuals are a mixture: most class
+   beliefs are accurate, a few (the shifted class, and rare classes under M1) are far off.
+   Stretching every interval enough to cover the far-off ones over-covers the accurate ones,
+   so every scaled candidate over-covers at 50%. M2a comes closest (best available under the
+   rule: maximum Mars coverage error 0.19) and reaches 0.945 at the 95% level that the tail
+   risk depends on - but it does so by widening every interval about fivefold, keeps the
+   misclassification bias (median error unchanged), and on the Moon predicts severe slip
+   about ten times more often than it occurs (`RESULTS.md`, predictive table).
+4. **Risk estimates.** Per-step severe-slip prediction on Mars moves from about a third of the
+   observed rate (M1) towards it under the scaled candidates, and over-predicts on the Moon.
+   M3 barely changes per-step prediction, because the planner still labels cells by its
+   (sometimes wrong) class guess when predicting; only learning uses the soft assignment.
+
+**Consequence.** The v2 freeze is blocked on this item (`V2_FREEZE_CHECKLIST.md`). Changing
+the acceptance rule now, after seeing the results, is not allowed without a recorded
+decision by the project owner. The options, with their costs, are in section 5.
+
+## 5. Options for the project owner (not decided)
+
+- **A. Freeze with M3, and state the Mars miscalibration as part of the phenomenon.** Fixes
+  the one genuine defect (a learner miscalibrated even in distribution) without fitting
+  anything; the remaining Mars overconfidence is what a lunar prior on Mars is, and it is the
+  thing the study is about. Cost: the risk model is knowingly overconfident on Mars.
+- **B. Freeze with M2a and record an explicit exception for the 50% level.** Uses prior-body
+  data only; achieves 95% coverage on Mars. Cost: intervals about 5x wider for both planners,
+  the misclassification bias is untouched, severe slip is over-predicted in distribution,
+  and the exception is a post-hoc change to the rule, which the paper must say.
+- **C. Develop a further method on train/validation data** (for example soft class
+  assignment in prediction as well as learning, or a prior widened by a stated assumption
+  about how different a new body may be), with a new pre-specified rule and a fresh set of
+  evaluation seeds (validation seeds 200100-200199 have not been used by any calibration
+  evaluation, though the power analysis ran missions on them).
+
+Recommendation: **A**, with the Mars calibration shortfall reported as a primary limitation
+and measured on the confirmatory missions as a descriptive outcome. It is the only option
+that fixes a defect rather than covering it, and it keeps the planners' behaviour
+interpretable. But this is the owner's decision, and it must be made and logged before the
+freeze.

@@ -91,6 +91,8 @@ Uncorrected, exploratory p-values across 20 contrasts: roughly one would fall be
 
 ## 4. Planning note: how many seeds would a v2 study need?
 
+> Superseded for Study 2 by `docs/POWER_ANALYSIS.md`, a formal power analysis of the planned primary test (McNemar exact, minimum effect of interest, discordance upper bound, 200 validation seeds, the calibrated candidates). The rough estimate below answers a different question - interval width, v2 before calibration, 40 seeds - and is kept as the record of the exploration.
+
 For each Martian condition, the number of matched seeds needed for the 95% interval on the adaptive-minus-fixed success difference to have a half-width of 0.05, using the spread of paired differences observed here under v2 (normal approximation).
 
 | condition | observed v2 diff | sd of paired diffs | seeds needed |
