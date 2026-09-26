@@ -37,13 +37,24 @@ def _run(row: dict) -> tuple[int, str, bool]:
     )
     assert config.engine == "v1"
     r = run_mission(config, seed=int(row["seed"]))
+    rerun = {
+        "condition": row["condition"],
+        "planner": row["planner"],
+        "seed": int(row["seed"]),
+        "termination": r.termination,
+        "success": bool(r.success),
+        "science_return": r.science_return,
+        "science_possible": r.science_possible,
+        "energy_spent": r.energy_spent,
+        "steps": r.steps,
+    }
     same = (
         r.termination == row["termination"]
         and abs(r.science_return - row["science_return"]) < 1e-9
         and abs(r.energy_spent - row["energy_spent"]) < 1e-6
         and r.steps == row["steps"]
     )
-    return int(row["seed"]), row["planner"], same
+    return int(row["seed"]), row["planner"], same, rerun
 
 
 def main() -> int:
@@ -54,7 +65,9 @@ def main() -> int:
     rows = pd.read_csv(RESULTS / "exonaut_main.csv").to_dict(orient="records")
     with ProcessPoolExecutor() as ex:
         results = list(ex.map(_run, rows, chunksize=4))
-    bad = [(s, p) for s, p, ok in results if not ok]
+    bad = [(s, p) for s, p, ok, _ in results if not ok]
+    # every re-run outcome, so a different platform's results can be analysed
+    pd.DataFrame([r for *_, r in results]).to_csv(RESULTS / "v1_reproduction_rows.csv", index=False)
     print(f"{len(results) - len(bad)}/{len(results)} committed missions reproduce exactly")
     for seed, planner in bad[:20]:
         print("  MISMATCH", seed, planner)

@@ -25,4 +25,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: v1-reproduction-linux
-          path: data/results/v1_reproduction.json
+          path: |
+            data/results/v1_reproduction.json
+            data/results/v1_reproduction_rows.csv
