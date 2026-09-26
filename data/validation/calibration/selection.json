@@ -1,0 +1,79 @@
+{
+  "status": "NOT ACCEPTED",
+  "selected": null,
+  "best_available_if_none_accepted": "M2a",
+  "config": {
+    "epistemic_scale": 4.773707817145433
+  },
+  "epistemic_scale": 4.773707817145433,
+  "class_assignment": "hard",
+  "verdicts": {
+    "M1": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": false,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": false,
+        "mars_90_within_0.10": false,
+        "moon_95_at_least_0.90": false
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.41311938382541724
+    },
+    "M3": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": false,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": false,
+        "mars_90_within_0.10": false,
+        "moon_95_at_least_0.90": true
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.24025095164246446
+    },
+    "M2a": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": true,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": true,
+        "mars_90_within_0.10": true,
+        "moon_95_at_least_0.90": true
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.18795847320651493
+    },
+    "M4a": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": false,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": false,
+        "mars_90_within_0.10": false,
+        "moon_95_at_least_0.90": true
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.24025095164246446
+    },
+    "M2b": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": true,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": false,
+        "mars_90_within_0.10": true,
+        "moon_95_at_least_0.90": true
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.3824077911313717
+    },
+    "M4b": {
+      "checks": {
+        "mars_95_in_[0.90,0.99]": true,
+        "mars_50_within_0.10": false,
+        "mars_80_within_0.10": true,
+        "mars_90_within_0.10": true,
+        "moon_95_at_least_0.90": true
+      },
+      "accepted": false,
+      "mars_max_coverage_error": 0.2166482910694597
+    }
+  },
+  "rule": "first accepted in order M1 > M3 > M2a > M4a > M2b > M4b"
+}
