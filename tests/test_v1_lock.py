@@ -12,6 +12,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from reference_platform import reference_platform_only
+
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "data" / "results" / "v1_LOCK.json"
 
@@ -49,6 +51,7 @@ def test_default_engine_is_still_v1():
     assert MissionConfig().engine == "v1"
 
 
+@reference_platform_only
 def test_a_sample_of_committed_rows_reproduces():
     """A cheap in-suite check; the full 750 is scripts/verify_v1_reproduction.py."""
     from exonaut.simulation import MissionConfig, run_mission

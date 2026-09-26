@@ -24,6 +24,7 @@
 % Provenance for every generated file: paper/PROVENANCE.yaml.
 \input{tables/exonaut_calibration_macros.tex}
 \input{tables/exonaut_power_macros.tex}
+\input{tables/exonaut_crossplatform_macros.tex}
 
 \title{\textbf{Adaptive Risk-Aware Autonomy for Robotic Exploration of\\
 Uncertain Extraterrestrial Terrain}}
@@ -906,7 +907,19 @@ value is typed into this document. \texttt{paper/PROVENANCE.yaml} records, for
 every generated table, figure and macro, the script that produced it, its hash,
 its input files and their hashes, and the commit; a test fails if any of them
 is stale or edited by hand, and continuous integration re-runs every
-generator. The run's metadata sidecar records the git commit, the seed-split
+generator.
+
+\paragraph{Cross-platform reproduction.} Study~1 reproduces bit for bit on the
+platform that generated it (macOS, arm64). Re-run on Linux x86-64 with the same
+code and pinned libraries, \XpIdentical{} of 750 missions are identical and
+\XpDiffer{} differ: last-bit floating-point differences between platforms change
+a route choice in some missions, and \XpFlipped{} change outcome between success
+and failure. Recomputing the pre-specified analysis on the Linux outcomes moves
+no paired effect by more than \XpMaxShift{} and leaves every significance
+verdict unchanged (same verdicts: \XpSameVerdicts{}); the one significant
+contrast is $+\XpFaultsDiffLinux$ with Holm $p = \XpFaultsPLinux$ on Linux. The
+conclusions are therefore not platform artefacts, but exact reproduction is a
+property of the reference platform only, and the tests that demand it say so. The run's metadata sidecar records the git commit, the seed-split
 checksum, the quarantine list and library versions. The pipeline is:
 
 \begin{verbatim}

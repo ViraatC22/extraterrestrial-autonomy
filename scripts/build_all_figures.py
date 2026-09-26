@@ -91,6 +91,20 @@ STEPS = [
         ],
     },
     {
+        "id": "study1_cross_platform",
+        "script": "scripts/cross_platform_check.py",
+        "args": [],
+        "inputs": [
+            "data/results/exonaut_main.csv",
+            "data/results/cross_platform/linux_x86_64_rows.csv",
+        ],
+        "outputs": [
+            "paper/tables/exonaut_crossplatform_macros.tex",
+            "data/results/cross_platform/summary.json",
+            "data/results/cross_platform/primary_comparison.csv",
+        ],
+    },
+    {
         "id": "exploration_v2",
         "script": "scripts/analyze_exploration.py",
         "args": [],
@@ -126,7 +140,7 @@ def undefined_paper_macros() -> list[str]:
     """Capitalised macros the paper uses that no generator defines (typos or stale)."""
     text = PAPER.read_text()
     local = set(re.findall(r"\\newcommand\{\\([A-Za-z]+)\}", text))
-    used = set(re.findall(r"\\((?:Main|Audit|Cal|Pow|Pilot)[A-Za-z]+)", text))
+    used = set(re.findall(r"\\((?:Main|Audit|Cal|Pow|Pilot|Xp)[A-Za-z]+)", text))
     defined = set(paper_macros()) | local
     return sorted(used - defined)
 

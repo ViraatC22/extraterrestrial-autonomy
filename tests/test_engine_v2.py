@@ -18,11 +18,13 @@ from exonaut.planners.base import Planner
 from exonaut.robot import FaultSchedule
 from exonaut.robot.vehicle import SlipRecord
 from exonaut.simulation import MissionConfig, run_mission
+from reference_platform import reference_platform_only
 
 RESULTS = Path(__file__).resolve().parents[1] / "data" / "results"
 SMALL = {"body": "mars", "size": 40, "n_targets": 3, "max_steps": 300}
 
 
+@reference_platform_only
 def test_default_engine_is_v1_and_reproduces_committed_rows():
     meta = json.loads((RESULTS / "exonaut_main.metadata.json").read_text())
     cond = {c["name"]: c for c in meta["conditions"]}

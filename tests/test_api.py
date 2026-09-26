@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from exonaut.api import app
+from reference_platform import reference_platform_only
 
 SMALL = {"size": 32, "n_targets": 2, "max_steps": 150}
 
@@ -289,6 +290,7 @@ def test_belief_snapshot_separates_belief_from_truth(client):
     assert len(late["risk"]) == size and all(0 <= v <= 1 for row in late["risk"] for v in row)
 
 
+@reference_platform_only
 def test_failure_case_studies_reproduce_their_committed_rows(client):
     """Every case study shown is a re-run; it must match the committed result."""
     body = client.get("/failures", params={"condition": "mars_ood"}).json()
@@ -406,6 +408,7 @@ def test_terrain_probe_needs_no_mission_and_rejects_off_map_cells(client):
     assert client.get("/terrain/probe", params={"row": 99, "col": 4, "size": 32}).status_code == 400
 
 
+@reference_platform_only
 def test_paired_replay_reproduces_both_committed_rows(client):
     payload = client.get(
         "/results/paired-replay", params={"condition": "mars_ood", "seed": 400004}

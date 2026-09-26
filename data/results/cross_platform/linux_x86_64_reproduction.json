@@ -1,0 +1,322 @@
+{
+  "checked_utc": "2026-09-26T23:06:12+00:00",
+  "commit": "7df4a157396fe70c28ad0f15aabbed0590197698",
+  "dirty_worktree": false,
+  "missions": 750,
+  "reproduced": 672,
+  "mismatches": [
+    {
+      "seed": 400005,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400019,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400028,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400019,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400027,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400022,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400035,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400037,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400044,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400022,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400035,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400037,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400044,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400022,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400024,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400052,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400019,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400027,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400005,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400019,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400028,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400045,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 400014,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400017,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400019,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400023,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400027,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400036,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 400048,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300004,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300007,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300010,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300011,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300015,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300016,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300021,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300024,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300026,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300033,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300035,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300039,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300046,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300048,
+      "planner": "adaptive_risk_aware_astar"
+    },
+    {
+      "seed": 300004,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300005,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300009,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300015,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300018,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300021,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300028,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300035,
+      "planner": "risk_aware_astar"
+    },
+    {
+      "seed": 300040,
+      "planner": "risk_aware_astar"
+    }
+  ],
+  "criterion": "termination, science_return (1e-9), energy_spent (1e-6), steps"
+}

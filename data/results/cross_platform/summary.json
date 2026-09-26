@@ -1,0 +1,30 @@
+{
+  "missions": 750,
+  "bit_identical": 672,
+  "differ": 78,
+  "differ_by_condition": {
+    "mars_comm_delay": 15,
+    "mars_faults": 9,
+    "mars_high_uncertainty": 15,
+    "mars_ood": 16,
+    "moon_id": 23
+  },
+  "differ_by_planner": {
+    "adaptive_risk_aware_astar": 44,
+    "risk_aware_astar": 34
+  },
+  "success_flipped": 18,
+  "same_significance_verdicts": true,
+  "significant_macos": [
+    {
+      "condition": "mars_faults",
+      "metric": "success"
+    }
+  ],
+  "significant_linux": [
+    {
+      "condition": "mars_faults",
+      "metric": "success"
+    }
+  ]
+}

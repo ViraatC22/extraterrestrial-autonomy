@@ -1,0 +1,11 @@
+condition,metric,diff_macos,diff_linux,p_holm_macos,p_holm_linux,significant_macos,significant_linux
+mars_comm_delay,science_fraction,-0.04371716717252129,-0.03855660185313019,0.32643693254199707,0.6277180982155538,False,False
+mars_comm_delay,success,0.16,0.14,0.46087646484375,0.7108154296874999,False,False
+mars_faults,science_fraction,-0.02244683973977452,-0.01794645213384047,0.46142578125,0.7278534034999709,False,False
+mars_faults,success,0.2,0.22,0.01953125,0.009765625,True,True
+mars_high_uncertainty,science_fraction,-0.030322425513670117,-0.028505499821305222,0.32643693254199707,0.6864507163125305,False,False
+mars_high_uncertainty,success,0.14,0.12,0.46142578125,0.7278534034999709,False,False
+mars_ood,science_fraction,-0.014536726437787712,-0.021640857268686576,1.0,0.771050134941876,False,False
+mars_ood,success,0.0,0.02,1.0,1.0,False,False
+moon_id,science_fraction,0.04042795796275089,0.031728676576057546,0.32643693254199707,0.6277180982155538,False,False
+moon_id,success,0.02,0.02,1.0,1.0,False,False

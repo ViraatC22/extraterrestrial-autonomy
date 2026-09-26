@@ -465,3 +465,19 @@ a minimum effect of interest of 0.10 fixed in advance, at the upper 90% bound of
 discordance rate estimated on all 200 validation seeds, for the two leading calibration
 candidates: 230 matched seeds for M3, 260 for M2a, at power 0.90. The validation effect
 estimates were recorded and deliberately not used for sizing.
+
+## 2026-09-26 - Study 1 reproduces exactly only on its own platform
+
+GitHub CI (Linux x86-64) had been failing two exact-reproduction tests that pass on the Mac
+that generated Study 1 (macOS arm64), with identical pinned library versions. A full re-run
+of all 750 missions on Linux (workflow "v1 reproduction (Linux)", outcomes in
+`data/results/cross_platform/`) found 672 identical and 78 different: last-bit
+floating-point differences between platforms change a route choice, and 18 missions change
+between success and failure. The differing missions span all five conditions (23 on the
+Moon), not only Mars as first reported from a partial list.
+
+`scripts/cross_platform_check.py` recomputed the pre-specified primary analysis on the Linux
+outcomes: no paired effect moves by more than 0.02 and every significance verdict is the
+same. Study 1's conclusions are not a platform artefact, but "reproduces exactly" is true
+only on the reference platform. Tests demanding bit-exact reproduction now run there and are
+skipped elsewhere with that reason (`tests/reference_platform.py`); the paper states it.

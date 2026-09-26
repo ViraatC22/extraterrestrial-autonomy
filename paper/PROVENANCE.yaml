@@ -1,4 +1,4 @@
-generated_at_commit: da5740240e5b62ae2234dd0261bdf7c36f88b9d1
+generated_at_commit: 7df4a157396fe70c28ad0f15aabbed0590197698
 note: 'Every generated file the paper uses, with the script, inputs and hashes that produced it. Regenerate
   with: python scripts/build_all_figures.py'
 steps:
@@ -54,6 +54,16 @@ steps:
     data/validation/power_analysis/power_grid.csv: 56ed5d45c121f02a08598db15e9a0ce23e4782eaddd074e6defe47eef80f12be
     data/validation/power_analysis/sample_size_table.csv: 11bb2e63702603861e9bc518f4cecd75673ff19091addf87f5cc983135b46166
     data/validation/power_analysis/RESULTS.md: 7e495e7723d0abd696980b34acb61fc2fb90185c6645c3f28d8396238cf18322
+- step: study1_cross_platform
+  command: python scripts/cross_platform_check.py
+  script_sha256: 42698742b02083fe0ce3790d1cc20217f088c33048281e5548eb025d1092d684
+  inputs:
+    data/results/exonaut_main.csv: a401c6ee4681e1cdd435357e9aa1b9ee30017dfd81b16e7e1863102d234c03ba
+    data/results/cross_platform/linux_x86_64_rows.csv: 4bf0a747a2fb50e03a2caab7b6301b5f9e6b7d54bde361660fd26e67b2cd8f8e
+  outputs:
+    paper/tables/exonaut_crossplatform_macros.tex: fd17ba3d84d0d53902ed1a49d7a5adb7086412b2033212528cc8daede36eb8fc
+    data/results/cross_platform/summary.json: 375c49e6e9e20ca974f5d395e6c28f36665a4c506e5b07c6f93d20fcc563bb00
+    data/results/cross_platform/primary_comparison.csv: c2277fa37aaf43c1ff3d114b8a9781a616d0d0d13a16070efc075230391719b8
 - step: exploration_v2
   command: python scripts/analyze_exploration.py
   script_sha256: dedd10411112337c75410a70165922bc0f17fe3bb226fca333027dd8ac463788
@@ -128,6 +138,13 @@ paper_macros:
   PowMinEffect: paper/tables/exonaut_power_macros.tex
   PowPool: paper/tables/exonaut_power_macros.tex
   PowTarget: paper/tables/exonaut_power_macros.tex
+  XpDiffer: paper/tables/exonaut_crossplatform_macros.tex
+  XpFaultsDiffLinux: paper/tables/exonaut_crossplatform_macros.tex
+  XpFaultsPLinux: paper/tables/exonaut_crossplatform_macros.tex
+  XpFlipped: paper/tables/exonaut_crossplatform_macros.tex
+  XpIdentical: paper/tables/exonaut_crossplatform_macros.tex
+  XpMaxShift: paper/tables/exonaut_crossplatform_macros.tex
+  XpSameVerdicts: paper/tables/exonaut_crossplatform_macros.tex
 figures_in_paper:
 - figures/exonaut_main_outcomes.pdf
 - figures/exonaut_main_terminations.pdf
