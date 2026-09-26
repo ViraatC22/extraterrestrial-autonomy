@@ -166,14 +166,6 @@ def seed_membership(seed: int) -> tuple[str, bool]:
     return "none", False
 
 
-def heldout_log_path():
-    import os
-    from pathlib import Path
-
-    default = Path(__file__).resolve().parents[3] / "data" / "splits" / "heldout_access_log.jsonl"
-    return Path(os.environ.get("EXONAUT_HELDOUT_LOG", default))
-
-
 def record_heldout_access(seed: int, endpoint: str) -> bool:
     """Log any request that exposes an *unused* held-out terrain.
 
@@ -183,6 +175,8 @@ def record_heldout_access(seed: int, endpoint: str) -> bool:
     quarantined seeds, are spent and not logged. Returns True if logged.
     """
     import json
+
+    from ..experiments.access_log import heldout_log_path
 
     split, quarantined = seed_membership(int(seed))
     if split not in ("test", "ood") or quarantined or int(seed) in confirmatory_seeds():

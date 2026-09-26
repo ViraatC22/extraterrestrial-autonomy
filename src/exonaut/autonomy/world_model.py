@@ -93,8 +93,14 @@ class WorldModel:
         aleatoric_sd: dict | None = None,
         energy_multipliers: dict | None = None,
         unknown_slip_prior: float = 0.25,
+        epistemic_scale: float = 1.0,
     ):
         self.size = size
+        #: Multiplies every reported epistemic (class-mean) standard deviation.
+        #: 1.0 is the uncalibrated model (v1, and v2 as explored). A value fit
+        #: on development data is the v2 calibration candidate; it applies to
+        #: fixed and adaptive planners alike, so it gives neither an advantage.
+        self.epistemic_scale = float(epistemic_scale)
         # per-cell geometric belief, stored as arrays for planner speed
         self.slope = np.zeros((size, size))
         self.roughness = np.full((size, size), 0.5)
@@ -221,7 +227,10 @@ class WorldModel:
         """(epistemic_sd, aleatoric_sd) for the slip at a cell."""
         if self.observed[row, col]:
             k = int(self.terrain_class[row, col])
-            return float(self.class_belief[k].epistemic_sd), float(self.aleatoric_sd[k])
+            return (
+                float(self.epistemic_scale * self.class_belief[k].epistemic_sd),
+                float(self.aleatoric_sd[k]),
+            )
 
         return self._unknown_uncertainty()
 
@@ -237,7 +246,9 @@ class WorldModel:
         between = float(
             np.sqrt(sum(w * (self.class_belief[k].mean - mean) ** 2 for k, w in mix.items()))
         )
-        within = float(np.sqrt(sum(w * self.class_belief[k].variance for k, w in mix.items())))
+        within = self.epistemic_scale * float(
+            np.sqrt(sum(w * self.class_belief[k].variance for k, w in mix.items()))
+        )
         aleatoric = float(sum(w * self.aleatoric_sd[k] for k, w in mix.items()))
         result = (float(np.hypot(between, within)), aleatoric)
         self._cache["unknown_uncertainty"] = result
@@ -260,7 +271,9 @@ class WorldModel:
         return np.clip(base + 0.01 * self.slope, 0.0, 0.97)
 
     def total_slip_sd_grid(self) -> np.ndarray:
-        epistemic = np.array([self.class_belief[k].epistemic_sd for k in range(N_TERRAIN_CLASSES)])
+        epistemic = self.epistemic_scale * np.array(
+            [self.class_belief[k].epistemic_sd for k in range(N_TERRAIN_CLASSES)]
+        )
         aleatoric = np.array([self.aleatoric_sd[k] for k in range(N_TERRAIN_CLASSES)])
         classes = self.terrain_class.astype(int)
         observed_sd = np.hypot(epistemic[classes], aleatoric[classes])
@@ -321,7 +334,7 @@ class WorldModel:
         return {
             int(k): {
                 "mean": b.mean,
-                "epistemic_sd": b.epistemic_sd,
+                "epistemic_sd": self.epistemic_scale * b.epistemic_sd,
                 "n_observations": b.n_observations,
             }
             for k, b in self.class_belief.items()

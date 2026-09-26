@@ -31,6 +31,11 @@ TRUE_CLASS_PARAMS = {
 def make_environment(body: str, seed: int, size: int = 64, **kwargs) -> TerrainField:
     if body not in _GENERATORS:
         raise ValueError(f"unknown body {body!r}; expected one of {BODIES}")
+    # Every terrain in the project is built here, so this is where the v2
+    # confirmatory seeds are protected: unauthorized use raises and is logged.
+    from ..experiments.v2_protocol import guard_seed
+
+    guard_seed(seed)
     return _GENERATORS[body](size=size, seed=seed, **kwargs)
 
 

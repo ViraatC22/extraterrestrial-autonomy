@@ -1,0 +1,38 @@
+{
+  "study": "v1 (Study 1): confirmatory run, engine profile v1",
+  "status": "IMMUTABLE - do not overwrite, regenerate, or reinterpret without a RESEARCH_LOG entry",
+  "engine_profile": "v1",
+  "engine_package_version_at_lock": "0.2.0",
+  "results_generated_utc": "2026-09-23T14:43:31.913515+00:00",
+  "results_generated_by_commit": "a5e5081728c8df4df162990bba8d7a8188fbb2fe",
+  "results_generation_note": "metadata lists data/results/exonaut_main.csv as the only dirty file: the results file was being written by the run itself",
+  "design_config": "experiments/configs/exonaut_main.json",
+  "design_digest": "5dd44863ef2b",
+  "seed_split_checksum": "c9346c400ce5ada98fa15886a82e937d1238d5285060b8185dbb0f2e9ed8ed1f",
+  "n_missions": 750,
+  "reproduction": {
+    "checked_utc": "2026-09-26T03:19:22+00:00",
+    "commit": "0ce1f9624a45103ea9fed1eccb95a82273f2f949",
+    "dirty_worktree": true,
+    "missions": 750,
+    "reproduced": 750,
+    "mismatches": [],
+    "criterion": "termination, science_return (1e-9), energy_spent (1e-6), steps"
+  },
+  "locked_at_utc": "2026-09-26T03:19:31+00:00",
+  "locked_at_commit": "0ce1f9624a45103ea9fed1eccb95a82273f2f949",
+  "sha256": {
+    "data/results/exonaut_main.csv": "a401c6ee4681e1cdd435357e9aa1b9ee30017dfd81b16e7e1863102d234c03ba",
+    "data/results/exonaut_main.metadata.json": "b4cdbed91fa98f06216fa8df826795ac838eecf759d53f7973f6326bd719078f",
+    "data/results/exonaut_main_primary.csv": "e44714daa4116481ed2a248c3c8bcc245158824982974b8e2228957ea581345a",
+    "data/results/exonaut_main_secondary.csv": "d154d71141c114ed7a464602c582a225136a0ff2a562b4b7dc5bf724d4a8eefe",
+    "data/results/audit_fault_exposure.csv": "2594d6127a08e0774f66ac9f5afc3fb4cb8f0f8eee07ce223711a05883b5fb2b",
+    "data/results/audit_learner_calibration.csv": "fa7b25b768f4ab8a195ef74f78c4014b0a072fb0c55f999312aba4af3618bd7e",
+    "experiments/configs/exonaut_main.json": "79b1bca32fa4972b37419417a018518139a4e59c29e9a66796a572be190e7de9",
+    "data/splits/seed_splits.json": "32bf0669c79d32b47270d77527878d37233fdae4205d4280a6d3e6cf115b4d9c",
+    "data/splits/quarantine.json": "5a69ee86084a955869f9cba655b0384a27810268568227ef986ac3d6fa1f4f40",
+    "data/processed/prior_moon.json": "f8d5b32143e7b5744d20603b465436f0aa79a7a7fbb070d7b27344a437a12260",
+    "data/processed/prior_mars.json": "58a5ed296e73370c557c3f3c5a817468029f0daa3075326846a6f94460ffc88e",
+    "docs/PREREGISTRATION.md": "3eb3f8da0f9e32d1f5a4aa01e3422408d5737f8898264c528a01a47745848f0e"
+  }
+}

@@ -47,6 +47,10 @@ def _run(row: dict) -> tuple[int, str, bool]:
 
 
 def main() -> int:
+    from datetime import UTC, datetime
+
+    from exonaut.experiments.provenance import git_provenance
+
     rows = pd.read_csv(RESULTS / "exonaut_main.csv").to_dict(orient="records")
     with ProcessPoolExecutor() as ex:
         results = list(ex.map(_run, rows, chunksize=4))
@@ -54,6 +58,24 @@ def main() -> int:
     print(f"{len(results) - len(bad)}/{len(results)} committed missions reproduce exactly")
     for seed, planner in bad[:20]:
         print("  MISMATCH", seed, planner)
+    git = git_provenance()
+    # A record of the check itself, so the v1 lock can cite when and at which
+    # commit reproduction was last confirmed.
+    (RESULTS / "v1_reproduction.json").write_text(
+        json.dumps(
+            {
+                "checked_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+                "commit": git.get("commit"),
+                "dirty_worktree": git.get("dirty_worktree"),
+                "missions": len(results),
+                "reproduced": len(results) - len(bad),
+                "mismatches": [{"seed": s, "planner": p} for s, p in bad],
+                "criterion": "termination, science_return (1e-9), energy_spent (1e-6), steps",
+            },
+            indent=2,
+        )
+        + "\n"
+    )
     return 1 if bad else 0
 
 

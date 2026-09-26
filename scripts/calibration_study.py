@@ -171,7 +171,9 @@ def run(jobs, tag: str) -> None:
     beliefs.to_csv(OUT / f"{tag}_beliefs.csv", index=False)
     predictions.to_csv(OUT / f"{tag}_predictions.csv", index=False)
     missions.to_csv(OUT / f"{tag}_missions.csv", index=False)
-    print(f"{tag}: {len(missions)} missions, {len(beliefs)} belief rows, {len(predictions)} predictions")
+    print(
+        f"{tag}: {len(missions)} missions, {len(beliefs)} belief rows, {len(predictions)} predictions"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -305,8 +307,12 @@ def report() -> None:
         cov.to_csv(OUT / f"{tag}_coverage.csv", index=False)
         by_class = coverage_table(beliefs, ["variant", "body", "cls"], n_boot=100)
         by_class.to_csv(OUT / f"{tag}_coverage_by_class.csv", index=False)
-        n_bins = pd.cut(beliefs["n"], [0, 2, 5, 10, 20, 10_000], labels=["1-2", "3-5", "6-10", "11-20", ">20"])
-        by_n = coverage_table(beliefs.assign(nbin=n_bins.astype(str)), ["variant", "body", "nbin"], n_boot=100)
+        n_bins = pd.cut(
+            beliefs["n"], [0, 2, 5, 10, 20, 10_000], labels=["1-2", "3-5", "6-10", "11-20", ">20"]
+        )
+        by_n = coverage_table(
+            beliefs.assign(nbin=n_bins.astype(str)), ["variant", "body", "nbin"], n_boot=100
+        )
         by_n.to_csv(OUT / f"{tag}_coverage_by_n.csv", index=False)
         ptab = predictive_table(pred, ["variant", "body"])
         ptab.to_csv(OUT / f"{tag}_predictive.csv", index=False)
@@ -331,7 +337,15 @@ def report() -> None:
             "misclassified_reading_share": misclass.to_dict(),
         }
     (OUT / "summary.json").write_text(json.dumps(summaries, indent=2, default=float) + "\n")
-    print(json.dumps({k: [ (r["variant"], r["body"], round(r["cov95"], 3)) for r in v["coverage"]] for k, v in summaries.items()}, indent=1))
+    print(
+        json.dumps(
+            {
+                k: [(r["variant"], r["body"], round(r["cov95"], 3)) for r in v["coverage"]]
+                for k, v in summaries.items()
+            },
+            indent=1,
+        )
+    )
 
 
 if __name__ == "__main__":

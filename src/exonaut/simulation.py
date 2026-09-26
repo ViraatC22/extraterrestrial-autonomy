@@ -80,6 +80,10 @@ class MissionConfig:
     # v1 drew them over the whole horizon, but missions end long before that,
     # so most scheduled faults never fired.
     fault_window: int = 50
+    # Multiplies the learner's reported epistemic standard deviations (both
+    # planners). 1.0 = uncalibrated. A calibrated value is fit on development
+    # data only (docs/CALIBRATION_AUDIT.md) and fixed by the v2 plan.
+    epistemic_scale: float = 1.0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -154,6 +158,7 @@ def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
         class_prior=prior["means"],
         aleatoric_sd=prior["aleatoric_sd"],
         energy_multipliers=energy_multipliers,
+        epistemic_scale=config.epistemic_scale,
         **extra,
     )
 
@@ -315,6 +320,8 @@ def run_mission(
                         "risk_budget": mission.risk_budget,
                         "chosen_route": [tuple(c) for c in (objective["path"] or [])],
                         "candidates": [dict(c) for c in manager.last_candidates],
+                        # the class beliefs this decision was made with
+                        "class_belief": world_model.snapshot(),
                     }
                 )
                 decision_index = len(decisions) - 1
@@ -351,6 +358,23 @@ def run_mission(
         target_cell = path[path_index]
         dr = int(np.sign(target_cell[0] - rover.row))
         dc = int(np.sign(target_cell[1] - rover.col))
+        prediction = None
+        if collect_history:
+            # What the rover predicted for the cell it is about to enter, so
+            # its uncertainty can be checked against what then happened.
+            # Read-only queries: no random draws, no state change.
+            target = (rover.row + dr, rover.col + dc)
+            if 0 <= target[0] < terrain.size and 0 <= target[1] < terrain.size:
+                from .autonomy import risk as _risk
+
+                prediction = {
+                    "target": target,
+                    "mean": world_model.expected_slip(*target),
+                    "sd": world_model.total_slip_sd(*target),
+                    "p_severe": _risk.severe_slip_probability(world_model, *target),
+                    "observed": bool(world_model.observed[target]),
+                    "believed_class": int(world_model.terrain_class[target]),
+                }
         outcome = rover.attempt_move(dr, dc, terrain, slip_rng)
 
         if outcome["record"] is not None:
@@ -425,6 +449,10 @@ def run_mission(
                     "faults": pending_faults,
                     "heading_deg": heading_deg,
                     "local_slope_deg": float(terrain.slope[rover.pos]),
+                    "prediction": prediction,
+                    "belief_n": {
+                        int(k): v["n_observations"] for k, v in world_model.snapshot().items()
+                    },
                 }
             )
             pending_faults = []
@@ -453,6 +481,13 @@ def run_mission(
         if not rover.operational:
             termination = TERMINATION_IMMOBILIZED if rover.immobilized else TERMINATION_ENERGY
             break
+
+    if v2:
+        # The loop can end straight after a draw (a sensing sweep, or a move
+        # refused for energy) without passing a min_charge update, so v1's
+        # reported minimum could sit above the final charge. v1 keeps its
+        # behaviour so committed rows reproduce; v2 includes the final state.
+        min_charge = min(min_charge, rover.power.charge)
 
     at_home = rover.pos == mission.home
     objectives_resolved = not mission.remaining

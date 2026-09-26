@@ -1,0 +1,9 @@
+{
+  "checked_utc": "2026-09-26T03:19:22+00:00",
+  "commit": "0ce1f9624a45103ea9fed1eccb95a82273f2f949",
+  "dirty_worktree": true,
+  "missions": 750,
+  "reproduced": 750,
+  "mismatches": [],
+  "criterion": "termination, science_return (1e-9), energy_spent (1e-6), steps"
+}

@@ -453,7 +453,7 @@ def test_model_constants_are_the_engines_own(client):
 def test_unused_heldout_seeds_are_logged_and_spent_ones_are_not(client):
     import json
 
-    from exonaut.api.service import heldout_log_path
+    from exonaut.experiments.access_log import heldout_log_path
 
     path = heldout_log_path()
     before = path.read_text().splitlines() if path.exists() else []
