@@ -161,15 +161,18 @@ def _job(args):
     return beliefs, predictions, mission
 
 
-def run(jobs, tag: str) -> None:
+def run(jobs, tag: str, isolate: bool = False) -> None:
+    """Run jobs in parallel. `isolate` gives each job a fresh process, which
+    the diagnostic ablations need because they patch the learner in place."""
     OUT.mkdir(parents=True, exist_ok=True)
-    with ProcessPoolExecutor(max_tasks_per_child=1) as ex:
-        results = list(ex.map(_job, jobs, chunksize=1))
+    pool = ProcessPoolExecutor(max_tasks_per_child=1) if isolate else ProcessPoolExecutor()
+    with pool as ex:
+        results = list(ex.map(_job, jobs, chunksize=1 if isolate else 2))
     beliefs = pd.DataFrame([row for b, _, _ in results for row in b])
     predictions = pd.DataFrame([row for _, p, _ in results for row in p])
     missions = pd.DataFrame([m for _, _, m in results])
-    beliefs.to_csv(OUT / f"{tag}_beliefs.csv", index=False)
-    predictions.to_csv(OUT / f"{tag}_predictions.csv", index=False)
+    beliefs.to_csv(OUT / f"{tag}_beliefs{SUFFIX[tag]}", index=False)
+    predictions.to_csv(OUT / f"{tag}_predictions{SUFFIX[tag]}", index=False)
     missions.to_csv(OUT / f"{tag}_missions.csv", index=False)
     print(
         f"{tag}: {len(missions)} missions, {len(beliefs)} belief rows, {len(predictions)} predictions"
@@ -250,36 +253,54 @@ def reliability(pred: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 DIAGNOSTICS = ("v2", "ablate_class", "ablate_dispersion", "ablate_prior_mean")
+#: raw-file suffix per phase (later phases are compressed)
+SUFFIX = {"diagnose": ".csv", "fit_m3": ".csv.gz", "evaluate": ".csv.gz"}
+RESPONSIBILITY = {"class_assignment": "responsibility"}
+
+
+def _read(tag: str, kind: str) -> pd.DataFrame:
+    return pd.read_csv(OUT / f"{tag}_{kind}{SUFFIX[tag]}")
 
 
 def diagnose() -> None:
     check_development_seeds(TRAIN_SEEDS, "train")
     jobs = [(b, s, v, {}, "train") for v in DIAGNOSTICS for b in BODIES for s in TRAIN_SEEDS]
-    run(jobs, "diagnose")
+    run(jobs, "diagnose", isolate=True)
+
+
+def conformal_scale(beliefs: pd.DataFrame) -> float:
+    """s = max(1, q / 1.96), q the ceil((n+1) 0.95)-th smallest |m - truth| / sd."""
+    z = ((beliefs["mean"] - beliefs["truth"]).abs() / beliefs["sd"]).to_numpy()
+    n = len(z)
+    q = float(np.sort(z)[min(n - 1, int(np.ceil((n + 1) * 0.95)) - 1)])
+    return max(1.0, q / _z(0.95))
 
 
 def fit() -> dict:
     """Fit each candidate's one parameter on TRAIN rows (see CALIBRATION_AUDIT.md)."""
-    beliefs = pd.read_csv(OUT / "diagnose_beliefs.csv")
-    base = beliefs[beliefs.variant == "v2"]
+    check_development_seeds(TRAIN_SEEDS, "train")
+    # M3 has no parameter, but M4 fits its scale on M3's own train residuals
+    run([(b, s, "M3", RESPONSIBILITY, "train") for b in BODIES for s in TRAIN_SEEDS], "fit_m3")
+    v2 = _read("diagnose", "beliefs").query("variant == 'v2'")
+    m3 = _read("fit_m3", "beliefs")
     params = {}
     for body in BODIES:
-        g = base[base.body == body]
-        z = ((g["mean"] - g["truth"]).abs() / g["sd"]).to_numpy()
-        n = len(z)
-        # split-conformal: the ceil((n+1)*0.95)-th smallest normalized residual
-        q = float(np.sort(z)[min(n - 1, int(np.ceil((n + 1) * 0.95)) - 1)])
-        params[f"scale_fit_on_{body}"] = max(1.0, q / _z(0.95))
+        params[f"M2_scale_fit_on_{body}"] = conformal_scale(v2[v2.body == body])
+        params[f"M4_scale_fit_on_{body}"] = conformal_scale(m3[m3.body == body])
     (OUT / "fit.json").write_text(json.dumps(params, indent=2) + "\n")
     print(json.dumps(params, indent=2))
     return params
 
 
 def candidates(params: dict) -> dict:
+    """The pre-specified candidates, in the selection preference order."""
     return {
-        "M1_v2": {},
-        "M2a_scale_moon": {"epistemic_scale": params["scale_fit_on_moon"]},
-        "M2b_scale_mars": {"epistemic_scale": params["scale_fit_on_mars"]},
+        "M1": {},
+        "M3": dict(RESPONSIBILITY),
+        "M2a": {"epistemic_scale": params["M2_scale_fit_on_moon"]},
+        "M4a": {**RESPONSIBILITY, "epistemic_scale": params["M4_scale_fit_on_moon"]},
+        "M2b": {"epistemic_scale": params["M2_scale_fit_on_mars"]},
+        "M4b": {**RESPONSIBILITY, "epistemic_scale": params["M4_scale_fit_on_mars"]},
     }
 
 
@@ -295,14 +316,56 @@ def evaluate() -> None:
     run(jobs, "evaluate")
 
 
+def accepted(cov: pd.DataFrame, name: str) -> dict:
+    """The pre-specified acceptance rule (CALIBRATION_AUDIT.md section 3)."""
+    mars = cov[(cov.variant == name) & (cov.body == "mars")].iloc[0]
+    moon = cov[(cov.variant == name) & (cov.body == "moon")].iloc[0]
+    checks = {
+        "mars_95_in_[0.90,0.99]": bool(0.90 <= mars.cov95 <= 0.99),
+        "mars_50_within_0.10": bool(abs(mars.cov50 - 0.50) <= 0.10),
+        "mars_80_within_0.10": bool(abs(mars.cov80 - 0.80) <= 0.10),
+        "mars_90_within_0.10": bool(abs(mars.cov90 - 0.90) <= 0.10),
+        "moon_95_at_least_0.90": bool(moon.cov95 >= 0.90),
+    }
+    max_err = max(abs(mars[f"cov{int(level * 100)}"] - level) for level in LEVELS)
+    return {
+        "checks": checks,
+        "accepted": all(checks.values()),
+        "mars_max_coverage_error": float(max_err),
+    }
+
+
+def select() -> dict:
+    """Apply the acceptance and selection rule to the validation coverage."""
+    params = json.loads((OUT / "fit.json").read_text())
+    cov = pd.read_csv(OUT / "evaluate_coverage.csv")
+    order = list(candidates(params))
+    verdicts = {name: accepted(cov, name) for name in order}
+    chosen = next((n for n in order if verdicts[n]["accepted"]), None)
+    best = min(order, key=lambda n: verdicts[n]["mars_max_coverage_error"])
+    selection = {
+        "status": "ACCEPTED" if chosen else "NOT ACCEPTED",
+        "selected": chosen,
+        "best_available_if_none_accepted": None if chosen else best,
+        "config": candidates(params)[chosen or best],
+        "epistemic_scale": candidates(params)[chosen or best].get("epistemic_scale", 1.0),
+        "class_assignment": candidates(params)[chosen or best].get("class_assignment", "hard"),
+        "verdicts": verdicts,
+        "rule": "first accepted in order " + " > ".join(order),
+    }
+    (OUT / "selection.json").write_text(json.dumps(selection, indent=2) + "\n")
+    print(json.dumps({k: selection[k] for k in ("status", "selected", "config")}, indent=2))
+    return selection
+
+
 def report() -> None:
     summaries = {}
-    for tag in ("diagnose", "evaluate"):
-        path = OUT / f"{tag}_beliefs.csv"
+    for tag in ("diagnose", "fit_m3", "evaluate"):
+        path = OUT / f"{tag}_beliefs{SUFFIX[tag]}"
         if not path.exists():
             continue
-        beliefs = pd.read_csv(path)
-        pred = pd.read_csv(OUT / f"{tag}_predictions.csv")
+        beliefs = _read(tag, "beliefs")
+        pred = _read(tag, "predictions")
         cov = coverage_table(beliefs, ["variant", "body"])
         cov.to_csv(OUT / f"{tag}_coverage.csv", index=False)
         by_class = coverage_table(beliefs, ["variant", "body", "cls"], n_boot=100)
@@ -350,4 +413,6 @@ def report() -> None:
 
 if __name__ == "__main__":
     phase = sys.argv[1] if len(sys.argv) > 1 else "report"
-    {"diagnose": diagnose, "fit": fit, "evaluate": evaluate, "report": report}[phase]()
+    {"diagnose": diagnose, "fit": fit, "evaluate": evaluate, "report": report, "select": select}[
+        phase
+    ]()

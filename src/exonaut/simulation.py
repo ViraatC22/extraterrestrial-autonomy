@@ -84,6 +84,11 @@ class MissionConfig:
     # planners). 1.0 = uncalibrated. A calibrated value is fit on development
     # data only (docs/CALIBRATION_AUDIT.md) and fixed by the v2 plan.
     epistemic_scale: float = 1.0
+    # How the adaptive learner assigns a slip reading to terrain classes:
+    # "hard" (v1, v2 as explored) files it under the believed class;
+    # "confusion_aware" shares it using the rover's classifier error model
+    # (calibration candidate M3, docs/CALIBRATION_AUDIT.md).
+    class_assignment: str = "hard"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -145,6 +150,13 @@ class MissionResult:
 def build_world_model(config: MissionConfig, prior: dict, adaptive: bool):
     cls = AdaptiveWorldModel if adaptive else WorldModel
     extra = {"calibrated_update": True} if (adaptive and config.engine == "v2") else {}
+    if adaptive and config.class_assignment != "hard":
+        extra.update(
+            class_assignment=config.class_assignment,
+            # the rover's nominal sensor specification, as SensorSuite is built below
+            class_confusion=0.12 * config.sensor_noise_scale,
+            sensing_radius=config.sensing_radius,
+        )
     # Energy multipliers belong to the prior body, not the simulated body.
     # Using the target body's true values here would leak ground truth into an
     # OOD experiment. A lunar-prior robot sent to Mars must initially carry

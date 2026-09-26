@@ -56,6 +56,29 @@ class ClassBelief:
     prior_variance: float = 0.01
     n_observations: int = 0
     observed_sum: float = 0.0
+    #: fractional-evidence totals, used only by weighted (soft) updates
+    weight_sum: float = 0.0
+    weighted_sum: float = 0.0
+
+    def update_weighted(self, slip: float, weight: float, obs_variance: float) -> None:
+        """Conjugate update from a reading that belongs to this class with
+        probability `weight` (confusion-aware assignment).
+
+        The reading counts as `weight` of an observation: with W the total
+        weight and S the weighted sum of readings,
+            precision = 1/t0^2 + W/s^2,  mean = (m0/t0^2 + S/s^2) / precision.
+        With every weight equal to 1 this is exactly `update`.
+        """
+        if weight <= 0.0:
+            return
+        self.weight_sum += weight
+        self.weighted_sum += weight * slip
+        self.n_observations = int(round(self.weight_sum))
+        precision = 1.0 / self.prior_variance + self.weight_sum / obs_variance
+        self.mean = (
+            self.prior_mean / self.prior_variance + self.weighted_sum / obs_variance
+        ) / precision
+        self.variance = 1.0 / precision
 
     def update(self, slip: float, obs_variance: float = SLIP_OBS_VARIANCE) -> None:
         """Conjugate update from one proprioceptive slip measurement."""
@@ -348,10 +371,75 @@ class AdaptiveWorldModel(WorldModel):
     adaptive experimental conditions.
     """
 
-    def __init__(self, *args, calibrated_update: bool = False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        calibrated_update: bool = False,
+        class_assignment: str = "hard",
+        class_confusion: float = 0.12,
+        sensing_radius: int = 6,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         #: v2 engine: per-reading variance includes the terrain's dispersion
         self.calibrated_update = calibrated_update
+        if class_assignment not in ("hard", "confusion_aware", "responsibility"):
+            raise ValueError(f"unknown class_assignment {class_assignment!r}")
+        #: "hard" files each reading under the believed class (v1, v2);
+        #: "confusion_aware" shares it among classes (calibration candidate M3)
+        self.class_assignment = class_assignment
+        #: the rover's own classifier error model (its sensor specification):
+        #: a label is replaced by a uniformly random class with probability
+        #: class_confusion x (1 + range / sensing_radius)
+        self.class_confusion = class_confusion
+        self.sensing_radius = sensing_radius
+
+    def _confusion_at(self, rng) -> np.ndarray:
+        return np.minimum(0.95, self.class_confusion * (1.0 + rng / max(self.sensing_radius, 1)))
+
+    def class_frequency_estimate(self) -> np.ndarray:
+        """True-class frequencies implied by the labels seen so far.
+
+        Labels are a mixture: with probability c the true class, otherwise
+        uniform. Inverting that, freq_true = (freq_label - c/K) / (1 - c),
+        with c the mean confusion over the observed cells. Floored at 1e-3 so
+        no class is ruled out entirely, then renormalized.
+        """
+        k = N_TERRAIN_CLASSES
+        if not self.observed.any():
+            return np.full(k, 1.0 / k)
+        labels = self.terrain_class[self.observed].astype(int)
+        freq = np.bincount(labels, minlength=k) / labels.size
+        c = float(np.mean(self._confusion_at(self.best_range[self.observed])))
+        true = np.clip((freq - c / k) / max(1.0 - c, 1e-6), 1e-3, None)
+        return true / true.sum()
+
+    def class_membership(self, row: int, col: int, reading: float | None = None) -> np.ndarray:
+        """P(true class | the rover's label for this cell [, the slip reading]).
+
+        Bayes' rule over the classifier's error model and the estimated class
+        frequencies. With `reading`, each class's likelihood of producing that
+        (slope-adjusted) reading under the current belief is included too -
+        the standard mixture-model responsibility.
+        """
+        k = N_TERRAIN_CLASSES
+        posterior = self.class_frequency_estimate()
+        if self.observed[row, col]:
+            c = float(self._confusion_at(np.array(self.best_range[row, col])))
+            likelihood = np.full(k, c / k)
+            likelihood[int(self.terrain_class[row, col])] += 1.0 - c
+            posterior = posterior * likelihood
+        if reading is not None:
+            means = np.array([self.class_belief[j].mean for j in range(k)])
+            sds = np.array(
+                [
+                    np.hypot(self.class_belief[j].epistemic_sd, self.aleatoric_sd[j])
+                    for j in range(k)
+                ]
+            )
+            posterior = posterior * np.exp(-0.5 * ((reading - means) / sds) ** 2) / sds
+        total = posterior.sum()
+        return posterior / total if total > 0 else np.full(k, 1.0 / k)
 
     def ingest_slip(self, record) -> None:
         # Update the class the robot currently believes occupies this cell.
@@ -363,6 +451,20 @@ class AdaptiveWorldModel(WorldModel):
         # remove the slope contribution so the class belief is about the
         # terrain class itself, not about how steep this particular cell was
         slope_adjusted = float(np.clip(record.slip - 0.01 * record.slope, 0.0, 1.0))
+        if self.class_assignment in ("confusion_aware", "responsibility"):
+            # The label may be wrong (the rover knows its classifier's error
+            # rate), so the reading is shared among the classes that could
+            # have produced it, weighted by how likely each one is.
+            weights = self.class_membership(
+                record.row,
+                record.col,
+                slope_adjusted if self.class_assignment == "responsibility" else None,
+            )
+            for k, weight in enumerate(weights):
+                variance = self.aleatoric_sd[k] ** 2 + SLIP_OBS_VARIANCE
+                self.class_belief[k].update_weighted(slope_adjusted, float(weight), variance)
+            self._invalidate()
+            return
         if self.calibrated_update:
             # v2: a reading scatters around the class mean by the terrain's own
             # dispersion, not just by sensor noise. Using only sensor noise

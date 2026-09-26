@@ -79,7 +79,7 @@ truth. Parameters are fit on TRAIN seeds only.
 | Id | Method | Fitted parameters | Addresses |
 |---|---|---|---|
 | M1 | v2 learner unchanged | 0 | - |
-| M3 | **confusion-aware assignment**: a reading is shared among classes in proportion to the probability each class produced it, from the rover's own classifier error model (nominal 12% x range factor, known from its sensor specification) and its label frequencies corrected for that error | 0 | misclassification |
+| M3 | **confusion-aware assignment**: a reading is shared among classes in proportion to the probability each class produced it, from the rover's own classifier error model (nominal 12% x range factor, known from its sensor specification) and its label frequencies corrected for that error (see amendment A1) | 0 | misclassification |
 | M2a | M1 + conformal scale on epistemic sd, fit on Moon train missions (prior-body data only) | 1 | overconfidence, any cause |
 | M4a | M3 + conformal scale, fit on Moon train missions under M3 | 1 | both |
 | M2b | M1 + conformal scale, fit on Mars train missions | 1 | both, using deployment-body development data |
@@ -102,6 +102,26 @@ mission might not have; if a "b" candidate is selected, the paper states that.
 **If no candidate is accepted**, calibration is recorded as NOT ACCEPTED, the candidate
 with the smallest maximum coverage error on Mars is reported as the best available, and
 the v2 freeze stays blocked for the project owner to decide.
+
+### Amendment A1 (2026-09-26, before any validation run)
+
+M3 as first written weighted a reading by the label error model and class frequencies
+only. Reasoning through it before validation showed a flaw: every reading would leak a
+fixed share of its weight into every class (about 2% into loose fines from each smooth-
+ground reading, for example), biasing rare or distinctive classes towards the common
+ones. A development check on 30 TRAIN seeds (100100-100129) confirmed it and tested the
+standard mixture-model alternative, which also weighs how plausible the reading is under
+each class's current belief:
+
+| TRAIN, 30 seeds | Mars 95% coverage | Moon 95% coverage | Mars fines abs. error |
+|---|---|---|---|
+| label-only weights | 0.528 | 0.665 | 0.206 |
+| responsibility weights (label x frequency x reading likelihood) | 0.703 | 0.957 | 0.099 |
+
+**M3 (and M4a/M4b, which build on it) therefore use responsibility weights:**
+w_k proportional to P(label | class k) x estimated frequency of k x N(reading; m_k,
+s_k^2 + a_k^2). Label-only weighting is dropped. No validation data was used for this
+amendment; it was committed before the validation run.
 
 Reported for every candidate but **not** used for selection: class-stratified and
 observation-count-stratified coverage (any class below 0.80 at the 95% level is flagged),
