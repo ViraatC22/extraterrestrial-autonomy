@@ -326,3 +326,61 @@ the headline points, all exploratory:
 A caution on reading v1 here: the v1 advantage on validation seeds (+0.225 in
 Mars OOD) did not appear on the held-out confirmatory seeds (exactly 0.000),
 which is another reminder that validation-set effects are optimistic.
+
+## 2026-09-25 - Interface audit: five places the UI did not show engine values
+
+A design review asked that every number in the interface come from the engine
+or a stored result, never a frontend recomputation. Checking for that found
+five problems, none of which touched a committed result:
+
+1. **Probe "routable" was wrong for steep cells.** The frontend reported a cell
+   as routable when its believed hazard probability was under the planner's
+   threshold. The planner's actual test (`believed_traversable`) also rejects
+   cells whose believed slope exceeds the limit. Belief snapshots now record
+   the planner's own test for every cell, pinned to the per-cell method by a
+   test.
+2. **Failure Analysis computed a statistic in the browser**: the gap between
+   expected and actual energy in units of the planner's standard deviation.
+   It is now computed in `api/failures.py` and tested.
+3. **The Experiments verdict quoted typed audit numbers** ("16-26%", "5 of
+   the 10 seeds"). They are now served from `data/results/audit_fault_exposure.csv`
+   through `experiments/audits.py`, the same function the audit script uses.
+4. **The API recomputed true slip with a copied formula.** It now calls
+   `Terrain.true_slip_mean_grid`, which a test pins to the simulator's
+   per-cell `true_slip_distribution`.
+5. **A layer group labelled "rover knows" contained the truth and error
+   layers**, which the rover cannot know. Layers are now grouped as world,
+   rover belief, and evaluation.
+
+The rule, the source of every displayed quantity, and the operations the
+frontend is still allowed (formatting, colour, layout) are in `DATA_FLOW.md`.
+`scripts/verify_v1_reproduction.py` re-ran after the engine-side changes
+(extra history fields and candidate annotations only): 750/750 reproduce.
+
+## 2026-09-25 - The demonstration mission is chosen by rule
+
+The interface gained a "demo mission" for presenting. To keep a demonstration
+from quietly becoming evidence, `scripts/select_demo_mission.py` chooses it by
+a written rule: the first validation seed, scanned in ascending order with the
+Mission Control defaults on engine v1, on which a target within the risk
+budget at one decision is rejected at the next after the rover revised a
+terrain-class slip belief by at least 0.05. The outcome is not part of the
+rule. The rule, every seed scanned, and a caveat ship with the result and are
+shown in the interface.
+
+The first draft of the rule also required the terrain-risk component to rise.
+On the chosen mission (seed 200000, the first scanned) the energy component
+carried the rejection - the higher slip belief raised the expected energy
+through the 1/(1 - slip) term - so the clause misdescribed the event and was
+dropped. The selection is the same under either wording.
+
+The chosen mission also shows the v1 learner's miscalibration plainly: the
+loose-fines belief jumps from 0.42 to 0.78 against a true mean of 0.62.
+
+## 2026-09-25 - A correction to the proposed information-flow diagram
+
+A reviewer suggested the chain sensing -> knowledge -> belief -> belief error
+-> risk -> decision for the paper. Belief error cannot sit in that chain: it
+is belief minus simulator truth, which the rover never has, so risk is
+computed from belief, not from error. The figure added to the paper draws
+error as an evaluation branch and says why.

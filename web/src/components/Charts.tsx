@@ -95,46 +95,68 @@ export interface ForestRow {
   extra?: string;
 }
 
-/** Paired effect with 95% CI; the zero line is "no difference". */
-export function ForestPlot({ rows, span = 0.4, width = 700 }: { rows: ForestRow[]; span?: number; width?: number }) {
-  const left = 210;
-  const right = width - 120;
-  const rowH = 22;
-  const height = rows.length * rowH + 34;
+/**
+ * Paired effect with 95% CI; the zero line is "no difference". The effect and
+ * its interval are the headline; the adjusted p-value is printed smaller and
+ * uncoloured beneath them, so the first thing read is how large the
+ * difference is, not whether p crossed .05.
+ */
+export function ForestPlot({
+  rows,
+  span = 0.4,
+  width = 700,
+  labels = ["fixed better", "adaptive better"],
+}: {
+  rows: ForestRow[];
+  span?: number;
+  width?: number;
+  labels?: [string, string];
+}) {
+  const left = 150;
+  const right = width - 200;
+  const rowH = 30;
+  const height = rows.length * rowH + 36;
   const sx = (v: number) => left + ((Math.max(-span, Math.min(span, v)) + span) / (2 * span)) * (right - left);
+  const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(3)}`;
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img">
       <line x1={sx(0)} x2={sx(0)} y1={2} y2={rows.length * rowH + 8} stroke="#56657a" strokeDasharray="3 3" />
       {rows.map((r, i) => {
-        const y = i * rowH + 14;
-        const color = r.significant ? "#3ec9a7" : r.delta >= 0 ? "#9fb3c8" : "#c79a93";
+        const y = i * rowH + 16;
         return (
           <g key={r.label}>
-            <text x={left - 8} y={y + 3} fill="#c6d0de" fontSize={10} textAnchor="end" fontFamily="monospace">
+            <text x={left - 10} y={y + 4} fill="#c6d0de" fontSize={10} textAnchor="end" fontFamily="monospace">
               {r.label}
             </text>
-            <line x1={sx(r.low)} x2={sx(r.high)} y1={y} y2={y} stroke={color} strokeWidth={2} />
-            <rect x={sx(r.delta) - 4} y={y - 4} width={8} height={8} fill={color} />
-            <text x={right + 8} y={y + 3} fill={r.significant ? "#3ec9a7" : "#e8edf5"} fontSize={9.5} fontFamily="monospace">
-              {r.delta >= 0 ? "+" : ""}
-              {r.delta.toFixed(3)} p={r.p < 0.001 ? "<.001" : r.p.toFixed(3)}
-              {r.significant ? " ✻" : ""}
+            <line x1={sx(r.low)} x2={sx(r.high)} y1={y} y2={y} stroke="#dfe6f0" strokeWidth={2.2} />
+            <line x1={sx(r.low)} x2={sx(r.low)} y1={y - 4} y2={y + 4} stroke="#dfe6f0" strokeWidth={1.5} />
+            <line x1={sx(r.high)} x2={sx(r.high)} y1={y - 4} y2={y + 4} stroke="#dfe6f0" strokeWidth={1.5} />
+            <rect x={sx(r.delta) - 4.5} y={y - 4.5} width={9} height={9} fill="#ff7a3d" />
+            <text x={right + 14} y={y - 1} fill="#f1f5fa" fontSize={11.5} fontFamily="monospace">
+              {signed(r.delta)}
+              <tspan fill="#aeb9c8" fontSize={10}>
+                {"  "}[{signed(r.low)}, {signed(r.high)}]
+              </tspan>
+            </text>
+            <text x={right + 14} y={y + 11} fill="#6f7c8f" fontSize={8.5} fontFamily="monospace">
+              Holm-adjusted p = {r.p < 0.001 ? "<0.001" : r.p.toFixed(3)}
+              {r.extra ? ` · ${r.extra}` : ""}
             </text>
           </g>
         );
       })}
       <line x1={left} x2={right} y1={rows.length * rowH + 10} y2={rows.length * rowH + 10} stroke={AXIS} />
       {[-span, -span / 2, 0, span / 2, span].map((t) => (
-        <text key={t} x={sx(t)} y={rows.length * rowH + 24} fill={TEXT} fontSize={9} textAnchor="middle" fontFamily="monospace">
+        <text key={t} x={sx(t)} y={rows.length * rowH + 23} fill={TEXT} fontSize={9} textAnchor="middle" fontFamily="monospace">
           {t > 0 ? "+" : ""}
           {t.toFixed(2)}
         </text>
       ))}
-      <text x={sx(-span)} y={rows.length * rowH + 33} fill={TEXT} fontSize={8} fontFamily="monospace">
-        fixed better
+      <text x={sx(-span)} y={rows.length * rowH + 34} fill={TEXT} fontSize={8} fontFamily="monospace">
+        ← {labels[0]}
       </text>
-      <text x={sx(span)} y={rows.length * rowH + 33} fill={TEXT} fontSize={8} textAnchor="end" fontFamily="monospace">
-        adaptive better
+      <text x={sx(span)} y={rows.length * rowH + 34} fill={TEXT} fontSize={8} textAnchor="end" fontFamily="monospace">
+        {labels[1]} →
       </text>
     </svg>
   );
@@ -211,12 +233,25 @@ export function ParetoPlot({ points, width = 620, height = 360 }: { points: Pare
 }
 
 /** One point per matched seed; above the diagonal = adaptive returned more science. */
+export interface PairedScatterPoint {
+  seed: number;
+  x: number;
+  y: number;
+  both: boolean;
+  onlyT: boolean;
+  onlyC: boolean;
+}
+
 export function PairedScatter({
   points,
   width = 420,
+  onSelect,
+  selected,
 }: {
-  points: { x: number; y: number; both: boolean; onlyT: boolean; onlyC: boolean }[];
+  points: PairedScatterPoint[];
   width?: number;
+  onSelect?: (seed: number) => void;
+  selected?: number | null;
 }) {
   const height = width;
   const m = 34;
@@ -224,6 +259,12 @@ export function PairedScatter({
   const top = Math.min(1, Math.ceil(max * 10) / 10);
   const sx = (v: number) => m + (v / top) * (width - m - 8);
   const sy = (v: number) => height - m - (v / top) * (height - m - 8);
+  // seeds drawn at the same spot, for the tooltip
+  const stacked = new Map<string, number[]>();
+  points.forEach((p) => {
+    const key = `${p.x.toFixed(4)},${p.y.toFixed(4)}`;
+    stacked.set(key, [...(stacked.get(key) ?? []), p.seed]);
+  });
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img">
       <line x1={sx(0)} y1={sy(0)} x2={sx(top)} y2={sy(top)} stroke="#56657a" strokeDasharray="3 3" />
@@ -239,16 +280,29 @@ export function PairedScatter({
           </text>
         </g>
       ))}
-      {points.map((p, i) => (
-        <circle
-          key={i}
-          cx={sx(p.x)}
-          cy={sy(p.y)}
-          r={3.2}
-          fill={p.onlyT ? "#ff7a3d" : p.onlyC ? "#5ad2f2" : p.both ? "#3ec9a7" : "#56657a"}
-          opacity={0.85}
-        />
-      ))}
+      {points.map((p) => {
+        const seeds = stacked.get(`${p.x.toFixed(4)},${p.y.toFixed(4)}`) ?? [p.seed];
+        return (
+          <g key={p.seed}>
+            {selected === p.seed ? (
+              <circle cx={sx(p.x)} cy={sy(p.y)} r={7} fill="none" stroke="#ffffff" strokeWidth={1.4} />
+            ) : null}
+            <circle
+              cx={sx(p.x)}
+              cy={sy(p.y)}
+              r={3.4}
+              fill={p.onlyT ? "#ff7a3d" : p.onlyC ? "#5ad2f2" : p.both ? "#3ec9a7" : "#56657a"}
+              opacity={0.85}
+              style={{ cursor: onSelect ? "pointer" : undefined }}
+              onClick={() => onSelect?.(p.seed)}
+            >
+              <title>
+                {`seed ${seeds.join(", ")} · fixed ${p.x.toFixed(3)} · adaptive ${p.y.toFixed(3)}${onSelect ? " · click to replay" : ""}`}
+              </title>
+            </circle>
+          </g>
+        );
+      })}
       <text x={(sx(0) + sx(top)) / 2} y={height - 4} fill={TEXT} fontSize={9} textAnchor="middle" fontFamily="monospace">
         FIXED science fraction
       </text>

@@ -261,6 +261,9 @@ def run_mission(
     termination = TERMINATION_TIMEOUT
 
     pending_faults: list[str] = []
+    #: grid heading of the most recent completed move, degrees clockwise from
+    #: grid north (towards row 0); None until the rover first moves
+    heading_deg: float | None = None
     for step in range(1, config.max_steps + 1):
         fired = rover.apply_faults(faults, step)
         # Faults can fire on steps that record no frame (waiting on mission
@@ -357,6 +360,7 @@ def run_mission(
         if outcome["moved"]:
             distance_travelled += float(np.hypot(dr, dc))
             path_index += 1
+            heading_deg = float(np.degrees(np.arctan2(dc, -dr)) % 360.0)
         else:
             reason = outcome["reason"]
             if reason == "slip_no_progress":
@@ -419,6 +423,8 @@ def run_mission(
                     "sensing_radius": rover.sensors.effective_radius(),
                     "energy_spent": rover.power.expended,
                     "faults": pending_faults,
+                    "heading_deg": heading_deg,
+                    "local_slope_deg": float(terrain.slope[rover.pos]),
                 }
             )
             pending_faults = []
@@ -436,6 +442,11 @@ def run_mission(
                         "risk": _risk.cell_risk_grid(world_model).astype(np.float32),
                         "hazard_prob": world_model.hazard_prob.astype(np.float32).copy(),
                         "hazard_threshold": float(planner.hazard_threshold),
+                        # the planner's own test (believed_traversable), whole map
+                        "routable": world_model.believed_traversable_grid(
+                            planner.max_slope_deg, planner.hazard_threshold
+                        ),
+                        "believed_slope": world_model.slope.astype(np.float32).copy(),
                     }
                 )
 

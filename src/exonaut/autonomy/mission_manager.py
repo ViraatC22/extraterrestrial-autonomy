@@ -249,6 +249,7 @@ class MissionManager:
                         "col": target.col,
                         "science_value": target.value,
                         "reachable": False,
+                        "within_budget": False,
                         "rejected": "no believed route",
                     }
                 )
@@ -274,6 +275,7 @@ class MissionManager:
                     "p_terrain": assessment["p_terrain"],
                     "p_energy": assessment["p_energy"],
                     "utility": utility,
+                    "within_budget": not over_budget,
                     "rejected": (
                         f"P(failure) {assessment['p_failure']:.3f} exceeds "
                         f"risk budget {mission.risk_budget:.2f}"
@@ -293,6 +295,17 @@ class MissionManager:
         else:
             for entry in self.last_candidates:
                 entry["selected"] = False
+        # Rank among the candidates that passed the risk check, by utility
+        # (1 = best, and the selected one). Recorded so an interface can show
+        # the ordering without re-deriving it.
+        feasible = sorted(
+            (e for e in self.last_candidates if e["within_budget"]),
+            key=lambda e: -e["utility"],
+        )
+        for entry in self.last_candidates:
+            entry["feasible_rank"] = None
+        for rank, entry in enumerate(feasible, start=1):
+            entry["feasible_rank"] = rank
 
         if best is None:
             self.returning = True

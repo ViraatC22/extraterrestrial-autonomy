@@ -199,19 +199,31 @@ export default function ScenarioLab() {
                   </label>
                 ))}
               </div>
-              <label className="block">
-                <span className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                  Missions per point<span className="text-slate-300">{nSeeds}</span>
+              <div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  Missions per point
                 </span>
-                <input
-                  type="range"
-                  min={2}
-                  max={20}
-                  value={nSeeds}
-                  onChange={(e) => setNSeeds(Number(e.target.value))}
-                  className="mt-1 w-full accent-orange-500"
-                />
-              </label>
+                <div className="mt-1 grid grid-cols-4 gap-1">
+                  {[6, 12, 24, 40].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setNSeeds(n)}
+                      className={`rounded-sm border px-1 py-1 font-mono text-[10px] tabular-nums ${
+                        nSeeds === n
+                          ? "border-orange-500/50 bg-orange-500/15 text-orange-300"
+                          : "border-white/10 text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 font-mono text-[8.5px] leading-relaxed text-slate-500">
+                  Rerun with more missions to watch the intervals narrow - roughly with the square
+                  root of the count, so four times the missions halves the width. More missions take
+                  proportionally longer.
+                </p>
+              </div>
               <button
                 onClick={run}
                 disabled={Boolean(progress) || planners.length === 0}
@@ -292,8 +304,8 @@ export default function ScenarioLab() {
                     </span>
                   ))}
                   <span className="text-slate-500">
-                    band = 95% interval ({outcome === "success" ? "Wilson" : "t"}) · each point = {nSeeds}{" "}
-                    missions · {swept?.body ?? body}
+                    band = 95% interval ({outcome === "success" ? "Wilson" : "t"}) · each point ={" "}
+                    {points[0]?.n ?? nSeeds} missions · {swept?.body ?? body}
                   </span>
                 </div>
               </>

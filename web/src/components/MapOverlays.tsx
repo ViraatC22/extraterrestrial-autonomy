@@ -9,13 +9,23 @@
  * value belongs to.
  */
 
-import { LAYERS, LAYER_BY_KEY, STATUS_STYLE, type DataStatus } from "@/lib/layers";
-import { CLASS_COLORS, CLASS_NAMES, ramp } from "@/lib/palette";
+import {
+  LAYERS,
+  LAYER_BY_KEY,
+  STATUS_STYLE,
+  legendUnit,
+  type DataStatus,
+  type LayerSpec,
+  type LegendContext,
+} from "@/lib/layers";
+import { NAVCAM_FOV_DEG } from "@/lib/camera";
+import { CLASS_COLORS, CLASS_NAMES, ROUTE, diverging, knowledgeColor, ramp } from "@/lib/palette";
 import type {
-  BeliefSnapshot,
   CameraMode,
-  MissionRequest,
+  ModelConstants,
+  ProbePayload,
   Provenance,
+  TelemetryFrame,
   TerrainLayerName,
   TerrainLayers,
 } from "@/lib/types";
@@ -72,15 +82,24 @@ export function LayerBar({
   onOpacity: (o: number) => void;
   hasBelief: boolean;
 }) {
-  const groups: { name: string; keys: TerrainLayerName[] }[] = [
-    { name: "WORLD", keys: ["surface", "terrain_class", "elevation", "slope", "roughness", "illumination"] },
-    { name: "ROVER KNOWS", keys: ["knowledge", "belief_slip", "true_slip", "slip_error", "risk"] },
+  // Belief layers are what the rover plans with; evaluation layers compare
+  // that belief with ground truth, which the rover never has.
+  const groups: { name: string; hint: string; keys: TerrainLayerName[] }[] = [
+    {
+      name: "WORLD",
+      hint: "simulator ground truth",
+      keys: ["surface", "terrain_class", "elevation", "slope", "roughness", "illumination"],
+    },
+    { name: "ROVER BELIEF", hint: "what the rover plans with", keys: ["knowledge", "belief_slip", "risk"] },
+    { name: "EVALUATION", hint: "belief vs truth; the rover cannot see this", keys: ["true_slip", "slip_error"] },
   ];
   return (
     <div className="flex flex-col gap-1">
       {groups.map((group) => (
         <div key={group.name} className="flex flex-wrap items-center gap-1">
-          <span className="w-[74px] font-mono text-[8px] tracking-[0.18em] text-slate-500">{group.name}</span>
+          <span className="w-[82px] font-mono text-[8px] tracking-[0.16em] text-slate-500" title={group.hint}>
+            {group.name}
+          </span>
           {group.keys.map((key) => {
             const spec = LAYER_BY_KEY[key];
             const disabled = spec.needsBelief && !hasBelief;
@@ -98,7 +117,7 @@ export function LayerBar({
         </div>
       ))}
       {layer !== "surface" ? (
-        <label className="flex items-center gap-2 pl-[78px]">
+        <label className="flex items-center gap-2 pl-[86px]">
           <span className="font-mono text-[8px] tracking-[0.18em] text-slate-500">OPACITY</span>
           <input
             type="range"
@@ -118,22 +137,80 @@ export function LayerBar({
   );
 }
 
-const CAMERAS: { key: CameraMode; label: string; hint: string }[] = [
+export const CAMERAS: { key: CameraMode; label: string; hint: string }[] = [
   { key: "orbit", label: "ORBIT", hint: "free camera - drag to rotate, scroll to zoom" },
-  { key: "chase", label: "CHASE", hint: "follow the rover from behind" },
+  { key: "chase", label: "CHASE", hint: "spring arm behind the rover; pulls in when terrain or the lander is in the way" },
   { key: "top", label: "TOP DOWN", hint: "plan view of the map" },
-  { key: "pov", label: "ROVER POV", hint: "approximate mast-camera view" },
+  { key: "navcam", label: "NAV CAM", hint: "the rover's mast navigation camera (display view; the simulated sensor is a radius)" },
   { key: "planner", label: "PLANNER", hint: "overview with every candidate route at this decision" },
 ];
 
-export function CameraBar({ mode, onMode }: { mode: CameraMode; onMode: (m: CameraMode) => void }) {
+export function CameraBar({
+  mode,
+  onMode,
+  showKeys = false,
+}: {
+  mode: CameraMode;
+  onMode: (m: CameraMode) => void;
+  showKeys?: boolean;
+}) {
   return (
     <div className="flex gap-1">
-      {CAMERAS.map((cam) => (
+      {CAMERAS.map((cam, i) => (
         <ToggleButton key={cam.key} active={mode === cam.key} onClick={() => onMode(cam.key)} title={cam.hint}>
+          {showKeys ? <span className="mr-1 text-slate-500">{i + 1}</span> : null}
           {cam.label}
         </ToggleButton>
       ))}
+    </div>
+  );
+}
+
+function rampCss(spec: LayerSpec): string {
+  const stops = Array.from({ length: 21 }, (_, i) => i / 20);
+  const color = (u: number) =>
+    spec.ramp === "diverging" ? diverging(u) : spec.ramp === "knowledge" ? knowledgeColor(u) : ramp(u);
+  return `linear-gradient(90deg,${stops.map((u) => rgb(color(u))).join(",")})`;
+}
+
+/** Colour bar with ticks and reference markers, positioned by the map's own mapping. */
+function ScaleBar({ spec, ctx }: { spec: LayerSpec; ctx: LegendContext }) {
+  const ticks = spec.ticks(ctx);
+  const markers = spec.markers?.(ctx) ?? [];
+  const pct = (v: number) => `${(legendUnit(spec, ctx.terrain, v) * 100).toFixed(2)}%`;
+  return (
+    <div className={markers.length ? "pt-3.5" : ""}>
+      <div className="relative">
+        <div className="h-2.5 rounded-[1px]" style={{ background: rampCss(spec) }} />
+        {markers.map((m) => (
+          <div key={m.label} className="absolute top-[-4px] h-[18px]" style={{ left: pct(m.value) }}>
+            <div className="h-full w-[2px] -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.6)]" />
+            <span className="absolute bottom-[19px] -translate-x-1/2 whitespace-nowrap font-mono text-[8px] text-slate-100">
+              {m.label}
+            </span>
+          </div>
+        ))}
+        <div className="relative h-5">
+          {ticks.map((t, i) => {
+            const align = i === 0 ? "translate-x-0" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2";
+            return (
+              <div key={t.label} className="absolute top-0" style={{ left: pct(t.value) }}>
+                <div className={`h-1 w-px bg-slate-400 ${i === ticks.length - 1 ? "-translate-x-full" : ""}`} />
+                <span className={`absolute top-1 whitespace-nowrap font-mono text-[8px] tabular-nums text-slate-400 ${align}`}>
+                  {t.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {spec.ends ? (
+        <div className="flex justify-between font-mono text-[8px] text-slate-500">
+          <span>{spec.ends[0]}</span>
+          {spec.ramp === "diverging" ? <span>correct</span> : null}
+          <span>{spec.ends[1]}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -143,20 +220,20 @@ export function Legend({
   terrain,
   exaggeration,
   beliefStep,
+  constants,
+  riskBudget,
 }: {
   layer: TerrainLayerName;
   terrain: TerrainLayers;
   exaggeration: number;
   beliefStep: number | null;
+  constants: ModelConstants | null;
+  riskBudget: number | null;
 }) {
   const spec = LAYER_BY_KEY[layer];
-  const stops = Array.from({ length: 11 }, (_, i) => i / 10);
-  let gradient = "";
-  if (spec.ramp === "sequential") gradient = stops.map((s) => rgb(ramp(s))).join(",");
-  if (spec.ramp === "diverging") gradient = "rgb(51,115,230),rgb(107,112,120),rgb(230,82,64)";
-  if (spec.ramp === "knowledge") gradient = "rgb(61,184,168),rgb(230,120,40)";
+  const ctx: LegendContext = { terrain, constants, riskBudget };
   return (
-    <div className="w-[270px] rounded-sm border border-white/10 bg-black/65 p-2 backdrop-blur-sm">
+    <div className="w-[290px] rounded-sm border border-white/10 bg-black/65 p-2 backdrop-blur-sm">
       <div className="mb-1 flex items-center justify-between">
         <span className="font-mono text-[10px] tracking-[0.18em] text-slate-200">
           {spec.label}
@@ -165,7 +242,18 @@ export function Legend({
         <StatusBadge status={spec.status} />
       </div>
 
-      {gradient ? (
+      {spec.ramp === "categorical" ? (
+        spec.key === "surface" ? null : (
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+            {Object.entries(CLASS_NAMES).map(([k, name]) => (
+              <div key={k} className="flex items-center gap-1.5">
+                <span className="h-2 w-3 rounded-[1px]" style={{ background: rgb(CLASS_COLORS[Number(k)]) }} />
+                <span className="font-mono text-[8.5px] text-slate-400">{name}</span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
         <>
           {spec.ramp === "knowledge" ? (
             <div className="mb-1 flex items-center gap-1.5">
@@ -173,24 +261,8 @@ export function Legend({
               <span className="font-mono text-[8.5px] text-slate-400">unexplored</span>
             </div>
           ) : null}
-          <div className="h-2.5 rounded-[1px]" style={{ background: `linear-gradient(90deg,${gradient})` }} />
-          <div className="mt-0.5 flex justify-between font-mono text-[8.5px] text-slate-400">
-            <span>{spec.key === "elevation" ? `${terrain.elevation_range[0].toFixed(1)} m` : spec.minLabel}</span>
-            <span>{spec.key === "elevation" ? `${terrain.elevation_range[1].toFixed(1)} m` : spec.maxLabel}</span>
-          </div>
+          <ScaleBar spec={spec} ctx={ctx} />
         </>
-      ) : (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-          {Object.entries(CLASS_NAMES).map(([k, name]) => (
-            <div key={k} className="flex items-center gap-1.5">
-              <span
-                className="h-2 w-3 rounded-[1px]"
-                style={{ background: rgb(CLASS_COLORS[Number(k)]) }}
-              />
-              <span className="font-mono text-[8.5px] text-slate-400">{name}</span>
-            </div>
-          ))}
-        </div>
       )}
 
       <p className="mt-1.5 font-mono text-[8.5px] leading-snug text-slate-500">{spec.description}</p>
@@ -198,7 +270,8 @@ export function Legend({
         <p className="mt-1 font-mono text-[8.5px] text-slate-500">belief as of step T+{String(beliefStep).padStart(4, "0")}</p>
       ) : null}
       <div className="mt-1.5 flex flex-wrap gap-x-3 border-t border-white/10 pt-1 font-mono text-[8px] text-slate-500">
-        <span>vertical exaggeration ×{exaggeration.toFixed(1)}</span>
+        <span>relief ×{exaggeration.toFixed(1)} vertical</span>
+        <span>vehicles to scale</span>
         {!spec.needsBelief || spec.key === "true_slip" ? <span>red tint = true hazard</span> : null}
         <span>outside the outline: not simulated</span>
       </div>
@@ -206,105 +279,185 @@ export function Legend({
   );
 }
 
-function ProbeRow({
-  label,
-  value,
-  status,
-}: {
-  label: string;
-  value: string;
-  status: DataStatus;
-}) {
+function LineSample({ color, dashed, width, opacity = 1 }: { color: string; dashed?: boolean; width: number; opacity?: number }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-[1.5px]">
-      <span className="font-mono text-[9px] tracking-[0.1em] text-slate-500">{label}</span>
-      <span className="flex items-center gap-1.5">
-        <span className="font-mono text-[11px] tabular-nums text-slate-100">{value}</span>
-        <StatusBadge status={status} />
-      </span>
+    <svg width="26" height="8" aria-hidden>
+      <line
+        x1="1"
+        x2="25"
+        y1="4"
+        y2="4"
+        stroke={color}
+        strokeWidth={width}
+        strokeDasharray={dashed ? "5 3" : undefined}
+        opacity={opacity}
+      />
+    </svg>
+  );
+}
+
+/** Key to the route lines drawn in the 3D view. */
+export function RouteLegend({ planner, riskBudget }: { planner: boolean; riskBudget: number | null }) {
+  const rows: [React.ReactNode, string][] = planner
+    ? [
+        [<LineSample key="s" color={ROUTE.selected} width={3} />, "selected route"],
+        [<LineSample key="f" color={ROUTE.feasible} width={1.5} dashed />, "feasible alternative"],
+        [
+          <LineSample key="r" color={ROUTE.rejected} width={1.5} dashed />,
+          `rejected: P(fail) > ε${riskBudget !== null ? ` ${riskBudget.toFixed(2)}` : ""}`,
+        ],
+        [<LineSample key="t" color={ROUTE.traversed} width={2} opacity={0.6} />, "traversed"],
+      ]
+    : [
+        [<LineSample key="p" color={ROUTE.planned} width={2.6} />, "planned route (ahead)"],
+        [<LineSample key="t" color={ROUTE.traversed} width={2} opacity={0.6} />, "traversed"],
+      ];
+  return (
+    <div className="rounded-sm border border-white/10 bg-black/60 px-2 py-1 backdrop-blur-sm">
+      {rows.map(([sample, label]) => (
+        <div key={label} className="flex items-center gap-1.5 font-mono text-[8.5px] text-slate-300">
+          {sample}
+          {label}
+        </div>
+      ))}
     </div>
   );
 }
 
-export function ProbePanel({
-  terrain,
-  belief,
-  cell,
-  request,
-}: {
-  terrain: TerrainLayers;
-  belief: BeliefSnapshot | null;
-  cell: [number, number];
-  request: MissionRequest;
-}) {
-  const [r, c] = cell;
-  const illum = terrain.illumination[r][c];
-  const seen = belief ? Boolean(belief.observed[r][c]) : false;
-  const hazardBelief = belief?.hazard_prob[r][c];
+/** Minimal instrument readout for the navigation-camera view. */
+export function NavcamReadout({ frame }: { frame: TelemetryFrame | null }) {
+  const rows: [string, string, DataStatus | null][] = [
+    ["FOV", `${NAVCAM_FOV_DEG}° display`, null],
+    [
+      "HEADING",
+      frame?.heading_deg !== null && frame?.heading_deg !== undefined
+        ? `${String(Math.round(frame.heading_deg)).padStart(3, "0")}° grid`
+        : "—",
+      "SIMULATED",
+    ],
+    ["SENSING", frame?.sensing_radius ? `${frame.sensing_radius} cells, all round` : "—", "SIMULATED"],
+    [
+      "LOCAL SLOPE",
+      frame?.local_slope_deg !== null && frame?.local_slope_deg !== undefined
+        ? `${frame.local_slope_deg.toFixed(1)}°`
+        : "—",
+      "GENERATED",
+    ],
+  ];
   return (
-    <div className="w-[270px] rounded-sm border border-white/15 bg-black/75 p-2 backdrop-blur-sm">
-      <div className="mb-1 flex justify-between font-mono text-[10px] tracking-[0.18em] text-slate-200">
-        <span>TERRAIN PROBE</span>
-        <span className="text-slate-400">
-          GRID {r}, {c}
-        </span>
+    <div className="pointer-events-none rounded-sm bg-black/35 px-2 py-1.5 font-mono text-[9px] text-slate-300">
+      <div className="mb-1 tracking-[0.2em] text-slate-100">NAVCAM // ROVER-01</div>
+      {rows.map(([label, value, status]) => (
+        <div key={label} className="flex items-center justify-between gap-4">
+          <span className="tracking-[0.14em] text-slate-500">{label}</span>
+          <span className="flex items-center gap-1 tabular-nums">
+            {value}
+            {status ? <StatusBadge status={status} /> : null}
+          </span>
+        </div>
+      ))}
+      <div className="mt-1 max-w-[210px] text-[7.5px] leading-snug text-slate-500">
+        Rendered camera view. The simulated sensor is a radius around the rover, not this frustum.
       </div>
-      <p className="mb-1 font-mono text-[8px] text-slate-500">simulator ground truth</p>
-      <ProbeRow
-        label="ELEVATION"
-        value={`${(terrain.elevation[r][c] - terrain.elevation_range[0]).toFixed(2)} m`}
-        status="GENERATED"
-      />
-      <ProbeRow label="SLOPE" value={`${terrain.slope[r][c].toFixed(1)}°`} status="GENERATED" />
-      <ProbeRow label="ROUGHNESS" value={terrain.roughness[r][c].toFixed(2)} status="GENERATED" />
-      <ProbeRow label="CLASS" value={CLASS_NAMES[terrain.terrain_class[r][c]]} status="GENERATED" />
-      <ProbeRow label="HAZARD" value={terrain.hazard[r][c] ? "IMPASSABLE" : "passable"} status="GENERATED" />
-      <ProbeRow label="ILLUMINATION" value={`${illum.toFixed(2)} × nominal`} status="GENERATED" />
-      <ProbeRow
-        label="SOLAR HARVEST"
-        value={`${(illum * request.solar_rate).toFixed(2)} Wh/step`}
-        status="ASSUMED"
-      />
-      {belief ? (
-        <>
-          <ProbeRow label="TRUE MEAN SLIP" value={belief.true_slip[r][c].toFixed(3)} status="SIMULATED" />
-          <p className="mb-1 mt-1.5 border-t border-white/10 pt-1 font-mono text-[8px] text-slate-500">
-            rover belief at T+{String(belief.step).padStart(4, "0")} {seen ? "· cell observed" : "· never observed"}
-          </p>
-          <ProbeRow
-            label="BELIEVED CLASS"
-            value={seen ? CLASS_NAMES[belief.believed_class[r][c]] : "unknown"}
-            status="INFERRED"
-          />
-          <ProbeRow
-            label="BELIEVED SLIP"
-            value={`${belief.expected_slip[r][c].toFixed(3)} ± ${belief.slip_sd[r][c].toFixed(3)}`}
-            status="INFERRED"
-          />
-          <ProbeRow
-            label="P(HAZARD)"
-            value={hazardBelief !== undefined ? hazardBelief.toFixed(2) : "—"}
-            status="INFERRED"
-          />
-          <ProbeRow
-            label="ROUTABLE"
-            value={
-              hazardBelief !== undefined && hazardBelief < belief.hazard_threshold ? "yes" : "no"
-            }
-            status="INFERRED"
-          />
-          <ProbeRow
-            label="P(ENTRY ENDS MISSION)"
-            value={belief.risk[r][c] < 1e-5 ? "< 1e-5" : belief.risk[r][c].toExponential(1)}
-            status="INFERRED"
-          />
-          <ProbeRow
-            label="P(SAFE ENTRY)"
-            value={(1 - belief.risk[r][c]).toFixed(5)}
-            status="INFERRED"
-          />
-        </>
-      ) : null}
+    </div>
+  );
+}
+
+export interface ProbeColumn {
+  tag: string;
+  data: ProbePayload;
+}
+
+/** Terrain probe: one column for the hovered cell, or two pinned cells side by side. */
+export function ProbePanel({
+  columns,
+  pinned,
+  onClear,
+}: {
+  columns: ProbeColumn[];
+  pinned: boolean;
+  onClear: () => void;
+}) {
+  if (!columns.length) return null;
+  const first = columns[0].data;
+  const byKey = columns.map((col) => Object.fromEntries(col.data.rows.map((r) => [r.key, r])));
+  const beliefStep = columns.find((c) => c.data.belief_step !== null)?.data.belief_step ?? null;
+  const section = (group: "truth" | "belief") =>
+    first.rows
+      .filter((row) => row.group === group)
+      .map((row) => (
+        <tr key={row.key} className="border-t border-white/[0.04]">
+          <td className="py-[2px] pr-2 font-mono text-[8.5px] leading-tight tracking-[0.08em] text-slate-500">
+            {row.label}
+            {row.unit ? <span className="ml-1 text-[7.5px] tracking-normal text-slate-600">{row.unit}</span> : null}
+          </td>
+          {byKey.map((values, i) => (
+            <td key={i} className="py-[2px] pr-2 text-right font-mono text-[10.5px] tabular-nums text-slate-100">
+              {values[row.key]?.display ?? "—"}
+            </td>
+          ))}
+          <td className="py-[2px] text-right">
+            <StatusBadge status={row.status} />
+          </td>
+        </tr>
+      ));
+  return (
+    <div className="max-w-[400px] rounded-sm border border-white/15 bg-black/80 p-2 backdrop-blur-sm">
+      <div className="mb-1 flex items-center justify-between gap-3 font-mono text-[10px] tracking-[0.18em] text-slate-200">
+        <span>{pinned ? "TERRAIN PROBE · COMPARE" : "TERRAIN PROBE"}</span>
+        {pinned ? (
+          <button
+            onClick={onClear}
+            className="pointer-events-auto rounded-sm border border-white/15 px-1.5 font-mono text-[8px] tracking-[0.16em] text-slate-400 hover:text-slate-200"
+          >
+            CLEAR PINS
+          </button>
+        ) : (
+          <span className="text-[8px] tracking-[0.1em] text-slate-500">click to pin · pin two to compare</span>
+        )}
+      </div>
+      <table className="w-full">
+        <thead>
+          <tr>
+            <th />
+            {columns.map((col) => (
+              <th key={col.tag} className="pr-2 text-right font-mono text-[9px] font-normal tracking-[0.12em] text-slate-300">
+                {col.tag} <span className="text-slate-500">({col.data.row}, {col.data.col})</span>
+              </th>
+            ))}
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colSpan={columns.length + 2} className="pt-1 font-mono text-[8px] text-slate-500">
+              simulator ground truth
+            </td>
+          </tr>
+          {section("truth")}
+          {beliefStep !== null ? (
+            <>
+              <tr>
+                <td colSpan={columns.length + 2} className="pt-1.5 font-mono text-[8px] text-slate-500">
+                  rover belief at T+{String(beliefStep).padStart(4, "0")}
+                </td>
+              </tr>
+              <tr className="border-t border-white/[0.04]">
+                <td className="py-[2px] pr-2 font-mono text-[8.5px] tracking-[0.08em] text-slate-500">SEEN BY ROVER</td>
+                {columns.map((col) => (
+                  <td key={col.tag} className="py-[2px] pr-2 text-right font-mono text-[10.5px] text-slate-100">
+                    {col.data.observed ? "yes" : "no"}
+                  </td>
+                ))}
+                <td className="text-right">
+                  <StatusBadge status="INFERRED" />
+                </td>
+              </tr>
+              {section("belief")}
+            </>
+          ) : null}
+        </tbody>
+      </table>
     </div>
   );
 }

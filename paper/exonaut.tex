@@ -8,6 +8,8 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
 \hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
             citecolor=blue!50!black}
 
@@ -215,6 +217,51 @@ range-dependent probability. Slip, by contrast, is measured directly and
 without class ambiguity --- but only for the single cell just driven.
 
 \section{Autonomy stack}
+
+Figure~\ref{fig:flow} shows how information moves through the stack. The
+rover senses a disc around itself, which grows its map of observed cells; its
+belief about slip combines those observations with the class prior and, for
+the adaptive planner only, with slip measured while driving; risk is computed
+from that belief; and the mission manager chooses on risk. Belief
+\emph{error}, the difference between belief and simulator truth, appears in
+the figure only as an evaluation branch: the rover never has truth, so error
+is something this study measures about the rover, not something the rover
+uses.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=5mm and 7mm,
+  box/.style={draw, rounded corners=1pt, align=center, font=\footnotesize,
+              minimum height=10mm, text width=21mm, inner sep=2pt},
+  eval/.style={box, dashed, draw=gray, text=gray},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+]
+\node[box] (sense) {Sensing\\ {\scriptsize radius $r$, noisy}};
+\node[box, right=of sense] (know) {Knowledge\\ {\scriptsize observed cells}};
+\node[box, right=of know] (belief) {Belief\\ {\scriptsize slip $\mu,\sigma$ per cell}};
+\node[box, right=of belief] (risk) {Risk estimate\\ {\scriptsize $p_\text{embed}$, $P(\text{fail})$}};
+\node[box, right=of risk] (plan) {Decision\\ {\scriptsize max $v/E$ s.t.\ $P\le\varepsilon$}};
+\node[box, below=9mm of plan] (act) {Drive\\ {\scriptsize measured slip}};
+\node[eval, below=9mm of know] (err) {Belief error\\ {\scriptsize belief $-$ truth}};
+\node[eval, left=of err] (truth) {Simulator truth\\ {\scriptsize never seen}};
+\draw[arr] (sense) -- (know);
+\draw[arr] (know) -- (belief);
+\draw[arr] (belief) -- (risk);
+\draw[arr] (risk) -- (plan);
+\draw[arr] (plan) -- (act);
+\draw[arr, dashed] (act.west) -- node[below, font=\scriptsize] {adaptive only}
+  ([xshift=-4mm]belief.south east |- act.west) -- ([xshift=-4mm]belief.south east);
+\draw[arr, gray, dotted] (belief.south west) -- (err.north east);
+\draw[arr, gray, dotted] (truth) -- (err);
+\end{tikzpicture}
+\caption{Information flow in the autonomy stack. Solid boxes are what the rover
+computes and acts on. Dashed grey boxes are evaluation quantities available to
+the study but not to the rover; belief error explains decisions after the fact
+and is not an input to them. The dashed arrow (measured slip revising belief)
+exists for the adaptive planner only.}
+\label{fig:flow}
+\end{figure}
 
 \subsection{World model}
 

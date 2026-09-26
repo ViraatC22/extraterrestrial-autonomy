@@ -8,6 +8,7 @@
  * cannot disagree.
  */
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
@@ -54,7 +55,51 @@ const SHORT_COND: Record<string, string> = {
   mars_comm_delay: "Mars comm delay",
 };
 
+type Tier = "PRIMARY" | "SECONDARY" | "DESCRIPTIVE" | "EXPLORATORY" | "POST-HOC";
+
+const TIER_STYLE: Record<Tier, string> = {
+  PRIMARY: "border-orange-400/50 text-orange-300",
+  SECONDARY: "border-sky-400/40 text-sky-300",
+  DESCRIPTIVE: "border-slate-400/40 text-slate-300",
+  EXPLORATORY: "border-violet-400/40 text-violet-300",
+  "POST-HOC": "border-rose-400/40 text-rose-300",
+};
+
+const TIER_MEANING: Record<Tier, string> = {
+  PRIMARY: "pre-specified primary contrast, Holm-corrected within its family",
+  SECONDARY: "pre-specified contrast against the distance-only control, its own Holm family",
+  DESCRIPTIVE: "summaries of the confirmatory data; no hypothesis test",
+  EXPLORATORY: "not in the analysis plan; read as hypothesis-generating",
+  "POST-HOC": "added after the results were seen, to check what they mean",
+};
+
+function TierTag({ tier }: { tier: Tier }) {
+  return (
+    <span
+      title={TIER_MEANING[tier]}
+      className={`rounded-sm border px-1.5 py-[1px] font-mono text-[8px] tracking-[0.16em] ${TIER_STYLE[tier]}`}
+    >
+      {tier}
+    </span>
+  );
+}
+
+function TierKey() {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-sm border border-white/10 bg-white/[0.02] px-3 py-1.5">
+      {(Object.keys(TIER_MEANING) as Tier[]).map((tier) => (
+        <span key={tier} className="flex items-center gap-1.5 font-mono text-[8.5px] text-slate-500">
+          <TierTag tier={tier} />
+          {TIER_MEANING[tier]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ChartsSection({ payload }: { payload: ResultsPayload }) {
+  const router = useRouter();
+  const [secondaryMetric, setSecondaryMetric] = useState<"success" | "science_fraction">("success");
   const conditions = CONDITION_ORDER.filter((c) => payload.intervals.some((r) => r.condition === c));
   const [scatterCondition, setScatterCondition] = useState("mars_faults");
   const intervalsFor = (c: string) =>
@@ -79,6 +124,26 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
         };
       });
 
+  const secondaryRows = CONDITION_ORDER.flatMap((c) =>
+    ["risk_aware_astar", "adaptive_risk_aware_astar"].map((treatment) =>
+      payload.secondary.find(
+        (r) => r.condition === c && r.metric === secondaryMetric && r.treatment === treatment,
+      ),
+    ),
+  )
+    .filter(Boolean)
+    .map((r) => {
+      const row = r as Record<string, number | string | boolean>;
+      return {
+        label: `${SHORT_COND[row.condition as string]} · ${PLANNER_SHORT[row.treatment as string]}`,
+        delta: row.mean_diff as number,
+        low: row.ci95_low as number,
+        high: row.ci95_high as number,
+        p: row.p_holm as number,
+        significant: Boolean(row.significant),
+      };
+    });
+
   const paretoPoints = payload.intervals.map((r) => ({
     key: `${r.condition}-${r.planner}`,
     label: `${SHORT_COND[r.condition]} · ${PLANNER_SHORT[r.planner]}`,
@@ -94,6 +159,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
   const pairs = payload.paired_points
     .filter((p) => p.condition === scatterCondition)
     .map((p) => ({
+      seed: p.seed,
       x: p.science_control,
       y: p.science_treatment,
       both: p.success_treatment && p.success_control,
@@ -131,7 +197,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
   return (
     <div className="space-y-2">
       <div className="grid gap-2 xl:grid-cols-2">
-        <Panel title="Mission success · 95% Wilson interval">
+        <Panel title="Mission success · 95% Wilson interval" right={<TierTag tier="DESCRIPTIVE" />}>
           <div className="space-y-3">
             {conditions.map((c) => (
               <div key={c}>
@@ -152,7 +218,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
             ))}
           </div>
         </Panel>
-        <Panel title="Science fraction · 95% t interval">
+        <Panel title="Science fraction · 95% t interval" right={<TierTag tier="DESCRIPTIVE" />}>
           <div className="space-y-3">
             {conditions.map((c) => (
               <div key={c}>
@@ -175,7 +241,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
       </div>
 
       <div className="grid gap-2 xl:grid-cols-[1.1fr_1fr]">
-        <Panel title="Survival vs science">
+        <Panel title="Survival vs science" right={<TierTag tier="DESCRIPTIVE" />}>
           <ParetoPlot points={paretoPoints} />
           <div className="mt-1 flex flex-wrap gap-3 font-mono text-[9px] text-slate-400">
             {PLANNER_ORDER.map((pl) => (
@@ -193,11 +259,20 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
             adaptive planner survives most often.
           </p>
         </Panel>
-        <Panel title="Paired effect: adaptive − fixed (95% CI, Holm-corrected p)">
-          <p className="mb-1 font-mono text-[9px] tracking-[0.16em] text-slate-500">MISSION SUCCESS · McNemar exact</p>
+        <Panel title="Paired effect: adaptive − fixed, 95% CI" right={<TierTag tier="PRIMARY" />}>
+          <p className="mb-1 font-mono text-[9px] tracking-[0.16em] text-slate-500">
+            Δ MISSION SUCCESS RATE · McNemar exact on discordant seeds
+          </p>
           <ForestPlot rows={forestRows("success")} span={0.4} />
-          <p className="mb-1 mt-2 font-mono text-[9px] tracking-[0.16em] text-slate-500">SCIENCE FRACTION · paired t</p>
+          <p className="mb-1 mt-2 font-mono text-[9px] tracking-[0.16em] text-slate-500">
+            Δ SCIENCE FRACTION · paired t
+          </p>
           <ForestPlot rows={forestRows("science_fraction")} span={0.15} />
+          <p className="mt-1 font-mono text-[8.5px] leading-relaxed text-slate-500">
+            Read the size and interval first. The p-values are adjusted across all{" "}
+            {payload.primary.length} primary contrasts; an interval that clears zero before
+            adjustment can still fail after it.
+          </p>
         </Panel>
       </div>
 
@@ -205,6 +280,8 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
         <Panel
           title="Seed by seed"
           right={
+            <span className="flex items-center gap-1.5">
+            <TierTag tier="PRIMARY" />
             <select
               value={scatterCondition}
               onChange={(e) => setScatterCondition(e.target.value)}
@@ -216,9 +293,32 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
                 </option>
               ))}
             </select>
+            </span>
           }
         >
-          <PairedScatter points={pairs} />
+          <PairedScatter
+            points={pairs}
+            onSelect={(seed) => router.push(`/?paired=${scatterCondition}:${seed}`)}
+          />
+          <label className="mt-1 flex items-center gap-2 font-mono text-[9px] text-slate-400">
+            REPLAY A SEED
+            <select
+              value=""
+              onChange={(e) => e.target.value && router.push(`/?paired=${scatterCondition}:${e.target.value}`)}
+              className="rounded-sm border border-white/10 bg-black/40 px-1 py-0.5 font-mono text-[9px] text-slate-200"
+            >
+              <option value="">choose…</option>
+              {[...pairs]
+                .sort((a, b) => Number(a.both || (!a.onlyT && !a.onlyC)) - Number(b.both || (!b.onlyT && !b.onlyC)) || a.seed - b.seed)
+                .map((pt) => (
+                  <option key={pt.seed} value={pt.seed}>
+                    {pt.seed}
+                    {pt.onlyT ? " · only adaptive returned" : pt.onlyC ? " · only fixed returned" : ""}
+                  </option>
+                ))}
+            </select>
+            <span className="text-slate-500">or click a dot · re-runs both planners, checks each against its committed row</span>
+          </label>
           <div className="mt-1 grid grid-cols-2 gap-x-2 font-mono text-[8.5px] text-slate-400">
             <span><span className="text-orange-400">●</span> only adaptive returned</span>
             <span><span className="text-sky-300">●</span> only fixed returned</span>
@@ -234,7 +334,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
             </p>
           ) : null}
         </Panel>
-        <Panel title="How missions ended">
+        <Panel title="How missions ended" right={<TierTag tier="DESCRIPTIVE" />}>
           <StackedBars rows={stackRows} />
           <div className="mt-2 flex flex-wrap gap-3 font-mono text-[9px] text-slate-400">
             {[
@@ -250,7 +350,7 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
             ))}
           </div>
         </Panel>
-        <Panel title="Moon → Mars: science fraction">
+        <Panel title="Moon → Mars: science fraction" right={<TierTag tier="EXPLORATORY" />}>
           <SlopeChart rows={gapRows} />
           <p className="mt-1 font-mono text-[9px] leading-relaxed text-slate-500">
             Every planner loses most of its science under the domain shift. The gap G is largest
@@ -258,6 +358,29 @@ function ChartsSection({ payload }: { payload: ResultsPayload }) {
           </p>
         </Panel>
       </div>
+
+      <Panel
+        title="Secondary contrasts: each risk-aware planner − distance-only A*, 95% CI"
+        right={
+          <span className="flex items-center gap-1.5">
+            <TierTag tier="SECONDARY" />
+            <select
+              value={secondaryMetric}
+              onChange={(e) => setSecondaryMetric(e.target.value as "success" | "science_fraction")}
+              className="rounded-sm border border-white/10 bg-black/40 px-1 py-0.5 font-mono text-[9px] text-slate-200"
+            >
+              <option value="success">Δ success rate</option>
+              <option value="science_fraction">Δ science fraction</option>
+            </select>
+          </span>
+        }
+      >
+        <ForestPlot
+          rows={secondaryRows}
+          span={secondaryMetric === "success" ? 0.6 : 0.3}
+          labels={["distance-only better", "risk-aware better"]}
+        />
+      </Panel>
     </div>
   );
 }
@@ -368,6 +491,7 @@ export default function Experiments() {
 
         {payload ? (
           <>
+            <TierKey />
             <ChartsSection payload={payload} />
 
             <details className="group rounded-sm border border-white/10 bg-white/[0.02]">
@@ -519,9 +643,20 @@ export default function Experiments() {
                   </li>
                   <li className="text-rose-300">
                     H3 not supported as stated. The &ldquo;hardware faults&rdquo; contrast
-                    survived correction, but a post-hoc audit found faults fired in only
-                    16&ndash;26% of those missions, and in neither mission on 5 of the 10
-                    seeds that drove it. It is not a fault effect.
+                    survived correction, but a post-hoc audit
+                    {payload.audit ? (
+                      <>
+                        {" "}found faults fired in only{" "}
+                        {Math.round(100 * Math.min(payload.audit.FiredAdaptive, payload.audit.FiredFixed, payload.audit.FiredAstar))}
+                        &ndash;
+                        {Math.round(100 * Math.max(payload.audit.FiredAdaptive, payload.audit.FiredFixed, payload.audit.FiredAstar))}
+                        % of those missions, and in neither mission on {payload.audit.DiscordantNone} of the{" "}
+                        {payload.audit.Discordant} seeds that drove it
+                      </>
+                    ) : (
+                      " (table not found) questions whether faults fired"
+                    )}
+                    . It is not a fault effect. <TierTag tier="POST-HOC" />
                   </li>
                   <li className="text-slate-400">H4 — reported descriptively above.</li>
                 </ul>

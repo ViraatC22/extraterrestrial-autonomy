@@ -1,0 +1,60 @@
+{
+  "label": "DEMONSTRATION CASE",
+  "rule": "First validation seed (ascending, quarantine excluded, at most 40 scanned) on which, with the Mission Control defaults and engine v1, a target that was within the risk budget at one target-selection decision is rejected as over budget at the next, after the rover revised its believed mean slip for some terrain class by at least 0.05 in between. The mission outcome is not part of the rule.",
+  "request": {
+    "body": "mars",
+    "planner": "adaptive_risk_aware_astar",
+    "size": 56,
+    "n_targets": 4,
+    "max_steps": 600,
+    "risk_budget": 0.2,
+    "fault_rate": 0.0,
+    "comm_delay": 0,
+    "terrain_uncertainty": 1.0,
+    "sensor_noise_scale": 1.0,
+    "sensing_radius": 6,
+    "solar_rate": 2.0,
+    "energy_reserve_fraction": 0.25,
+    "prior_body": "moon",
+    "engine": "v1",
+    "seed": 200000
+  },
+  "chosen": {
+    "seed": 200000,
+    "termination": "success",
+    "event": {
+      "target_id": 0,
+      "decision_before": {
+        "index": 1,
+        "step": 10,
+        "p_failure": 0.03889985881757119,
+        "p_terrain": 0.038836665261904546,
+        "p_energy": 6.574694787318346e-05
+      },
+      "decision_after": {
+        "index": 2,
+        "step": 14,
+        "p_failure": 0.9999999996677406,
+        "p_terrain": 0.16180768491501185,
+        "p_energy": 0.9999999996036
+      },
+      "risk_budget": 0.2,
+      "crossed_by": [
+        "energy"
+      ],
+      "belief_class": 2,
+      "belief_before": 0.4240356285990386,
+      "belief_after": 0.7762714647307649
+    },
+    "start_frame": 1,
+    "event_frame": 13
+  },
+  "scanned": [
+    {
+      "seed": 200000,
+      "has_event": true
+    }
+  ],
+  "caveat": "One mission chosen to show an adaptation event. It is not a result and does not indicate how often adaptation helps; the confirmatory study found no reliable benefit.",
+  "generated_by": "scripts/select_demo_mission.py"
+}

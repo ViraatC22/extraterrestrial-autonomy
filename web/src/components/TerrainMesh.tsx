@@ -17,8 +17,8 @@
 import { useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
 
-import { LAYER_BY_KEY } from "@/lib/layers";
-import { CLASS_COLORS, ramp } from "@/lib/palette";
+import { LAYER_BY_KEY, layerUnit } from "@/lib/layers";
+import { CLASS_COLORS, diverging, knowledgeColor, ramp } from "@/lib/palette";
 import type { BeliefSnapshot, TerrainLayerName, TerrainLayers } from "@/lib/types";
 
 export const WORLD_SIZE = 100;
@@ -144,16 +144,6 @@ function surfaceColor(t: TerrainLayers, row: number, col: number): [number, numb
   return [base[0] * shade, base[1] * shade, base[2] * shade];
 }
 
-function diverging(u: number): [number, number, number] {
-  // blue (belief too optimistic) → grey → red (belief too pessimistic)
-  const x = Math.min(1, Math.max(0, u));
-  const lo: [number, number, number] = [0.2, 0.45, 0.9];
-  const mid: [number, number, number] = [0.42, 0.44, 0.47];
-  const hi: [number, number, number] = [0.9, 0.32, 0.25];
-  const [a, b, f] = x < 0.5 ? [lo, mid, x / 0.5] : [mid, hi, (x - 0.5) / 0.5];
-  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-}
-
 export function layerColor(
   layer: TerrainLayerName,
   t: TerrainLayers,
@@ -164,13 +154,10 @@ export function layerColor(
   const spec = LAYER_BY_KEY[layer];
   if (layer === "surface") return null;
   if (layer === "terrain_class") return CLASS_COLORS[t.terrain_class[row][col]] ?? [0.5, 0.5, 0.5];
-  const v = spec.normalized(t, belief, row, col);
+  const v = layerUnit(spec, t, belief, row, col);
   if (v === null) return null;
   if (spec.ramp === "diverging") return diverging(v);
-  if (spec.ramp === "knowledge") {
-    if (v < 0) return [0.05, 0.06, 0.08]; // unexplored
-    return [0.24 + 0.66 * v, 0.72 - 0.25 * v, 0.66 - 0.5 * v]; // teal (certain) → amber
-  }
+  if (spec.ramp === "knowledge") return knowledgeColor(v);
   return ramp(v);
 }
 
@@ -206,13 +193,15 @@ export function TerrainMesh({
   layer,
   belief,
   opacity,
-  onProbe,
+  onHover,
+  onPin,
 }: {
   terrain: TerrainLayers;
   layer: TerrainLayerName;
   belief: BeliefSnapshot | null;
   opacity: number;
-  onProbe?: (cell: [number, number] | null) => void;
+  onHover?: (cell: [number, number] | null) => void;
+  onPin?: (cell: [number, number]) => void;
 }) {
   const geometry = useMemo(() => {
     const n = terrain.size;
@@ -267,9 +256,16 @@ export function TerrainMesh({
       castShadow
       onPointerMove={(e) => {
         e.stopPropagation();
-        onProbe?.(worldToGrid(terrain, e.point.x, e.point.z));
+        onHover?.(worldToGrid(terrain, e.point.x, e.point.z));
       }}
-      onPointerOut={() => onProbe?.(null)}
+      onPointerOut={() => onHover?.(null)}
+      onClick={(e) => {
+        // a drag to orbit the camera also ends in a click; only a still click pins
+        if (e.delta > 4) return;
+        e.stopPropagation();
+        const cell = worldToGrid(terrain, e.point.x, e.point.z);
+        if (cell) onPin?.(cell);
+      }}
     >
       <meshStandardMaterial
         vertexColors

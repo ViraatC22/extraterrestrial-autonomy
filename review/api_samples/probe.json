@@ -1,0 +1,135 @@
+{
+  "row": 20,
+  "col": 24,
+  "belief_step": 37,
+  "belief_frame_index": 30,
+  "observed": true,
+  "rows": [
+    {
+      "key": "elevation",
+      "label": "ELEVATION",
+      "value": 4.450942155876202,
+      "display": "4.45",
+      "unit": "m above map min",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "slope",
+      "label": "SLOPE",
+      "value": 7.756084127881106,
+      "display": "7.8",
+      "unit": "\u00b0",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "roughness",
+      "label": "ROUGHNESS",
+      "value": 0.8037150403418599,
+      "display": "0.80",
+      "unit": "index",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "class",
+      "label": "CLASS",
+      "value": 1,
+      "display": "rocky",
+      "unit": "",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "hazard",
+      "label": "HAZARD",
+      "value": false,
+      "display": "passable",
+      "unit": "",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "illumination",
+      "label": "ILLUMINATION",
+      "value": 0.460441163618499,
+      "display": "0.46",
+      "unit": "\u00d7 nominal",
+      "status": "GENERATED",
+      "group": "truth"
+    },
+    {
+      "key": "solar_harvest",
+      "label": "SOLAR HARVEST",
+      "value": 0.920882327236998,
+      "display": "0.92",
+      "unit": "Wh/step, clean panels",
+      "status": "ASSUMED",
+      "group": "truth"
+    },
+    {
+      "key": "true_slip",
+      "label": "TRUE MEAN SLIP",
+      "value": 0.2175608412788111,
+      "display": "0.218",
+      "unit": "",
+      "status": "SIMULATED",
+      "group": "truth"
+    },
+    {
+      "key": "believed_class",
+      "label": "BELIEVED CLASS",
+      "value": 1,
+      "display": "rocky",
+      "unit": "",
+      "status": "INFERRED",
+      "group": "belief"
+    },
+    {
+      "key": "believed_slope",
+      "label": "BELIEVED SLOPE",
+      "value": 6.333907127380371,
+      "display": "6.3",
+      "unit": "\u00b0",
+      "status": "INFERRED",
+      "group": "belief"
+    },
+    {
+      "key": "believed_slip",
+      "label": "BELIEVED SLIP",
+      "value": 0.18477050960063934,
+      "display": "0.185 \u00b1 0.070",
+      "unit": "mean \u00b1 s.d.",
+      "status": "INFERRED",
+      "group": "belief"
+    },
+    {
+      "key": "hazard_prob",
+      "label": "P(HAZARD)",
+      "value": 0.1178511306643486,
+      "display": "0.12",
+      "unit": "",
+      "status": "INFERRED",
+      "group": "belief"
+    },
+    {
+      "key": "routable",
+      "label": "ROUTABLE",
+      "value": true,
+      "display": "yes",
+      "unit": "",
+      "status": "INFERRED",
+      "group": "belief"
+    },
+    {
+      "key": "cell_risk",
+      "label": "P(ENTRY ENDS MISSION)",
+      "value": 0.0005892556509934366,
+      "display": "5.9e-04",
+      "unit": "",
+      "status": "INFERRED",
+      "group": "belief"
+    }
+  ]
+}

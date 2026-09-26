@@ -28,6 +28,7 @@ import pandas as pd
 
 from exonaut.autonomy import world_model as W
 from exonaut.environments import TRUE_CLASS_PARAMS
+from exonaut.experiments.audits import fault_exposure_stats
 from exonaut.simulation import MissionConfig, run_mission
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,32 +68,7 @@ def fault_exposure() -> tuple[pd.DataFrame, dict]:
         rows[["planner", "seed", "termination", "science_return", "energy_spent", "success"]],
         on=["planner", "seed"],
     )
-    reproduced = float(
-        (
-            (m.term == m.termination)
-            & ((m.sci - m.science_return).abs() < 1e-9)
-            & ((m.energy - m.energy_spent).abs() < 1e-6)
-        ).mean()
-    )
-    fired_share = m.assign(any=m.faults_fired > 0).groupby("planner")["any"].mean()
-    a = m[m.planner == "adaptive_risk_aware_astar"].set_index("seed")
-    f = m[m.planner == "risk_aware_astar"].set_index("seed")
-    disc = a.success != f.success
-    both = (a.faults_fired > 0) & (f.faults_fired > 0)
-    none = (a.faults_fired == 0) & (f.faults_fired == 0)
-    stats = {
-        "Reproduced": reproduced,
-        "FiredAdaptive": float(fired_share["adaptive_risk_aware_astar"]),
-        "FiredFixed": float(fired_share["risk_aware_astar"]),
-        "FiredAstar": float(fired_share["astar"]),
-        "MedianSteps": float(rows.steps.median()),
-        "Horizon": int(rows.max_steps.iloc[0]),
-        "Discordant": int(disc.sum()),
-        "DiscordantBoth": int((disc & both).sum()),
-        "DiscordantNone": int((disc & none).sum()),
-        "DiscordantMixed": int((disc & ~both & ~none).sum()),
-    }
-    return m, stats
+    return m, fault_exposure_stats(m, rows)
 
 
 def _calibration_job(args):

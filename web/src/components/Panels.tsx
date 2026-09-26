@@ -193,6 +193,7 @@ export function BeliefPanel({
       {classes.map((klass) => {
         const believed = frame.belief[klass] ?? 0;
         const truth = trueSlip[String(klass)] ?? 0;
+        // colour only: the numbers printed are the engine's belief and truth
         const error = Math.abs(believed - truth);
         return (
           <div key={klass} className="space-y-1">

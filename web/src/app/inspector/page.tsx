@@ -15,18 +15,100 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/MapOverlays";
 import { Nav } from "@/components/Nav";
 import { Panel, Readout } from "@/components/Panels";
-import { ApiError, DEFAULT_MISSION, getPlanners, getTelemetry, startMission } from "@/lib/api";
+import { ApiError, DEFAULT_MISSION, getDecisions, getPlanners, getTelemetry, startMission } from "@/lib/api";
 import type {
-  CandidateEvaluation,
+  CandidateRoute,
+  Decision,
   MissionRequest,
   MissionSummary,
   PlannerInfo,
   TelemetryFrame,
 } from "@/lib/types";
 
-function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
+const fmt = (v: number | null | undefined, digits: number) =>
+  v === null || v === undefined ? "—" : v.toFixed(digits);
+
+/**
+ * The decision for one candidate, walked through with the engine's own
+ * numbers. Nothing is computed here: utility, P(fail), the budget verdict and
+ * the rank all arrive from the mission manager.
+ */
+function Calculation({
+  candidate,
+  riskBudget,
+  nFeasible,
+}: {
+  candidate: CandidateRoute;
+  riskBudget: number;
+  nFeasible: number;
+}) {
+  const row = (label: string, value: string, note?: string) => (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-slate-500">{label}</span>
+      <span className="tabular-nums text-slate-100">
+        {value}
+        {note ? <span className="ml-1 text-[8.5px] text-slate-500">{note}</span> : null}
+      </span>
+    </div>
+  );
+  if (!candidate.reachable) {
+    return <p className="text-slate-400">No route on the rover&apos;s believed map, so nothing to score.</p>;
+  }
+  const ok = candidate.within_budget;
+  return (
+    <div className="space-y-2">
+      <div className="space-y-0.5">
+        <p className="text-[8.5px] tracking-[0.16em] text-slate-500">1 · UTILITY</p>
+        {row("science value", fmt(candidate.science_value, 2))}
+        {row("expected energy", `${fmt(candidate.expected_energy, 1)} Wh`, "full round trip")}
+        {row(
+          "value / energy",
+          `${fmt(candidate.science_value, 2)} / ${fmt(candidate.expected_energy, 1)} = ${fmt(candidate.utility, 5)}`,
+        )}
+        <p className="text-[8.5px] text-slate-500">utility as the engine computed it, from unrounded inputs</p>
+      </div>
+      <div className="space-y-0.5">
+        <p className="text-[8.5px] tracking-[0.16em] text-slate-500">2 · RISK</p>
+        {row("P(fail) terrain", fmt(candidate.p_terrain, 4), "embedding, from belief")}
+        {row(
+          "P(fail) energy",
+          fmt(candidate.p_energy, 4),
+          `± ${fmt(candidate.energy_sd, 1)} Wh; solar credit ${fmt(candidate.expected_solar_income, 1)} Wh`,
+        )}
+        {row("P(fail) total", fmt(candidate.p_failure, 4), "1 − (1 − terrain)(1 − energy)")}
+      </div>
+      <div className="space-y-0.5">
+        <p className="text-[8.5px] tracking-[0.16em] text-slate-500">3 · CONSTRAINT</p>
+        {row("risk budget ε", fmt(riskBudget, 4))}
+        <p className={ok ? "text-emerald-300" : "text-rose-300"}>
+          {fmt(candidate.p_failure, 4)} {ok ? "≤" : ">"} {fmt(riskBudget, 4)} {ok ? "✓ within budget" : "✕ exceeds budget"}
+        </p>
+      </div>
+      <div className="border-t border-white/10 pt-1.5">
+        <p className="text-[8.5px] tracking-[0.16em] text-slate-500">4 · DECISION</p>
+        <p className={candidate.selected ? "text-emerald-300" : ok ? "text-slate-200" : "text-rose-300"}>
+          {candidate.selected
+            ? `Highest utility of ${nFeasible} feasible candidate${nFeasible === 1 ? "" : "s"} → selected.`
+            : ok
+              ? `Feasible, but ranked ${candidate.feasible_rank} of ${nFeasible} by utility → not selected.`
+              : "Removed before utility is compared → not selected."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CandidateCard({
+  candidate,
+  riskBudget,
+  nFeasible,
+}: {
+  candidate: CandidateRoute;
+  riskBudget: number;
+  nFeasible: number;
+}) {
   const selected = candidate.selected;
-  const rejected = Boolean(candidate.rejected);
+  const rejected = !candidate.within_budget;
   return (
     <div
       className={`rounded-sm border p-3 transition ${
@@ -47,7 +129,7 @@ function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
             selected ? "text-emerald-300" : rejected ? "text-rose-300" : "text-slate-500"
           }`}
         >
-          {selected ? "◀ SELECTED" : rejected ? "REJECTED" : "CONSIDERED"}
+          {selected ? "◀ SELECTED" : rejected ? "REJECTED" : `FEASIBLE · RANK ${candidate.feasible_rank}`}
         </span>
       </div>
 
@@ -55,41 +137,11 @@ function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
         <>
           <Readout label="Science value" value={candidate.science_value.toFixed(2)} />
           <Readout label="Route length" value={candidate.path_cells ?? "—"} unit="cells" />
-          <Readout
-            label="Energy cost"
-            value={candidate.expected_energy?.toFixed(1) ?? "—"}
-            unit="Wh"
-          />
-          <Readout
-            label="Energy uncertainty"
-            value={`± ${candidate.energy_sd?.toFixed(1) ?? "—"}`}
-            unit="Wh"
-          />
-          <Readout
-            label="Solar credit"
-            value={candidate.expected_solar_income?.toFixed(1) ?? "—"}
-            unit="Wh"
-          />
-          <div className="my-2 border-t border-white/10" />
-          <Readout
-            label="P(fail) terrain"
-            value={candidate.p_terrain?.toFixed(4) ?? "—"}
-            tone={(candidate.p_terrain ?? 0) > 0.1 ? "warn" : "normal"}
-          />
-          <Readout
-            label="P(fail) energy"
-            value={candidate.p_energy?.toFixed(4) ?? "—"}
-            tone={(candidate.p_energy ?? 0) > 0.1 ? "warn" : "normal"}
-          />
-          <Readout
-            label="P(fail) total"
-            value={candidate.p_failure?.toFixed(4) ?? "—"}
-            tone={rejected ? "bad" : "normal"}
-          />
-          <div className="my-2 border-t border-white/10" />
+          <Readout label="Energy cost" value={fmt(candidate.expected_energy, 1)} unit="Wh" />
+          <Readout label="P(fail) total" value={fmt(candidate.p_failure, 4)} tone={rejected ? "bad" : "normal"} />
           <Readout
             label="Utility (value / energy)"
-            value={candidate.utility?.toFixed(5) ?? "—"}
+            value={fmt(candidate.utility, 5)}
             tone={selected ? "good" : "accent"}
           />
         </>
@@ -102,6 +154,16 @@ function CandidateCard({ candidate }: { candidate: CandidateEvaluation }) {
           {candidate.rejected}
         </p>
       ) : null}
+
+      <details className="group mt-2 border-t border-white/10 pt-1.5">
+        <summary className="cursor-pointer select-none font-mono text-[9px] tracking-[0.18em] text-orange-300 hover:text-orange-200">
+          <span className="group-open:hidden">SHOW CALCULATION</span>
+          <span className="hidden group-open:inline">HIDE CALCULATION</span>
+        </summary>
+        <div className="mt-1.5 font-mono text-[10px]">
+          <Calculation candidate={candidate} riskBudget={riskBudget} nFeasible={nFeasible} />
+        </div>
+      </details>
     </div>
   );
 }
@@ -115,7 +177,7 @@ function RiskBudgetCheck({
   riskBudget,
   viewHref,
 }: {
-  candidates: CandidateEvaluation[];
+  candidates: CandidateRoute[];
   riskBudget: number;
   viewHref: string | null;
 }) {
@@ -151,7 +213,7 @@ function RiskBudgetCheck({
         <div className="space-y-1">
           {candidates.map((c) => {
             const p = c.p_failure;
-            const ok = c.reachable && p !== null && p <= riskBudget;
+            const ok = c.within_budget; // the engine's verdict, not re-derived
             return (
               <div key={c.target_id} className="flex items-center gap-2 font-mono text-[10px]">
                 <span className="w-9 text-slate-400">T{String(c.target_id).padStart(2, "0")}</span>
@@ -198,6 +260,7 @@ export default function Inspector() {
     max_steps: 400,
   });
   const [frames, setFrames] = useState<TelemetryFrame[]>([]);
+  const [allDecisions, setAllDecisions] = useState<Decision[]>([]);
   const [summary, setSummary] = useState<MissionSummary | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [decisionIndex, setDecisionIndex] = useState(0);
@@ -213,10 +276,14 @@ export default function Inspector() {
     setError(null);
     try {
       const started = await startMission(request);
-      const telemetry = await getTelemetry(started.session_id);
+      const [telemetry, decisionList] = await Promise.all([
+        getTelemetry(started.session_id),
+        getDecisions(started.session_id),
+      ]);
       setSummary(started.summary);
       setSessionId(started.session_id);
       setFrames(telemetry);
+      setAllDecisions(decisionList);
       setDecisionIndex(0);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "engine unreachable");
@@ -225,25 +292,34 @@ export default function Inspector() {
     }
   }, [request]);
 
-  /** Frames where the planner actually re-evaluated its options. */
+  /**
+   * Decisions where candidates were scored, skipping replans whose verdicts
+   * did not change (same targets, same selection, same budget verdicts).
+   */
   const decisions = useMemo(() => {
-    const seen: TelemetryFrame[] = [];
+    const seen: Decision[] = [];
     let previousKey = "";
-    frames.forEach((frame) => {
-      if (!frame.candidates?.length) return;
-      const key = frame.candidates
-        .map((c) => `${c.target_id}:${c.selected}:${c.rejected ?? ""}`)
-        .join("|");
+    allDecisions.forEach((d) => {
+      if (!d.candidates.length) return;
+      const key = d.candidates.map((c) => `${c.target_id}:${c.selected}:${c.within_budget}`).join("|");
       if (key !== previousKey) {
-        seen.push(frame);
+        seen.push(d);
         previousKey = key;
       }
     });
     return seen;
-  }, [frames]);
+  }, [allDecisions]);
 
   const decision = decisions[decisionIndex] ?? null;
   const plannerInfo = planners.find((p) => p.name === request.planner);
+  const firstFrame = decision ? frames.findIndex((f) => f.decision_index === decision.index) : -1;
+  const nFeasible = decision ? decision.candidates.filter((c) => c.within_budget).length : 0;
+  const verdict =
+    decision?.reason === "pursue_target"
+      ? "PURSUE"
+      : decision?.reason === "no_target_within_budget"
+        ? "RETURN HOME"
+        : (decision?.reason ?? "—").replace(/_/g, " ").toUpperCase();
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-[#07090d]">
@@ -380,13 +456,13 @@ export default function Inspector() {
                   />
                   <Readout
                     label="Verdict"
-                    value={decision.returning ? "RETURN HOME" : "PURSUE"}
-                    tone={decision.returning ? "warn" : "good"}
+                    value={verdict}
+                    tone={decision.reason === "pursue_target" ? "good" : "warn"}
                   />
                 </div>
-                {decision.decision_reason ? (
+                {decision.reason ? (
                   <p className="mt-2 border-t border-white/10 pt-2 font-mono text-[10px] text-slate-400">
-                    reason: <span className="text-slate-200">{decision.decision_reason}</span>
+                    reason: <span className="text-slate-200">{decision.reason}</span>
                   </p>
                 ) : null}
                 {plannerInfo ? (
@@ -399,17 +475,22 @@ export default function Inspector() {
 
               <RiskBudgetCheck
                 candidates={decision.candidates}
-                riskBudget={request.risk_budget}
+                riskBudget={decision.risk_budget}
                 viewHref={
-                  sessionId
-                    ? `/?session=${encodeURIComponent(sessionId)}&frame=${frames.indexOf(decision)}&camera=planner`
+                  sessionId && firstFrame >= 0
+                    ? `/?session=${encodeURIComponent(sessionId)}&frame=${firstFrame}&camera=planner`
                     : null
                 }
               />
 
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {decision.candidates.map((candidate) => (
-                  <CandidateCard key={candidate.target_id} candidate={candidate} />
+                  <CandidateCard
+                    key={candidate.target_id}
+                    candidate={candidate}
+                    riskBudget={decision.risk_budget}
+                    nFeasible={nFeasible}
+                  />
                 ))}
               </div>
 

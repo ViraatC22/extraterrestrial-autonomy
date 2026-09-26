@@ -304,6 +304,12 @@ def test_failure_case_studies_reproduce_their_committed_rows(client):
         summary = client.get(f"/missions/{rep['session_id']}").json()
         assert summary["seed"] == rep["seed"]
         assert summary["provenance"]["seed_split"] == "ood"
+        trip = rep["last_trip"]
+        if trip and trip["energy_error_in_sd"] is not None:
+            expected = (
+                trip["energy_spent_after_decision"] - trip["expected_round_trip_energy"]
+            ) / (trip["expected_energy_sd"])
+            assert trip["energy_error_in_sd"] == pytest.approx(expected)
     assert seen >= 2
 
 
@@ -325,3 +331,136 @@ def test_sweep_rejects_unknown_or_out_of_range_variables(client):
         client.get("/sweep-point", params={"variable": "risk_budget", "value": 7}).status_code
         == 400
     )
+
+
+def test_candidate_budget_verdicts_and_ranks_come_from_the_engine(client, session):
+    decisions = client.get(f"/missions/{session['session_id']}/decisions").json()
+    scored = [d for d in decisions if d["candidates"]]
+    assert scored
+    for d in scored:
+        for c in d["candidates"]:
+            expected = c["reachable"] and c["p_failure"] <= d["risk_budget"]
+            assert c["within_budget"] == expected
+            assert (c["feasible_rank"] is not None) == c["within_budget"]
+        winners = [c for c in d["candidates"] if c["selected"]]
+        ranked_first = [c for c in d["candidates"] if c["feasible_rank"] == 1]
+        assert [c["target_id"] for c in winners] == [c["target_id"] for c in ranked_first]
+
+
+def test_frames_carry_engine_heading_and_slope(client, session):
+    frames = client.get(f"/missions/{session['session_id']}/telemetry").json()
+    terrain = client.get(
+        "/terrain", params={"body": "mars", "seed": 200000, "size": SMALL["size"]}
+    ).json()
+    moved = [(a, b) for a, b in zip(frames, frames[1:], strict=False) if b["moved"]]
+    assert moved
+    compass = {
+        (-1, 0): 0,
+        (-1, 1): 45,
+        (0, 1): 90,
+        (1, 1): 135,
+        (1, 0): 180,
+        (1, -1): 225,
+        (0, -1): 270,
+        (-1, -1): 315,
+    }
+    for a, b in moved:
+        step = (b["row"] - a["row"], b["col"] - a["col"])
+        assert b["heading_deg"] == pytest.approx(compass[step])
+    for f in frames:
+        assert f["local_slope_deg"] == pytest.approx(terrain["slope"][f["row"]][f["col"]], abs=1e-3)
+
+
+def test_probe_reports_engine_values(client, session):
+    from exonaut.environments import make_environment
+    from exonaut.robot.power import PowerSystem
+
+    sid = session["session_id"]
+    terrain = make_environment("mars", seed=200000, size=SMALL["size"])
+    r, c = 10, 12
+    probe = client.get(f"/missions/{sid}/probe", params={"row": r, "col": c, "index": 30}).json()
+    values = {row["key"]: row for row in probe["rows"]}
+    assert values["slope"]["value"] == pytest.approx(terrain.slope[r, c])
+    assert values["true_slip"]["value"] == terrain.true_slip_distribution(r, c)[0]
+    expected_harvest = PowerSystem(capacity=1e9, charge=0.0, solar_rate=2.0).recharge(
+        terrain.illumination[r, c]
+    )
+    assert values["solar_harvest"]["value"] == pytest.approx(expected_harvest)
+    belief = client.get(f"/missions/{sid}/belief", params={"index": 30}).json()
+    assert probe["belief_step"] == belief["step"]
+    assert values["cell_risk"]["value"] == pytest.approx(belief["risk"][r][c], abs=1e-6)
+    assert values["routable"]["value"] == bool(belief["routable"][r][c])
+    # every row says where it comes from
+    assert {row["status"] for row in probe["rows"]} <= {
+        "GENERATED",
+        "SIMULATED",
+        "INFERRED",
+        "ASSUMED",
+    }
+
+
+def test_terrain_probe_needs_no_mission_and_rejects_off_map_cells(client):
+    ok = client.get("/terrain/probe", params={"row": 3, "col": 4, "size": 32})
+    assert ok.status_code == 200
+    assert ok.json()["belief_step"] is None
+    assert client.get("/terrain/probe", params={"row": 99, "col": 4, "size": 32}).status_code == 400
+
+
+def test_paired_replay_reproduces_both_committed_rows(client):
+    payload = client.get(
+        "/results/paired-replay", params={"condition": "mars_ood", "seed": 400004}
+    ).json()
+    assert [r["planner"] for r in payload["runs"]] == [
+        "risk_aware_astar",
+        "adaptive_risk_aware_astar",
+    ]
+    assert all(r["reproduces_committed_row"] for r in payload["runs"])
+
+
+def test_results_carry_the_audit_and_both_contrast_families(client):
+    payload = client.get("/results").json()
+    assert {r["family"] for r in payload["primary"]} == {"primary"}
+    assert {r["family"] for r in payload["secondary"]} == {"secondary"}
+    audit = payload["audit"]
+    assert audit is not None and audit["Reproduced"] == 1.0
+    assert (
+        audit["DiscordantBoth"] + audit["DiscordantNone"] + audit["DiscordantMixed"]
+        == (audit["Discordant"])
+    )
+
+
+def test_demo_mission_states_its_selection_rule(client):
+    demo = client.get("/demo-mission").json()
+    assert demo["label"] == "DEMONSTRATION CASE"
+    assert "validation" in demo["rule"]
+    assert demo["request"]["seed"] in [s["seed"] for s in demo["scanned"]]
+    assert (
+        demo["chosen"]["event"]["decision_after"]["p_failure"]
+        > demo["chosen"]["event"]["risk_budget"]
+    )
+
+
+def test_model_constants_are_the_engines_own(client):
+    from exonaut.robot.vehicle import EMBED_LIMIT, SEVERE_SLIP_THRESHOLD
+    from exonaut.simulation import MissionConfig
+
+    constants = client.get("/model-constants").json()
+    assert constants["max_slope_deg"] == MissionConfig().max_slope_deg
+    assert constants["severe_slip_threshold"] == SEVERE_SLIP_THRESHOLD
+    assert constants["embed_limit"] == EMBED_LIMIT
+
+
+def test_unused_heldout_seeds_are_logged_and_spent_ones_are_not(client):
+    import json
+
+    from exonaut.api.service import heldout_log_path
+
+    path = heldout_log_path()
+    before = path.read_text().splitlines() if path.exists() else []
+    client.get("/terrain", params={"seed": 300010, "size": 16})  # in the confirmatory run
+    client.get("/terrain", params={"seed": 300000, "size": 16})  # quarantined
+    client.get("/terrain", params={"seed": 200005, "size": 16})  # validation
+    client.get("/terrain", params={"seed": 400321, "size": 16})  # unused OOD
+    after = path.read_text().splitlines()
+    new = [json.loads(line) for line in after[len(before) :]]
+    assert [(e["seed"], e["split"], e["endpoint"]) for e in new] == [(400321, "ood", "/terrain")]

@@ -93,6 +93,10 @@ class CandidateEvaluation(BaseModel):
     p_terrain: float | None = None
     p_energy: float | None = None
     utility: float | None = None
+    #: reachable and P(failure) <= risk budget, as the mission manager decided it
+    within_budget: bool = False
+    #: 1 = highest utility among within-budget candidates (the one selected)
+    feasible_rank: int | None = None
 
 
 class TelemetryFrame(BaseModel):
@@ -121,6 +125,11 @@ class TelemetryFrame(BaseModel):
     decision_index: int = -1
     #: sensing radius actually in effect (sensor faults shrink it)
     sensing_radius: int | None = None
+    #: grid heading of the last completed move, degrees clockwise from grid
+    #: north (row 0); None before the rover first moves
+    heading_deg: float | None = None
+    #: generated slope of the cell the rover occupies
+    local_slope_deg: float | None = None
 
 
 class MissionSummary(BaseModel):
@@ -219,6 +228,8 @@ class BeliefSnapshot(BaseModel):
     risk: list[list[float]]
     hazard_prob: list[list[float]]
     hazard_threshold: float
+    #: the planner's own traversability test per cell (1 = it would route here)
+    routable: list[list[int]] = []
     true_slip: list[list[float]]
     true_class: list[list[int]]
 

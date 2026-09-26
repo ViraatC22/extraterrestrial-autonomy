@@ -1,177 +1,295 @@
 "use client";
 
 /**
- * Rover and lander models, built from primitives.
+ * Rover and lander, loaded from glTF models built by
+ * scripts/build_vehicle_models.py (Blender, from code, in metres).
  *
- * Generic designs with no mission branding. The rover is drawn about two grid
- * cells long - roughly the size of a large planetary rover at this model's
- * 1 m cells, slightly enlarged so it stays findable from the overview camera.
- * It is posed on the terrain: heading from its last move, pitch and roll from
- * the local slope under its wheels.
+ * Both are generic research platforms with no mission branding. They are
+ * drawn to scale - one grid cell is one metre - so the rover is small against
+ * the map, as it would be; a locator ring marks it in the overview cameras.
+ *
+ * What is data and what is illustration:
+ *   - position is the simulator's cell; heading is the engine's recorded
+ *     heading of the last move (TelemetryFrame.heading_deg)
+ *   - pitch and roll follow the rendered surface under the vehicle
+ *   - motion between cells, wheel rotation and surface dust are visual only;
+ *     the simulator moves a point robot one cell per step
  */
 
-import { useMemo } from "react";
+import { useGLTF } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 
-import { cellStep, gridToWorld, heightAt } from "./TerrainMesh";
+import { SUN_DIRECTION, SKY, cellStep, gridToWorld, heightAt } from "./TerrainMesh";
 import { UI } from "@/lib/palette";
 import type { TerrainLayers } from "@/lib/types";
 
-const BODY = "#d9dde3";
-const DARK = "#2b3038";
-const FOIL = "#c89b3c";
-const PANEL = "#1f2d4a";
+export const ROVER_URL = "/models/rover.glb";
+export const LANDER_URL = "/models/lander.glb";
+useGLTF.preload(ROVER_URL);
+useGLTF.preload(LANDER_URL);
 
-/** Heading (radians about +y) from the previous distinct cell to this one. */
-export function headingFromTrail(trail: [number, number][]): number {
-  for (let i = trail.length - 1; i > 0; i -= 1) {
-    const [r1, c1] = trail[i];
-    const [r0, c0] = trail[i - 1];
-    if (r1 !== r0 || c1 !== c0) return Math.atan2(c1 - c0, r1 - r0);
-  }
-  return 0;
+/** Wheel radius in the rover model, metres (scripts/build_vehicle_models.py). */
+const WHEEL_RADIUS_M = 0.25;
+
+/** Engine heading (degrees clockwise from grid north, i.e. towards row 0) → yaw about +y. */
+export function headingToYaw(headingDeg: number | null): number {
+  return headingDeg === null ? Math.PI : Math.PI - (headingDeg * Math.PI) / 180;
 }
 
-/** Orientation that sits a vehicle on the local terrain at a heading. */
-function terrainPose(t: TerrainLayers, row: number, col: number, heading: number) {
+/**
+ * Orientation that sits a vehicle on the rendered surface at a yaw. `span`
+ * is how far either side of the centre (in cells) the ground is sampled - a
+ * wheelbase for the rover, a leg span for the lander.
+ */
+function terrainPose(t: TerrainLayers, row: number, col: number, yaw: number, span: number) {
   const step = cellStep(t);
-  const dx = (heightAt(t, row, col + 0.8) - heightAt(t, row, col - 0.8)) / (1.6 * step);
-  const dz = (heightAt(t, row + 0.8, col) - heightAt(t, row - 0.8, col)) / (1.6 * step);
+  const dx = (heightAt(t, row, col + span) - heightAt(t, row, col - span)) / (2 * span * step);
+  const dz = (heightAt(t, row + span, col) - heightAt(t, row - span, col)) / (2 * span * step);
   const normal = new THREE.Vector3(-dx, 1, -dz).normalize();
-  const forward = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
+  const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   forward.sub(normal.clone().multiplyScalar(forward.dot(normal))).normalize();
   const right = new THREE.Vector3().crossVectors(normal, forward).normalize();
   const basis = new THREE.Matrix4().makeBasis(right, normal, forward);
   return new THREE.Quaternion().setFromRotationMatrix(basis);
 }
 
-function Wheel({ position, alarm }: { position: [number, number, number]; alarm: boolean }) {
-  return (
-    <mesh position={position} rotation={[0, 0, Math.PI / 2]} castShadow>
-      <cylinderGeometry args={[0.36, 0.36, 0.28, 18]} />
-      <meshStandardMaterial
-        color={alarm ? UI.bad : DARK}
-        emissive={alarm ? UI.bad : "#000000"}
-        emissiveIntensity={alarm ? 0.7 : 0}
-        roughness={0.8}
-      />
-    </mesh>
-  );
+/**
+ * Reflections for the vehicles' metal and foil. Without an environment,
+ * metallic surfaces render nearly black. This is a plain gradient of the
+ * body's sky and ground colours plus the sun, applied to vehicles only - the
+ * terrain keeps its own lighting.
+ */
+function useVehicleEnvironment(body: string): THREE.Texture {
+  const gl = useThree((s) => s.gl);
+  const env = useMemo(() => {
+    const sky = SKY[body] ?? SKY.moon;
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const scene = new THREE.Scene();
+    const sphere = new THREE.SphereGeometry(10, 48, 24);
+    const position = sphere.getAttribute("position");
+    const colors = new Float32Array(position.count * 3);
+    const top = new THREE.Color(sky.fog).multiplyScalar(0.6);
+    const horizon = new THREE.Color(sky.ground).lerp(new THREE.Color("#8a8f99"), 0.35);
+    const ground = new THREE.Color(sky.ground).multiplyScalar(1.4);
+    const c = new THREE.Color();
+    for (let i = 0; i < position.count; i += 1) {
+      const y = position.getY(i) / 10;
+      if (y >= 0) c.copy(horizon).lerp(top, Math.min(1, y * 1.6));
+      else c.copy(horizon).lerp(ground, Math.min(1, -y * 3));
+      colors.set([c.r, c.g, c.b], i * 3);
+    }
+    sphere.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    const shell = new THREE.Mesh(
+      sphere,
+      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }),
+    );
+    scene.add(shell);
+    const sun = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7, 16, 8),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.6, 8) }),
+    );
+    sun.position.copy(SUN_DIRECTION).multiplyScalar(9);
+    scene.add(sun);
+    const texture = pmrem.fromScene(scene, 0.02).texture;
+    pmrem.dispose();
+    sphere.dispose();
+    return texture;
+  }, [gl, body]);
+  useEffect(() => () => env.dispose(), [env]);
+  return env;
+}
+
+/**
+ * Regolith dust on up-facing surfaces: a colour, roughness and metalness
+ * blend by how directly a surface faces the sky. Visual only.
+ */
+function addDust(material: THREE.MeshStandardMaterial, color: THREE.Color, amount: number) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.dustColor = { value: color };
+    shader.uniforms.dustAmount = { value: amount };
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nuniform vec3 dustColor;\nuniform float dustAmount;",
+      )
+      .replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>
+        vec3 upView = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+        float dust = dustAmount * smoothstep(0.2, 0.95, dot(normal, upView));
+        diffuseColor.rgb = mix(diffuseColor.rgb, dustColor, dust);
+        roughnessFactor = mix(roughnessFactor, 0.95, dust);
+        metalnessFactor = mix(metalnessFactor, 0.0, dust);`,
+      );
+  };
+  material.customProgramCacheKey = () => `dust-${amount.toFixed(2)}`;
+}
+
+const DUST: Record<string, string> = { mars: "#9a6446", moon: "#8d8b88" };
+
+/** A private copy of a loaded model with shadows, reflections and dust. */
+function useDressedModel(url: string, body: string, dustAmount: number) {
+  const { scene } = useGLTF(url);
+  const env = useVehicleEnvironment(body);
+  const model = useMemo(() => {
+    const copy = scene.clone(true);
+    const dust = new THREE.Color(DUST[body] ?? DUST.moon);
+    const cache = new Map<THREE.Material, THREE.MeshStandardMaterial>();
+    copy.traverse((node) => {
+      const mesh = node as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const source = mesh.material as THREE.MeshStandardMaterial;
+      let dressed = cache.get(source);
+      if (!dressed) {
+        dressed = source.clone();
+        dressed.envMap = env;
+        dressed.envMapIntensity = 0.9;
+        if (!/lens/.test(source.name)) addDust(dressed, dust, dustAmount);
+        cache.set(source, dressed);
+      }
+      mesh.material = dressed;
+    });
+    return copy;
+  }, [scene, env, body, dustAmount]);
+  return model;
 }
 
 export function RoverModel({
   terrain,
   row,
   col,
-  heading,
+  headingDeg,
   stuck,
+  roverRef,
+  navcamRef,
 }: {
   terrain: TerrainLayers;
   row: number;
   col: number;
-  heading: number;
+  headingDeg: number | null;
   stuck: boolean;
+  /** the drawn rover, for cameras and the locator (its smoothed pose) */
+  roverRef: RefObject<THREE.Group | null>;
+  /** the navigation camera's optical centre inside the model */
+  navcamRef: RefObject<THREE.Object3D | null>;
 }) {
-  const position = gridToWorld(terrain, row, col, 0.55);
-  const quaternion = useMemo(
-    () => terrainPose(terrain, row, col, heading),
-    [terrain, row, col, heading],
+  const model = useDressedModel(ROVER_URL, terrain.body, 0.32);
+  const scale = cellStep(terrain); // metres → world units
+  const target = useMemo(() => new THREE.Vector3(...gridToWorld(terrain, row, col, 0)), [terrain, row, col]);
+  const pose = useMemo(
+    () => terrainPose(terrain, row, col, headingToYaw(headingDeg), 0.8),
+    [terrain, row, col, headingDeg],
   );
-  const scale = cellStep(terrain) * 1.05;
-  const wheelX = 0.78;
+  const shownStuck = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    navcamRef.current = model.getObjectByName("navcam") ?? null;
+  }, [model, navcamRef]);
+
+  useFrame((_, delta) => {
+    const group = roverRef.current;
+    if (!group) return;
+    const wheels: THREE.Object3D[] = [];
+    group.traverse((node) => {
+      if (node.name.startsWith("wheel_")) wheels.push(node);
+    });
+    // A slip-stall is the one state worth flagging on the vehicle itself.
+    if (shownStuck.current !== stuck) {
+      for (const wheel of wheels) {
+        wheel.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const m = mesh.material as THREE.MeshStandardMaterial;
+          m.emissive.set(stuck ? UI.bad : "#000000");
+          m.emissiveIntensity = stuck ? 0.35 : 0;
+        });
+      }
+      shownStuck.current = stuck;
+    }
+    const gap = group.position.distanceTo(target);
+    // Seeks and new missions jump; ordinary steps glide.
+    if (gap > scale * 3.5) {
+      group.position.copy(target);
+      group.quaternion.copy(pose);
+      return;
+    }
+    const k = 1 - Math.exp(-delta * 10);
+    const before = group.position.clone();
+    group.position.lerp(target, k);
+    group.quaternion.slerp(pose, k);
+    const metres = before.distanceTo(group.position) / scale;
+    for (const wheel of wheels) wheel.rotation.x += metres / WHEEL_RADIUS_M;
+  });
+
   return (
-    <group position={position} quaternion={quaternion} scale={scale}>
-      {/* chassis */}
-      <mesh position={[0, 0.42, 0]} castShadow>
-        <boxGeometry args={[1.25, 0.34, 1.9]} />
-        <meshStandardMaterial color={BODY} roughness={0.55} metalness={0.15} />
+    <group ref={roverRef} scale={scale}>
+      <primitive object={model} />
+    </group>
+  );
+}
+
+/** Ring and pin marking the rover's position in the overview cameras. */
+export function RoverLocator({
+  roverRef,
+  terrain,
+  visible,
+}: {
+  roverRef: RefObject<THREE.Group | null>;
+  terrain: TerrainLayers;
+  visible: boolean;
+}) {
+  const locator = useRef<THREE.Group>(null);
+  const scale = cellStep(terrain);
+  useFrame(() => {
+    const group = locator.current;
+    const rover = roverRef.current;
+    if (!group || !rover) return;
+    group.position.copy(rover.position);
+    group.visible = visible;
+  });
+  return (
+    <group ref={locator} scale={scale}>
+      <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.75, 2.0, 48]} />
+        <meshBasicMaterial color="#e9eef7" transparent opacity={0.75} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      {/* solar deck */}
-      <mesh position={[0, 0.62, -0.1]} castShadow>
-        <boxGeometry args={[1.55, 0.05, 1.55]} />
-        <meshStandardMaterial color={PANEL} roughness={0.3} metalness={0.4} />
-      </mesh>
-      {/* mast and camera head */}
-      <mesh position={[0.32, 1.05, 0.72]} castShadow>
-        <cylinderGeometry args={[0.05, 0.06, 0.85, 8]} />
-        <meshStandardMaterial color={BODY} roughness={0.5} />
-      </mesh>
-      <mesh position={[0.32, 1.5, 0.76]} castShadow>
-        <boxGeometry args={[0.42, 0.18, 0.2]} />
-        <meshStandardMaterial color={DARK} roughness={0.4} />
-      </mesh>
-      {/* high-gain antenna */}
-      <mesh position={[-0.42, 0.84, -0.55]} rotation={[-0.6, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 0.04, 16]} />
-        <meshStandardMaterial color={BODY} roughness={0.5} />
-      </mesh>
-      {/* rocker-bogie wheels: three per side */}
-      {[-0.72, 0, 0.72].map((z) => (
-        <group key={z}>
-          <Wheel position={[wheelX, 0.36, z]} alarm={stuck} />
-          <Wheel position={[-wheelX, 0.36, z]} alarm={stuck} />
-        </group>
-      ))}
-      <mesh position={[wheelX, 0.5, 0]}>
-        <boxGeometry args={[0.08, 0.08, 1.5]} />
-        <meshStandardMaterial color={DARK} />
-      </mesh>
-      <mesh position={[-wheelX, 0.5, 0]}>
-        <boxGeometry args={[0.08, 0.08, 1.5]} />
-        <meshStandardMaterial color={DARK} />
+      <mesh position={[0, 3.4, 0]}>
+        <cylinderGeometry args={[0.03, 0.03, 2.6, 6]} />
+        <meshBasicMaterial color="#e9eef7" transparent opacity={0.6} />
       </mesh>
     </group>
   );
 }
 
 /**
- * The model's "home" is the cell the rover parks on. The lander is drawn just
- * beside it rather than on it, otherwise a rover at home is hidden inside the
- * lander. The offset is visual only; the mission logic uses the home cell.
+ * The model's "home" is the cell the rover parks on. The lander stands a few
+ * metres away, ramp towards home, rather than on it - otherwise a rover at
+ * home is drawn inside the lander. The offset is visual only; mission logic
+ * uses the home cell.
  */
-export const LANDER_OFFSET: [number, number] = [-1.8, -1.8];
+export const LANDER_OFFSET: [number, number] = [-3, -3];
 
-export function LanderModel({ terrain, row, col }: { terrain: TerrainLayers; row: number; col: number }) {
-  const r = Math.min(Math.max(row + LANDER_OFFSET[0], 0), terrain.size - 1);
-  const c = Math.min(Math.max(col + LANDER_OFFSET[1], 0), terrain.size - 1);
+export function landerCell(terrain: TerrainLayers, home: [number, number]): [number, number] {
+  return [
+    Math.min(Math.max(home[0] + LANDER_OFFSET[0], 0), terrain.size - 1),
+    Math.min(Math.max(home[1] + LANDER_OFFSET[1], 0), terrain.size - 1),
+  ];
+}
+
+export function LanderModel({ terrain, home }: { terrain: TerrainLayers; home: [number, number] }) {
+  const model = useDressedModel(LANDER_URL, terrain.body, 0.4);
+  const [r, c] = landerCell(terrain, home);
   const position = gridToWorld(terrain, r, c, 0);
-  const scale = cellStep(terrain) * 1.25;
-  const legs = [0, 1, 2, 3].map((i) => (i * Math.PI) / 2 + Math.PI / 4);
+  // ramp (model +z) points at the home cell
+  const yaw = Math.atan2(home[1] - c, home[0] - r);
+  const pose = useMemo(() => terrainPose(terrain, r, c, yaw, 2), [terrain, r, c, yaw]);
   return (
-    <group position={position} scale={scale}>
-      {legs.map((angle) => (
-        <group key={angle} rotation={[0, angle, 0]}>
-          <mesh position={[0, 0.6, 0.85]} rotation={[0.5, 0, 0]} castShadow>
-            <cylinderGeometry args={[0.05, 0.05, 1.4, 6]} />
-            <meshStandardMaterial color={BODY} roughness={0.5} metalness={0.3} />
-          </mesh>
-          <mesh position={[0, 0.06, 1.2]}>
-            <cylinderGeometry args={[0.2, 0.24, 0.08, 12]} />
-            <meshStandardMaterial color={BODY} roughness={0.6} />
-          </mesh>
-        </group>
-      ))}
-      {/* octagonal deck wrapped in foil */}
-      <mesh position={[0, 1.15, 0]} castShadow>
-        <cylinderGeometry args={[0.95, 1.05, 0.7, 8]} />
-        <meshStandardMaterial color={FOIL} roughness={0.35} metalness={0.7} />
-      </mesh>
-      <mesh position={[0, 1.6, 0]} castShadow>
-        <cylinderGeometry args={[0.7, 0.9, 0.22, 8]} />
-        <meshStandardMaterial color={BODY} roughness={0.5} />
-      </mesh>
-      {/* solar wings */}
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * 1.75, 1.35, 0]} castShadow>
-          <boxGeometry args={[1.5, 0.04, 0.8]} />
-          <meshStandardMaterial color={PANEL} roughness={0.3} metalness={0.5} />
-        </mesh>
-      ))}
-      {/* antenna dish */}
-      <mesh position={[0, 2.05, 0]} rotation={[0.5, 0, 0]} castShadow>
-        <sphereGeometry args={[0.38, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
-        <meshStandardMaterial color={BODY} roughness={0.4} side={THREE.DoubleSide} />
-      </mesh>
+    <group position={position} quaternion={pose} scale={cellStep(terrain)}>
+      <primitive object={model} />
     </group>
   );
 }
@@ -205,7 +323,7 @@ export function SensorFootprint({
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[points, 3]} />
       </bufferGeometry>
-      <lineBasicMaterial color={UI.route} transparent opacity={0.7} />
+      <lineBasicMaterial color={UI.route} transparent opacity={0.5} />
     </line>
   );
 }

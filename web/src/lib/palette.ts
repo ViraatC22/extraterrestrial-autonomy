@@ -24,6 +24,18 @@ export const UI = {
   planned: "#9aa8ff",
 } as const;
 
+/**
+ * Route lines in the 3D view. What lies ahead is bright; what has been driven
+ * is subdued, so the decision stays the thing the eye goes to.
+ */
+export const ROUTE = {
+  planned: "#5ad2f2",
+  traversed: "#c3ccd8",
+  selected: "#3ec9a7",
+  feasible: "#a3adbb",
+  rejected: "#e8614d",
+} as const;
+
 /** Terrain-class colours, keyed by the TerrainClass enum in Python. */
 export const CLASS_COLORS: Record<number, [number, number, number]> = {
   0: [0.44, 0.42, 0.40], // smooth regolith
@@ -65,4 +77,20 @@ export function ramp(t: number): [number, number, number] {
     }
   }
   return stops[stops.length - 1][1];
+}
+
+/** Diverging ramp: blue (belief too optimistic) → grey → red (too pessimistic). */
+export function diverging(u: number): [number, number, number] {
+  const x = Math.min(1, Math.max(0, u));
+  const lo: [number, number, number] = [0.2, 0.45, 0.9];
+  const mid: [number, number, number] = [0.42, 0.44, 0.47];
+  const hi: [number, number, number] = [0.9, 0.32, 0.25];
+  const [a, b, f] = x < 0.5 ? [lo, mid, x / 0.5] : [mid, hi, (x - 0.5) / 0.5];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+
+/** Knowledge ramp: near-black for unexplored (negative), teal (certain) → amber (uncertain). */
+export function knowledgeColor(v: number): [number, number, number] {
+  if (v < 0) return [0.05, 0.06, 0.08];
+  return [0.24 + 0.66 * v, 0.72 - 0.25 * v, 0.66 - 0.5 * v];
 }

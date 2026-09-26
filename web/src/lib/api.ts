@@ -8,8 +8,12 @@
 
 import type {
   BeliefSnapshot,
+  DemoMission,
   FailuresPayload,
   Decision,
+  ModelConstants,
+  PairedReplay,
+  ProbePayload,
   MissionRequest,
   MissionStarted,
   MissionSummary,
@@ -117,6 +121,18 @@ export const getResults = (name = "exonaut_main") =>
   request<ResultsPayload>(`/results?name=${encodeURIComponent(name)}`);
 
 export const getAvailableResults = () => request<string[]>("/results/available");
+
+export const getProbe = (sessionId: string, row: number, col: number, index: number) =>
+  request<ProbePayload>(`/missions/${sessionId}/probe?row=${row}&col=${col}&index=${index}`);
+
+export const getModelConstants = () => request<ModelConstants>("/model-constants");
+
+export const getPairedReplay = (condition: string, seed: number) =>
+  request<PairedReplay>(
+    `/results/paired-replay?condition=${encodeURIComponent(condition)}&seed=${seed}`,
+  );
+
+export const getDemoMission = () => request<DemoMission>("/demo-mission");
 
 /** Live telemetry socket. Returns a disposer. */
 export function openTelemetrySocket(

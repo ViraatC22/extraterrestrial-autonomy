@@ -1,0 +1,7 @@
+{
+  "max_slope_deg": 25.0,
+  "severe_slip_threshold": 0.8,
+  "embed_limit": 3,
+  "hazard_mission_risk": 0.005,
+  "cell_size_m": 1.0
+}

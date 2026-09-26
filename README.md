@@ -22,7 +22,7 @@ reproducibility, but it is no longer the primary research question.
 
 - The seed protocol and lunar/Martian priors are frozen and checksummed; eight seeds consumed by an
   early engineering pilot are permanently quarantined and excluded from all confirmatory results.
-- The implementation and regression suite pass 66 tests.
+- The implementation and regression suite pass 124 tests.
 - The confirmatory run is complete: 750 missions on held-out seeds, committed as
   `data/results/exonaut_main.csv` with a metadata sidecar recording the git commit, split checksum,
   quarantine list and library versions.
@@ -38,11 +38,12 @@ a descriptive, untested pattern: adaptation trades a little science for survival
 found the adaptive learner is about 7× overconfident. See `docs/RESEARCH_LOG.md` and
 `scripts/audit_confirmatory.py`.
 
-**Engine v2 (exploratory).** Four engine defects found after the confirmatory run are fixed
+**Engine v2 (exploratory).** Five engine defects found after the confirmatory run are fixed
 behind `engine="v2"`; the default stays v1, and all 750 committed missions still reproduce
 (`scripts/verify_v1_reproduction.py`). On validation seeds, the fixes work. But with them in place,
 adaptation's survival advantage largely disappears. See `docs/EXPLORATION_V2.md`, which is
-generated from the data.
+generated from the data. A v2 confirmatory study is drafted, not frozen, in
+`docs/V2_VALIDATION_PLAN.md`, with the decisions it still needs.
 
 An unpredicted result: distance-only A* had the highest Martian success rate in three of four
 conditions while returning the least science, indicating that the risk formulation prices caution
@@ -89,11 +90,26 @@ python scripts/run_exonaut_experiments.py \
 Compile the paper with Tectonic:
 
 ```bash
-tectonic -X compile paper/paper.tex --outdir paper
+tectonic -X compile paper/exonaut.tex --outdir paper
 ```
 
 Do not overwrite the confirmatory result after inspecting it. If the method changes, record a new
 protocol/version and run it on new seeds.
+
+## Mission-control interface
+
+A FastAPI service (`src/exonaut/api/`) runs missions through the same `run_mission` the
+experiments use; a Next.js + React Three Fiber app (`web/`) replays them in 3D with the rover's
+belief, risk and decisions, and shows the confirmatory statistics, failure case studies and
+exploratory sweeps. The frontend computes nothing it displays: `docs/DATA_FLOW.md` lists the engine
+function behind every number on screen and the test that pins it.
+
+```bash
+bash review/run_app.sh      # engine on :8000, app on :3000
+```
+
+`review/` is a self-contained package for reviewers: screenshots of every view, captured API
+responses, and a map of the code.
 
 ## Repository map
 
@@ -110,7 +126,10 @@ experiments/configs/  pilot and confirmatory designs
 data/processed/       calibrated priors
 data/splits/          immutable seed protocol
 data/results/         row-level results and provenance sidecars
-docs/                 architecture, methodology, preregistration, research log
+data/demo/            the rule-selected demonstration mission
+docs/                 architecture, data flow, methodology, analysis plans, research log
+web/                  mission-control interface (Next.js, React Three Fiber)
+review/               reviewer package: screenshots, API samples, launcher
 paper/                LaTeX source, generated assets, and compiled PDF
 tests/                scientific-integrity and regression tests
 ```

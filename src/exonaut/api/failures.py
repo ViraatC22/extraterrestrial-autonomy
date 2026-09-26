@@ -86,14 +86,19 @@ def request_for(row: pd.Series, meta: dict) -> dict:
     }
 
 
-def diagnostics(session: dict, row: pd.Series) -> dict:
-    """Detail recovered from the re-run, plus the check that it reproduces."""
-    result = session["result"]
-    reproduces = bool(
+def reproduces_row(result, row: pd.Series) -> bool:
+    """Does a re-run match its committed confirmatory row exactly?"""
+    return bool(
         result.termination == row["termination"]
         and abs(result.science_return - row["science_return"]) < 1e-9
         and abs(result.energy_spent - row["energy_spent"]) < 1e-6
     )
+
+
+def diagnostics(session: dict, row: pd.Series) -> dict:
+    """Detail recovered from the re-run, plus the check that it reproduces."""
+    result = session["result"]
+    reproduces = reproduces_row(result, row)
     history = result.history
     decisions = result.decisions
     pursue = [d for d in decisions if d["reason"] == "pursue_target"]
@@ -111,6 +116,15 @@ def diagnostics(session: dict, row: pd.Series) -> dict:
                 "expected_energy_sd": chosen.get("energy_sd"),
                 "p_failure": chosen.get("p_failure"),
                 "energy_spent_after_decision": spent_after,
+                # how far actual spending landed from the planner's estimate,
+                # in the planner's own standard deviations
+                "energy_error_in_sd": (
+                    (spent_after - chosen["expected_energy"]) / chosen["energy_sd"]
+                    if spent_after is not None
+                    and chosen.get("expected_energy") is not None
+                    and chosen.get("energy_sd")
+                    else None
+                ),
                 "mission_ended_step": history[-1]["step"] if history else None,
             }
     body = session["request"].body

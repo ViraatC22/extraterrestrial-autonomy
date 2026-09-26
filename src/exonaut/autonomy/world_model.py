@@ -309,6 +309,13 @@ class WorldModel:
             return False
         return bool(self.slope[row, col] <= max_slope_deg)
 
+    def believed_traversable_grid(self, max_slope_deg: float, hazard_threshold: float = 0.5):
+        """`believed_traversable` for every cell at once - for visualisation.
+
+        Must agree with the per-cell method exactly; a test enforces it.
+        """
+        return (self.hazard_prob < hazard_threshold) & (self.slope <= max_slope_deg)
+
     def snapshot(self) -> dict:
         """Per-class belief summary, for logging and the dashboard."""
         return {

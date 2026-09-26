@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import json
 from pathlib import Path
 
@@ -33,6 +34,10 @@ from .service import (
     decisions_payload,
     frame_payload,
     planner_catalogue,
+    probe_payload,
+    record_heldout_access,
+    session_terrain,
+    snapshot_at,
     summarize,
     terrain_payload,
 )
@@ -76,6 +81,30 @@ def planners() -> list[PlannerInfo]:
     return planner_catalogue()
 
 
+@app.get("/model-constants")
+def model_constants() -> dict:
+    """Fixed model parameters the interface draws on legends and markers.
+
+    Served rather than typed into the frontend, so a threshold drawn on a
+    legend is the threshold the engine uses.
+    """
+    import inspect
+
+    from ..autonomy.risk import HAZARD_MISSION_RISK
+    from ..environments.base import derive_slope
+    from ..robot.vehicle import EMBED_LIMIT, SEVERE_SLIP_THRESHOLD
+    from ..simulation import MissionConfig
+
+    return {
+        "max_slope_deg": MissionConfig.max_slope_deg,
+        "severe_slip_threshold": SEVERE_SLIP_THRESHOLD,
+        "embed_limit": EMBED_LIMIT,
+        "hazard_mission_risk": HAZARD_MISSION_RISK,
+        # the grid spacing terrain slopes are derived with
+        "cell_size_m": inspect.signature(derive_slope).parameters["cell_size_m"].default,
+    }
+
+
 @app.get("/splits", response_model=list[SplitInfo])
 def splits() -> list[SplitInfo]:
     """Seed splits, with the quarantine surfaced rather than hidden.
@@ -108,11 +137,39 @@ def terrain(
 ) -> TerrainLayers:
     if body not in ("moon", "mars"):
         raise HTTPException(400, f"unknown body {body!r}")
+    record_heldout_access(seed, "/terrain")
     return terrain_payload(body, seed, size)
+
+
+@functools.lru_cache(maxsize=16)
+def _cached_terrain(body: str, seed: int, size: int):
+    from ..environments import make_environment
+
+    return make_environment(body, seed=seed, size=size)
+
+
+@app.get("/terrain/probe")
+def terrain_probe(
+    row: int,
+    col: int,
+    body: str = Query("mars"),
+    seed: int = Query(200000),
+    size: int = Query(56, ge=16, le=128),
+    solar_rate: float = Query(2.0, ge=0.1, le=10.0),
+) -> dict:
+    """Ground-truth readout for one cell, before any mission has run."""
+    if body not in ("moon", "mars"):
+        raise HTTPException(400, f"unknown body {body!r}")
+    record_heldout_access(seed, "/terrain/probe")
+    try:
+        return probe_payload(_cached_terrain(body, seed, size), row, col, solar_rate, None)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/start-mission", response_model=MissionStarted)
 def start_mission(request: MissionRequest) -> MissionStarted:
+    record_heldout_access(request.seed, "/start-mission")
     try:
         session_id, session = store.run(request)
     except ValueError as exc:
@@ -176,6 +233,24 @@ def mission_belief(session_id: str, index: int = Query(0, ge=0)) -> BeliefSnapsh
     return payload
 
 
+@app.get("/missions/{session_id}/probe")
+def mission_probe(session_id: str, row: int, col: int, index: int = Query(0, ge=0)) -> dict:
+    """Truth and the rover's belief for one cell, as of a frame.
+
+    Every value is computed by the engine; the interface only lays it out.
+    """
+    session = store.get(session_id)
+    if session is None:
+        raise HTTPException(404, "unknown session")
+    request = session["request"]
+    try:
+        return probe_payload(
+            session_terrain(session), row, col, request.solar_rate, snapshot_at(session, index)
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.get("/robot-state", response_model=TelemetryFrame)
 def robot_state(session_id: str, index: int = Query(-1)) -> TelemetryFrame:
     """Latest known robot state, or a specific step. `index=-1` means the end."""
@@ -211,6 +286,7 @@ def results(name: str = Query("exonaut_main")) -> dict:
         interval_table,
         paired_points,
         primary_analysis,
+        secondary_analysis,
     )
     from ..experiments.io import load_results
 
@@ -223,16 +299,94 @@ def results(name: str = Query("exonaut_main")) -> dict:
     metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
 
     primary = primary_analysis(frame)
+    secondary = secondary_analysis(frame)
     return {
         "name": name,
         "n_missions": int(len(frame)),
         "metadata": metadata,
         "descriptive": descriptive_table(frame).to_dict(orient="records"),
         "primary": primary.to_dict(orient="records") if not primary.empty else [],
+        "secondary": secondary.to_dict(orient="records") if not secondary.empty else [],
         "generalization_gap": generalization_gap(frame).to_dict(orient="records"),
         "intervals": interval_table(frame).to_dict(orient="records"),
         "paired_points": paired_points(frame).to_dict(orient="records"),
+        "audit": _audit_summary() if name == "exonaut_main" else None,
     }
+
+
+def _audit_summary() -> dict | None:
+    """Post-hoc fault-exposure audit, from the table the audit script wrote.
+
+    Not confirmatory. Served so the verdict text in the interface quotes
+    computed numbers rather than typed ones.
+    """
+    import pandas as pd
+
+    from ..experiments.audits import fault_exposure_stats
+
+    path = RESULTS_DIR / "audit_fault_exposure.csv"
+    if not path.exists():
+        return None
+    rows = pd.read_csv(RESULTS_DIR / "exonaut_main.csv")
+    rows = rows[rows.condition == "mars_faults"]
+    return fault_exposure_stats(pd.read_csv(path), rows)
+
+
+@app.get("/results/paired-replay")
+def paired_replay(condition: str, seed: int) -> dict:
+    """Re-run one confirmatory seed under both planners of the primary contrast.
+
+    Both runs use the committed configuration for that condition, so each
+    must reproduce its committed row; the check is returned with the
+    sessions, and the interface shows it.
+    """
+    from .failures import load_main, reproduces_row, request_for
+
+    try:
+        frame, meta = load_main(RESULTS_DIR)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    out = {"condition": condition, "seed": seed, "runs": []}
+    for planner in ("risk_aware_astar", "adaptive_risk_aware_astar"):
+        match = frame[
+            (frame.condition == condition) & (frame.seed == seed) & (frame.planner == planner)
+        ]
+        if match.empty:
+            raise HTTPException(404, f"no committed {planner} mission for {condition} seed {seed}")
+        row = match.iloc[0]
+        request = MissionRequest(**request_for(row, meta))
+        session_id, session = store.run(request)
+        result = session["result"]
+        out["runs"].append(
+            {
+                "planner": planner,
+                "session_id": session_id,
+                "committed": {
+                    "termination": row["termination"],
+                    "success": bool(row["success"]),
+                    "science_fraction": float(row["science_fraction"]),
+                    "energy_spent": float(row["energy_spent"]),
+                },
+                "reproduces_committed_row": reproduces_row(result, row),
+            }
+        )
+    return out
+
+
+DEMO_PATH = PROJECT_ROOT / "data" / "demo" / "demo_mission.json"
+
+
+@app.get("/demo-mission")
+def demo_mission() -> dict:
+    """The demonstration mission, with the rule that selected it.
+
+    Chosen by `scripts/select_demo_mission.py` from validation seeds by a
+    written rule, not by eye. It illustrates one adaptation event; it says
+    nothing about how often adaptation helps.
+    """
+    if not DEMO_PATH.exists():
+        raise HTTPException(404, "no demo mission selected; run scripts/select_demo_mission.py")
+    return json.loads(DEMO_PATH.read_text())
 
 
 _FAILURES_CACHE: dict = {}
@@ -343,7 +497,7 @@ def sweep_point(
     value: float,
     planner: str = Query("adaptive_risk_aware_astar"),
     body: str = Query("mars"),
-    n_seeds: int = Query(6, ge=2, le=20),
+    n_seeds: int = Query(6, ge=2, le=40),
     engine: str = Query("v1", pattern="^v[12]$"),
 ) -> dict:
     """One Scenario Lab point: n complete missions on VALIDATION seeds."""

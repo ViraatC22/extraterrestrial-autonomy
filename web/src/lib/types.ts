@@ -66,6 +66,10 @@ export interface CandidateEvaluation {
   p_terrain: number | null;
   p_energy: number | null;
   utility: number | null;
+  /** reachable and P(failure) <= risk budget, as the engine decided it */
+  within_budget: boolean;
+  /** 1 = highest utility among within-budget candidates (the one selected) */
+  feasible_rank: number | null;
 }
 
 export interface TelemetryFrame {
@@ -90,6 +94,9 @@ export interface TelemetryFrame {
   candidates: CandidateEvaluation[];
   decision_index: number;
   sensing_radius: number | null;
+  /** grid heading of the last completed move, degrees clockwise from grid north (row 0) */
+  heading_deg: number | null;
+  local_slope_deg: number | null;
 }
 
 export interface Provenance {
@@ -135,6 +142,7 @@ export interface BeliefSnapshot {
   risk: number[][];
   hazard_prob: number[][];
   hazard_threshold: number;
+  routable: number[][];
   true_slip: number[][];
   true_class: number[][];
 }
@@ -206,7 +214,7 @@ export type TerrainLayerName =
   | "slip_error"
   | "risk";
 
-export type CameraMode = "orbit" | "chase" | "top" | "pov" | "planner";
+export type CameraMode = "orbit" | "chase" | "top" | "navcam" | "planner";
 
 export interface ResultsPayload {
   name: string;
@@ -215,8 +223,91 @@ export interface ResultsPayload {
   descriptive: Record<string, number | string>[];
   primary: Record<string, number | string | boolean>[];
   generalization_gap: Record<string, number | string>[];
+  secondary: Record<string, number | string | boolean>[];
   intervals: IntervalRow[];
   paired_points: PairedPoint[];
+  audit: AuditSummary | null;
+}
+
+/** Post-hoc fault-exposure audit (not confirmatory), from data/results. */
+export interface AuditSummary {
+  Reproduced: number;
+  FiredAdaptive: number;
+  FiredFixed: number;
+  FiredAstar: number;
+  MedianSteps: number;
+  Horizon: number;
+  Discordant: number;
+  DiscordantBoth: number;
+  DiscordantNone: number;
+  DiscordantMixed: number;
+}
+
+export type DataStatusName = "GENERATED" | "SIMULATED" | "INFERRED" | "ASSUMED";
+
+export interface ProbeRow {
+  key: string;
+  label: string;
+  value: number | string | boolean | null;
+  display: string;
+  unit: string;
+  status: DataStatusName;
+  group: "truth" | "belief";
+}
+
+export interface ProbePayload {
+  row: number;
+  col: number;
+  belief_step: number | null;
+  belief_frame_index: number | null;
+  observed: boolean | null;
+  rows: ProbeRow[];
+}
+
+export interface ModelConstants {
+  max_slope_deg: number;
+  severe_slip_threshold: number;
+  embed_limit: number;
+  hazard_mission_risk: number;
+  cell_size_m: number;
+}
+
+export interface PairedRun {
+  planner: string;
+  session_id: string;
+  committed: { termination: string; success: boolean; science_fraction: number; energy_spent: number };
+  reproduces_committed_row: boolean;
+}
+
+export interface PairedReplay {
+  condition: string;
+  seed: number;
+  runs: PairedRun[];
+}
+
+export interface DemoMission {
+  label: string;
+  rule: string;
+  caveat: string;
+  request: MissionRequest;
+  chosen: {
+    seed: number;
+    termination: string;
+    start_frame: number;
+    event_frame: number;
+    event: {
+      target_id: number;
+      risk_budget: number;
+      /** which risk component alone exceeded the budget */
+      crossed_by: ("terrain" | "energy")[];
+      belief_class: number;
+      belief_before: number;
+      belief_after: number;
+      decision_before: { index: number; step: number; p_failure: number; p_terrain: number; p_energy: number };
+      decision_after: { index: number; step: number; p_failure: number; p_terrain: number; p_energy: number };
+    };
+  } | null;
+  scanned: { seed: number; has_event: boolean }[];
 }
 
 export interface IntervalRow {
@@ -264,6 +355,8 @@ export interface FailureRepresentative {
     expected_energy_sd: number | null;
     p_failure: number | null;
     energy_spent_after_decision: number | null;
+    /** (spent − expected) / planner's s.d., computed by the engine */
+    energy_error_in_sd: number | null;
     mission_ended_step: number | null;
   } | null;
   belief_error_driven_classes: {

@@ -5,18 +5,29 @@
  * route the rover currently intends to take, its sensing footprint, and - in
  * planner view - every candidate route it evaluated at the current decision.
  *
- * Visual grammar: solid cyan is where the rover has actually been; dashed
- * violet is where it currently intends to go. When the planner changes its
- * mind the violet line jumps while the cyan trail does not - that contrast is
- * the clearest way to show autonomy happening.
+ * Visual grammar: what lies ahead is bright, what has been driven is
+ * subdued. In normal views the bright cyan line is the route the rover is
+ * committed to; when the planner changes its mind it jumps while the driven
+ * trail does not - the clearest way to show autonomy happening. In planner
+ * view the selected route is solid green, feasible alternatives dashed grey,
+ * and routes rejected by the risk budget dashed red (see RouteLegend).
  */
 
 import { Billboard, Line, OrbitControls, Text } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import {
+  Suspense,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 
-import { CameraRig } from "./CameraRig";
+import { CameraRig, type Obstacle } from "./CameraRig";
 import {
   RockField,
   SKY,
@@ -24,16 +35,11 @@ import {
   SimulatedBoundary,
   Surroundings,
   TerrainMesh,
+  cellStep,
   gridToWorld,
 } from "./TerrainMesh";
-import {
-  LANDER_OFFSET,
-  LanderModel,
-  RoverModel,
-  SensorFootprint,
-  headingFromTrail,
-} from "./Vehicles";
-import { UI } from "@/lib/palette";
+import { LanderModel, RoverLocator, RoverModel, SensorFootprint, landerCell } from "./Vehicles";
+import { ROUTE, UI } from "@/lib/palette";
 import type {
   BeliefSnapshot,
   CameraMode,
@@ -54,12 +60,16 @@ const LABEL_SCALE: Record<CameraMode, number> = {
   orbit: 1,
   top: 1.15,
   planner: 1.1,
-  chase: 0.38,
-  pov: 0,
+  chase: 0.5,
+  navcam: 0,
 };
 // Provided *inside* the <Canvas>: react-three-fiber renders with its own
 // reconciler, which does not inherit context from outside the canvas.
 const LabelScale = createContext(1);
+
+/** Labels fade out as the camera closes in, so they never fill a close view. */
+const FADE_NEAR = 9;
+const FADE_FAR = 24;
 
 function SceneLabel({
   position,
@@ -73,12 +83,23 @@ function SceneLabel({
   size: number;
 }) {
   const labelScale = useContext(LabelScale);
+  // troika-three-text object; typed loosely because drei does not export it
+  const label = useRef<THREE.Mesh & { fillOpacity: number; outlineOpacity: number }>(null);
+  const anchor = useMemo(() => new THREE.Vector3(...position), [position]);
+  useFrame(({ camera }) => {
+    const mesh = label.current;
+    if (!mesh) return;
+    const fade = Math.min(1, Math.max(0, (camera.position.distanceTo(anchor) - FADE_NEAR) / (FADE_FAR - FADE_NEAR)));
+    mesh.fillOpacity = fade;
+    mesh.outlineOpacity = fade;
+    mesh.visible = fade > 0.02;
+  });
   if (labelScale === 0) return null;
-  size = size * labelScale;
   return (
     <Billboard position={position}>
       <Text
-        fontSize={size}
+        ref={label}
+        fontSize={size * labelScale}
         color={color}
         anchorX="center"
         anchorY="middle"
@@ -167,11 +188,17 @@ function Route({
 }
 
 function CandidateRoutes({ terrain, decision }: { terrain: TerrainLayers; decision: Decision }) {
+  // Engine verdicts only: `selected` and `within_budget` come from the
+  // mission manager; nothing is re-derived here.
   return (
     <>
       {decision.candidates.map((candidate) => {
         if (!candidate.reachable || candidate.route.length < 2) return null;
-        const color = candidate.selected ? UI.good : candidate.rejected ? UI.bad : "#8b98ab";
+        const style = candidate.selected
+          ? { color: ROUTE.selected, dashed: false, width: 3.6, opacity: 1, tag: "  ◀ SELECTED" }
+          : candidate.within_budget
+            ? { color: ROUTE.feasible, dashed: true, width: 1.5, opacity: 0.8, tag: "" }
+            : { color: ROUTE.rejected, dashed: true, width: 1.6, opacity: 0.9, tag: "  ✕ OVER ε" };
         const end = candidate.route[candidate.route.length - 1];
         const [x, y, z] = gridToWorld(terrain, end[0], end[1], 8.4);
         return (
@@ -179,16 +206,16 @@ function CandidateRoutes({ terrain, decision }: { terrain: TerrainLayers; decisi
             <Route
               terrain={terrain}
               cells={candidate.route}
-              color={color}
-              dashed={!candidate.selected}
+              color={style.color}
+              dashed={style.dashed}
               lift={1.3}
-              width={candidate.selected ? 3.4 : 2}
-              opacity={candidate.selected ? 1 : 0.85}
+              width={style.width}
+              opacity={style.opacity}
             />
             <SceneLabel
               position={[x, y, z]}
-              text={`P(fail) ${candidate.p_failure?.toFixed(3) ?? "—"}${candidate.selected ? "  ◀ CHOSEN" : candidate.rejected ? "  ✕ OVER BUDGET" : ""}`}
-              color={color}
+              text={`P(fail) ${candidate.p_failure?.toFixed(3) ?? "—"}${style.tag}`}
+              color={style.color}
               size={1.05}
             />
           </group>
@@ -198,13 +225,24 @@ function CandidateRoutes({ terrain, decision }: { terrain: TerrainLayers; decisi
   );
 }
 
-function ProbeMarker({ terrain, cell }: { terrain: TerrainLayers; cell: [number, number] }) {
+function ProbeMarker({
+  terrain,
+  cell,
+  label,
+}: {
+  terrain: TerrainLayers;
+  cell: [number, number];
+  label?: string;
+}) {
   const [x, y, z] = gridToWorld(terrain, cell[0], cell[1], 0.3);
   return (
-    <mesh position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.55, 0.85, 24]} />
-      <meshBasicMaterial color="#ffffff" transparent opacity={0.9} side={THREE.DoubleSide} />
-    </mesh>
+    <group position={[x, y, z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.55, 0.85, 24]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.9} side={THREE.DoubleSide} />
+      </mesh>
+      {label ? <SceneLabel position={[0, 2.4, 0]} text={label} color="#ffffff" size={1.2} /> : null}
+    </group>
   );
 }
 
@@ -219,8 +257,10 @@ export function MissionScene({
   cameraMode,
   decision,
   showCandidates,
-  probeCell,
-  onProbe,
+  hoverCell,
+  pins,
+  onHover,
+  onPin,
 }: {
   terrain: TerrainLayers;
   summary: MissionSummary | null;
@@ -232,13 +272,24 @@ export function MissionScene({
   cameraMode: CameraMode;
   decision: Decision | null;
   showCandidates: boolean;
-  probeCell: [number, number] | null;
-  onProbe: (cell: [number, number] | null) => void;
+  hoverCell: [number, number] | null;
+  pins: [number, number][];
+  onHover: (cell: [number, number] | null) => void;
+  onPin?: (cell: [number, number]) => void;
 }) {
   const visited = useMemo(() => new Set(trail.map(([r, c]) => `${r},${c}`)), [trail]);
-  const heading = useMemo(() => headingFromTrail(trail), [trail]);
-  const roverWorld = frame ? gridToWorld(terrain, frame.row, frame.col, 0) : null;
   const sky = SKY[terrain.body] ?? SKY.moon;
+  const roverRef = useRef<THREE.Group>(null);
+  const navcamRef = useRef<THREE.Object3D>(null);
+  const home = summary?.home ?? null;
+  const obstacles = useMemo<Obstacle[]>(() => {
+    if (!home) return [];
+    const [r, c] = landerCell(terrain, home);
+    const [x, y, z] = gridToWorld(terrain, r, c, 0);
+    const metre = cellStep(terrain);
+    // the lander's body and wings, as one sphere (metres → world units)
+    return [{ center: new THREE.Vector3(x, y + 1.6 * metre, z), radius: 3.2 * metre }];
+  }, [terrain, home]);
 
   const [contextLost, setContextLost] = useState(false);
   // Bumping this remounts the <Canvas>, which builds a brand-new WebGL context.
@@ -293,7 +344,7 @@ export function MissionScene({
         camera={{ position: [70, 58, 82], fov: 42, near: 0.3, far: 1400 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         onCreated={handleCreated}
-        onPointerMissed={() => onProbe(null)}
+        onPointerMissed={() => onHover(null)}
       >
         <LabelScale.Provider value={LABEL_SCALE[cameraMode]}>
         <color attach="background" args={[sky.fog]} />
@@ -322,21 +373,19 @@ export function MissionScene({
           layer={layer}
           belief={belief}
           opacity={opacity}
-          onProbe={onProbe}
+          onHover={onHover}
+          onPin={onPin}
         />
         <RockField terrain={terrain} />
         <SimulatedBoundary terrain={terrain} />
 
         {summary ? (
           <>
-            <LanderModel terrain={terrain} row={summary.home[0]} col={summary.home[1]} />
+            <Suspense fallback={null}>
+              <LanderModel terrain={terrain} home={summary.home} />
+            </Suspense>
             <SceneLabel
-              position={gridToWorld(
-                terrain,
-                summary.home[0] + LANDER_OFFSET[0],
-                summary.home[1] + LANDER_OFFSET[1],
-                6.4,
-              )}
+              position={gridToWorld(terrain, ...landerCell(terrain, summary.home), 9)}
               text="LANDER"
               color="#e9eef7"
               size={1.4}
@@ -360,22 +409,35 @@ export function MissionScene({
           <Route
             terrain={terrain}
             cells={frame.planned_path}
-            color={UI.planned}
-            dashed
+            color={ROUTE.planned}
             lift={1.0}
-            width={2.2}
-            opacity={0.9}
+            width={2.6}
           />
         ) : null}
 
         {trail.length > 1 ? (
-          <Route terrain={terrain} cells={trail} color={UI.route} lift={0.5} width={3} />
+          <Route terrain={terrain} cells={trail} color={ROUTE.traversed} lift={0.5} width={2} opacity={0.6} />
         ) : null}
 
         {frame ? (
           <>
-            <RoverModel terrain={terrain} row={frame.row} col={frame.col} heading={heading} stuck={stuck} />
-            {frame.sensing_radius ? (
+            <Suspense fallback={null}>
+              <RoverModel
+                terrain={terrain}
+                row={frame.row}
+                col={frame.col}
+                headingDeg={frame.heading_deg}
+                stuck={stuck}
+                roverRef={roverRef}
+                navcamRef={navcamRef}
+              />
+            </Suspense>
+            <RoverLocator
+              roverRef={roverRef}
+              terrain={terrain}
+              visible={cameraMode === "orbit" || cameraMode === "top" || cameraMode === "planner"}
+            />
+            {frame.sensing_radius && cameraMode !== "navcam" ? (
               <SensorFootprint
                 terrain={terrain}
                 row={frame.row}
@@ -386,9 +448,18 @@ export function MissionScene({
           </>
         ) : null}
 
-        {probeCell ? <ProbeMarker terrain={terrain} cell={probeCell} /> : null}
+        {hoverCell ? <ProbeMarker terrain={terrain} cell={hoverCell} /> : null}
+        {pins.map((cell, i) => (
+          <ProbeMarker key={`${i}-${cell[0]}-${cell[1]}`} terrain={terrain} cell={cell} label={i === 0 ? "A" : "B"} />
+        ))}
 
-        <CameraRig mode={cameraMode} rover={roverWorld} heading={heading} />
+        <CameraRig
+          mode={cameraMode}
+          terrain={terrain}
+          roverRef={roverRef}
+          navcamRef={navcamRef}
+          obstacles={obstacles}
+        />
         <OrbitControls
           enabled={cameraMode === "orbit"}
           enablePan

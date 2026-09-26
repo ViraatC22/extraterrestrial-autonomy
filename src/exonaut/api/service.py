@@ -166,6 +166,40 @@ def seed_membership(seed: int) -> tuple[str, bool]:
     return "none", False
 
 
+def heldout_log_path():
+    import os
+    from pathlib import Path
+
+    default = Path(__file__).resolve().parents[3] / "data" / "splits" / "heldout_access_log.jsonl"
+    return Path(os.environ.get("EXONAUT_HELDOUT_LOG", default))
+
+
+def record_heldout_access(seed: int, endpoint: str) -> bool:
+    """Log any request that exposes an *unused* held-out terrain.
+
+    A future confirmatory study has to run on seeds nobody has looked at. The
+    interface can generate any seed, so without a record there would be no
+    way to show that. Seeds already evaluated in the confirmatory run, and
+    quarantined seeds, are spent and not logged. Returns True if logged.
+    """
+    import json
+
+    split, quarantined = seed_membership(int(seed))
+    if split not in ("test", "ood") or quarantined or int(seed) in confirmatory_seeds():
+        return False
+    path = heldout_log_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "utc": datetime.now(UTC).isoformat(timespec="seconds"),
+        "seed": int(seed),
+        "split": split,
+        "endpoint": endpoint,
+    }
+    with path.open("a") as handle:
+        handle.write(json.dumps(entry) + "\n")
+    return True
+
+
 _CONFIRMATORY_SEEDS: set | None = None
 
 
@@ -232,29 +266,30 @@ def decisions_payload(session: dict) -> list[Decision]:
 
 
 def _truth_grids(session: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Ground-truth mean slip per cell, computed exactly as the simulator
-    draws it (class mean + 0.01 per degree of slope, capped at 0.97)."""
+    """Ground-truth mean slip per cell, from the same terrain method the
+    simulator draws slip with (`Terrain.true_slip_mean_grid`)."""
     cached = session.get("_truth")
     if cached is not None:
         return cached
-    request: MissionRequest = session["request"]
-    terrain = make_environment(request.body, seed=request.seed, size=request.size)
-    class_means = np.array(
-        [terrain.class_params[TerrainClass(k)].slip_mean for k in range(len(TerrainClass))]
-    )
-    truth = np.clip(class_means[terrain.terrain_class.astype(int)] + 0.01 * terrain.slope, 0, 0.97)
-    session["_truth"] = (truth, terrain.terrain_class.astype(int))
+    terrain = session_terrain(session)
+    session["_truth"] = (terrain.true_slip_mean_grid(), terrain.terrain_class.astype(int))
     return session["_truth"]
 
 
+def session_terrain(session: dict):
+    """The mission's terrain, rebuilt from its seed (deterministic) and cached."""
+    cached = session.get("_terrain")
+    if cached is None:
+        request: MissionRequest = session["request"]
+        cached = make_environment(request.body, seed=request.seed, size=request.size)
+        session["_terrain"] = cached
+    return cached
+
+
 def belief_payload(session: dict, index: int) -> BeliefSnapshot | None:
-    snapshots = session["result"].belief_frames
-    eligible = [s for s in snapshots if s["frame_index"] <= index]
-    if not eligible:
-        if not snapshots:
-            return None
-        eligible = snapshots[:1]
-    snap = eligible[-1]
+    snap = snapshot_at(session, index)
+    if snap is None:
+        return None
     truth, true_class = _truth_grids(session)
 
     def grid(a, digits=4):
@@ -271,6 +306,7 @@ def belief_payload(session: dict, index: int) -> BeliefSnapshot | None:
         risk=grid(snap["risk"], 6),
         hazard_prob=grid(snap["hazard_prob"]),
         hazard_threshold=snap["hazard_threshold"],
+        routable=snap["routable"].astype(int).tolist(),
         true_slip=grid(truth),
         true_class=true_class.tolist(),
     )
@@ -349,6 +385,8 @@ def frame_payload(frame: dict) -> TelemetryFrame:
         candidates=[CandidateEvaluation(**c) for c in frame.get("candidates", [])],
         decision_index=frame.get("decision_index", -1),
         sensing_radius=frame.get("sensing_radius"),
+        heading_deg=frame.get("heading_deg"),
+        local_slope_deg=frame.get("local_slope_deg"),
     )
 
 
@@ -365,3 +403,191 @@ def planner_catalogue() -> list[PlannerInfo]:
             )
         )
     return entries
+
+
+# ---------------------------------------------------------------------------
+# Terrain probe
+# ---------------------------------------------------------------------------
+
+
+def _row(key, label, value, display, unit, status, group):
+    return {
+        "key": key,
+        "label": label,
+        "value": value,
+        "display": display,
+        "unit": unit,
+        "status": status,
+        "group": group,
+    }
+
+
+def _probability(p: float) -> str:
+    return "< 1e-5" if p < 1e-5 else f"{p:.1e}" if p < 1e-3 else f"{p:.4f}"
+
+
+def probe_payload(terrain, row: int, col: int, solar_rate: float, snapshot: dict | None) -> dict:
+    """Every value the interface shows for one cell, computed here.
+
+    The interface only lays these rows out. Anything derived - solar harvest,
+    whether the planner would route through the cell, the chance a single
+    entry ends the mission - is computed by the engine's own functions, so a
+    probe cannot disagree with what the simulator or planner used.
+    """
+    from ..robot.power import PowerSystem
+
+    if not (0 <= row < terrain.size and 0 <= col < terrain.size):
+        raise ValueError(f"cell ({row}, {col}) is outside the {terrain.size}x{terrain.size} map")
+    elevation = terrain.elevation
+    illum = float(terrain.illumination[row, col])
+    # the power model's own recharge rule on a battery with room to spare
+    harvest = PowerSystem(capacity=1e9, charge=0.0, solar_rate=solar_rate).recharge(illum)
+    true_mean, _ = terrain.true_slip_distribution(row, col)
+    klass = int(terrain.terrain_class[row, col])
+    rows = [
+        _row(
+            "elevation",
+            "ELEVATION",
+            float(elevation[row, col] - elevation.min()),
+            f"{elevation[row, col] - elevation.min():.2f}",
+            "m above map min",
+            "GENERATED",
+            "truth",
+        ),
+        _row(
+            "slope",
+            "SLOPE",
+            float(terrain.slope[row, col]),
+            f"{terrain.slope[row, col]:.1f}",
+            "°",
+            "GENERATED",
+            "truth",
+        ),
+        _row(
+            "roughness",
+            "ROUGHNESS",
+            float(terrain.roughness[row, col]),
+            f"{terrain.roughness[row, col]:.2f}",
+            "index",
+            "GENERATED",
+            "truth",
+        ),
+        _row("class", "CLASS", klass, CLASS_LABELS[klass], "", "GENERATED", "truth"),
+        _row(
+            "hazard",
+            "HAZARD",
+            bool(terrain.hazard[row, col]),
+            "IMPASSABLE" if terrain.hazard[row, col] else "passable",
+            "",
+            "GENERATED",
+            "truth",
+        ),
+        _row(
+            "illumination",
+            "ILLUMINATION",
+            illum,
+            f"{illum:.2f}",
+            "× nominal",
+            "GENERATED",
+            "truth",
+        ),
+        _row(
+            "solar_harvest",
+            "SOLAR HARVEST",
+            float(harvest),
+            f"{harvest:.2f}",
+            "Wh/step, clean panels",
+            "ASSUMED",
+            "truth",
+        ),
+        _row(
+            "true_slip",
+            "TRUE MEAN SLIP",
+            float(true_mean),
+            f"{true_mean:.3f}",
+            "",
+            "SIMULATED",
+            "truth",
+        ),
+    ]
+    out = {
+        "row": row,
+        "col": col,
+        "belief_step": None,
+        "belief_frame_index": None,
+        "observed": None,
+        "rows": rows,
+    }
+    if snapshot is None:
+        return out
+
+    seen = bool(snapshot["observed"][row, col])
+    mean = float(snapshot["expected_slip"][row, col])
+    sd = float(snapshot["slip_sd"][row, col])
+    hazard_p = float(snapshot["hazard_prob"][row, col])
+    cell_risk = float(snapshot["risk"][row, col])
+    believed_class = int(snapshot["believed_class"][row, col])
+    rows += [
+        _row(
+            "believed_class",
+            "BELIEVED CLASS",
+            believed_class if seen else None,
+            CLASS_LABELS.get(believed_class, "?") if seen else "unknown",
+            "",
+            "INFERRED",
+            "belief",
+        ),
+        _row(
+            "believed_slope",
+            "BELIEVED SLOPE",
+            float(snapshot["believed_slope"][row, col]) if seen else None,
+            f"{snapshot['believed_slope'][row, col]:.1f}" if seen else "not sensed",
+            "°" if seen else "",
+            "INFERRED",
+            "belief",
+        ),
+        _row(
+            "believed_slip",
+            "BELIEVED SLIP",
+            mean,
+            f"{mean:.3f} ± {sd:.3f}",
+            "mean ± s.d.",
+            "INFERRED",
+            "belief",
+        ),
+        _row("hazard_prob", "P(HAZARD)", hazard_p, f"{hazard_p:.2f}", "", "INFERRED", "belief"),
+        _row(
+            "routable",
+            "ROUTABLE",
+            bool(snapshot["routable"][row, col]),
+            "yes" if snapshot["routable"][row, col] else "no",
+            "",
+            "INFERRED",
+            "belief",
+        ),
+        _row(
+            "cell_risk",
+            "P(ENTRY ENDS MISSION)",
+            cell_risk,
+            _probability(cell_risk),
+            "",
+            "INFERRED",
+            "belief",
+        ),
+    ]
+    out.update(
+        belief_step=int(snapshot["step"]),
+        belief_frame_index=int(snapshot["frame_index"]),
+        observed=seen,
+        rows=rows,
+    )
+    return out
+
+
+def snapshot_at(session: dict, index: int) -> dict | None:
+    """The belief snapshot in force at a frame (the latest one at or before it)."""
+    snapshots = session["result"].belief_frames
+    eligible = [s for s in snapshots if s["frame_index"] <= index]
+    if eligible:
+        return eligible[-1]
+    return snapshots[0] if snapshots else None

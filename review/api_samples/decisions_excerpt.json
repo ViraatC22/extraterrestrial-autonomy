@@ -1,0 +1,388 @@
+[
+  {
+    "index": 0,
+    "step": 1,
+    "row": 20,
+    "col": 20,
+    "charge_fraction": 0.9999516129032259,
+    "reason": "pursue_target",
+    "risk_budget": 0.2,
+    "chosen_route": [
+      [
+        20,
+        20
+      ],
+      [
+        20,
+        21
+      ],
+      [
+        20,
+        22
+      ],
+      [
+        19,
+        23
+      ]
+    ],
+    "candidates": [
+      {
+        "target_id": 0,
+        "row": 29,
+        "col": 51,
+        "science_value": 1.311468786420729,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 63,
+        "expected_energy": 325.6409691311429,
+        "energy_sd": 8.797945638846743,
+        "expected_solar_income": 62.6822794089881,
+        "p_failure": 0.0497916356596102,
+        "p_terrain": 0.04979159260198929,
+        "p_energy": 4.5313870614853616e-08,
+        "utility": 0.004027345791040719,
+        "within_budget": true,
+        "feasible_rank": 4,
+        "route": [
+          [
+            20,
+            20
+          ],
+          [
+            20,
+            21
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            20,
+            23
+          ],
+          [
+            "\u2026",
+            "32 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 1,
+        "row": 27,
+        "col": 39,
+        "science_value": 1.1198432103678038,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 39,
+        "expected_energy": 209.51484208914096,
+        "energy_sd": 6.9263778701858945,
+        "expected_solar_income": 38.6822794089881,
+        "p_failure": 0.032526441792032124,
+        "p_terrain": 0.032526441792032124,
+        "p_energy": 4.559188578245328e-90,
+        "utility": 0.005344934989814951,
+        "within_budget": true,
+        "feasible_rank": 3,
+        "route": [
+          [
+            20,
+            20
+          ],
+          [
+            20,
+            21
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            20,
+            23
+          ],
+          [
+            "\u2026",
+            "20 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 2,
+        "row": 17,
+        "col": 42,
+        "science_value": 2.8514312669954434,
+        "reachable": true,
+        "selected": true,
+        "rejected": null,
+        "path_cells": 45,
+        "expected_energy": 210.3320347158737,
+        "energy_sd": 6.357088805528855,
+        "expected_solar_income": 44.545248047472285,
+        "p_failure": 0.03769139838130431,
+        "p_terrain": 0.03769139838130431,
+        "p_energy": 3.351899303245062e-114,
+        "utility": 0.013556809217612948,
+        "within_budget": true,
+        "feasible_rank": 1,
+        "route": [
+          [
+            20,
+            20
+          ],
+          [
+            20,
+            21
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            "\u2026",
+            "23 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 3,
+        "row": 4,
+        "col": 7,
+        "science_value": 2.252439571912271,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 33,
+        "expected_energy": 225.48473668404586,
+        "energy_sd": 10.091764383863076,
+        "expected_solar_income": 32.64460892113886,
+        "p_failure": 0.03010942310129361,
+        "p_terrain": 0.03010942310129361,
+        "p_energy": 1.888076131064973e-31,
+        "utility": 0.009989321694392286,
+        "within_budget": true,
+        "feasible_rank": 2,
+        "route": [
+          [
+            20,
+            20
+          ],
+          [
+            19,
+            19
+          ],
+          [
+            18,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            "\u2026",
+            "17 cells in total"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "index": 1,
+    "step": 10,
+    "row": 18,
+    "col": 29,
+    "charge_fraction": 0.9282841696258238,
+    "reason": "pursue_target",
+    "risk_budget": 0.2,
+    "chosen_route": [
+      [
+        18,
+        29
+      ],
+      [
+        18,
+        30
+      ],
+      [
+        18,
+        31
+      ],
+      [
+        18,
+        32
+      ]
+    ],
+    "candidates": [
+      {
+        "target_id": 0,
+        "row": 29,
+        "col": 51,
+        "science_value": 1.311468786420729,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 54,
+        "expected_energy": 300.3417912592138,
+        "energy_sd": 9.133508296844091,
+        "expected_solar_income": 54.907615950094424,
+        "p_failure": 0.03889985881757119,
+        "p_terrain": 0.038836665261904546,
+        "p_energy": 6.574694787318346e-05,
+        "utility": 0.004366587749651028,
+        "within_budget": true,
+        "feasible_rank": 4,
+        "route": [
+          [
+            18,
+            29
+          ],
+          [
+            18,
+            30
+          ],
+          [
+            18,
+            31
+          ],
+          [
+            18,
+            32
+          ],
+          [
+            "\u2026",
+            "23 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 1,
+        "row": 27,
+        "col": 39,
+        "science_value": 1.1198432103678038,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 30,
+        "expected_energy": 199.70220717763095,
+        "energy_sd": 8.883748578095457,
+        "expected_solar_income": 31.024432119448186,
+        "p_failure": 0.019854381001900068,
+        "p_terrain": 0.019854381001900068,
+        "p_energy": 1.519713091047962e-36,
+        "utility": 0.0056075655156466375,
+        "within_budget": true,
+        "feasible_rank": 3,
+        "route": [
+          [
+            18,
+            29
+          ],
+          [
+            18,
+            30
+          ],
+          [
+            19,
+            31
+          ],
+          [
+            20,
+            32
+          ],
+          [
+            "\u2026",
+            "11 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 2,
+        "row": 17,
+        "col": 42,
+        "science_value": 2.8514312669954434,
+        "reachable": true,
+        "selected": true,
+        "rejected": null,
+        "path_cells": 36,
+        "expected_energy": 184.51048767037543,
+        "energy_sd": 6.7320065909658835,
+        "expected_solar_income": 36.50078964429517,
+        "p_failure": 0.025491241124433017,
+        "p_terrain": 0.025491241124433017,
+        "p_energy": 2.398019748101813e-86,
+        "utility": 0.015454033551141399,
+        "within_budget": true,
+        "feasible_rank": 1,
+        "route": [
+          [
+            18,
+            29
+          ],
+          [
+            18,
+            30
+          ],
+          [
+            18,
+            31
+          ],
+          [
+            18,
+            32
+          ],
+          [
+            "\u2026",
+            "14 cells in total"
+          ]
+        ]
+      },
+      {
+        "target_id": 3,
+        "row": 4,
+        "col": 7,
+        "science_value": 2.252439571912271,
+        "reachable": true,
+        "selected": false,
+        "rejected": null,
+        "path_cells": 39,
+        "expected_energy": 244.2489450336229,
+        "energy_sd": 9.12641242936131,
+        "expected_solar_income": 38.14447872299036,
+        "p_failure": 0.031057763186764897,
+        "p_terrain": 0.031057763186764675,
+        "p_energy": 2.0418373171575338e-16,
+        "utility": 0.009221900924084663,
+        "within_budget": true,
+        "feasible_rank": 2,
+        "route": [
+          [
+            18,
+            29
+          ],
+          [
+            18,
+            28
+          ],
+          [
+            18,
+            27
+          ],
+          [
+            18,
+            26
+          ],
+          [
+            "\u2026",
+            "23 cells in total"
+          ]
+        ]
+      }
+    ]
+  }
+]

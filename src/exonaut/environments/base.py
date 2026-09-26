@@ -118,6 +118,19 @@ class TerrainField:
         mean = params.slip_mean + slope_penalty * float(self.slope[row, col])
         return float(np.clip(mean, 0.0, 0.97)), params.slip_dispersion
 
+    def true_slip_mean_grid(self, slope_penalty: float = 0.01) -> np.ndarray:
+        """`true_slip_distribution`'s mean for every cell at once.
+
+        For display and evaluation only (the rover never sees it). Must agree
+        with the per-cell function exactly; a test enforces it, so the truth
+        shown in the interface is the truth the simulator draws from.
+        """
+        class_means = np.array(
+            [self.class_params[TerrainClass(k)].slip_mean for k in range(len(TerrainClass))]
+        )
+        mean = class_means[self.terrain_class.astype(int)] + slope_penalty * self.slope
+        return np.clip(mean, 0.0, 0.97)
+
 
 def derive_slope(elevation: np.ndarray, cell_size_m: float = 1.0) -> np.ndarray:
     """Slope in degrees from the elevation gradient."""

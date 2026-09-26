@@ -82,10 +82,21 @@ function Histogram({ cat }: { cat: FailureCategory }) {
   );
 }
 
-function EnergyCompare({ expected, sd, actual }: { expected: number; sd: number | null; actual: number }) {
+function EnergyCompare({
+  expected,
+  sd,
+  actual,
+  sds,
+}: {
+  expected: number;
+  sd: number | null;
+  actual: number;
+  /** engine-computed (actual − expected) / sd */
+  sds: number | null;
+}) {
+  // bar lengths only; every printed number comes from the engine
   const max = Math.max(expected + (sd ?? 0) * 2, actual) * 1.05;
   const pct = (v: number) => `${(v / max) * 100}%`;
-  const sds = sd && sd > 0 ? (actual - expected) / sd : null;
   return (
     <div className="space-y-1">
       <div>
@@ -183,6 +194,7 @@ function CaseCard({ cat }: { cat: FailureCategory }) {
                   expected={rep.last_trip.expected_round_trip_energy}
                   sd={rep.last_trip.expected_energy_sd}
                   actual={rep.last_trip.energy_spent_after_decision}
+                  sds={rep.last_trip.energy_error_in_sd}
                 />
                 <p className="mt-1 font-mono text-[9px] text-slate-400">
                   P(fail) at decision:{" "}

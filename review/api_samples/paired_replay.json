@@ -1,0 +1,28 @@
+{
+  "condition": "mars_faults",
+  "seed": 400011,
+  "runs": [
+    {
+      "planner": "risk_aware_astar",
+      "session_id": "mars-risk_aware_astar-400011-4e6c0f75b36a",
+      "committed": {
+        "termination": "immobilized",
+        "success": false,
+        "science_fraction": 0.0,
+        "energy_spent": 404.0589042236448
+      },
+      "reproduces_committed_row": true
+    },
+    {
+      "planner": "adaptive_risk_aware_astar",
+      "session_id": "mars-adaptive_risk_aware_astar-400011-b913b03ecf24",
+      "committed": {
+        "termination": "success",
+        "success": true,
+        "science_fraction": 0.0,
+        "energy_spent": 90.76067066980276
+      },
+      "reproduces_committed_row": true
+    }
+  ]
+}

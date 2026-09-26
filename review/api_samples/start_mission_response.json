@@ -1,1 +1,103 @@
-{"session_id":"mars-adaptive_risk_aware_astar-200000-52693da4068f","summary":{"run_id":"mars-adaptive_risk_aware_astar-200000-52693da4068f","body":"mars","planner":"adaptive_risk_aware_astar","seed":200000,"termination":"success","success":true,"science_return":2.252439571912271,"science_possible":7.535182835696247,"science_fraction":0.29892301501190405,"targets_visited":1,"targets_total":4,"energy_spent":337.10775190896527,"energy_generated":174.94834778202076,"final_charge":251.17392920638196,"min_charge":124.1258616625504,"steps":182,"distance_travelled":49.941125496954264,"interventions":71,"severe_slip_events":14,"mean_slip":0.5080900222411232,"planner_replans":120,"nodes_expanded":40672,"hazard_refusals":0,"final_distance_from_home":0.0,"home":[16,16],"targets":[{"id":0,"row":25,"col":43,"value":1.311468786420729,"visited":false},{"id":1,"row":23,"col":33,"value":1.1198432103678038,"visited":false},{"id":2,"row":14,"col":36,"value":2.8514312669954434,"visited":false},{"id":3,"row":4,"col":6,"value":2.252439571912271,"visited":true}],"true_class_slip":{"0":0.12,"1":0.14,"2":0.62,"3":0.06,"4":0.26},"n_frames":110}}
+{
+  "session_id": "mars-adaptive_risk_aware_astar-200000-e22de1296531",
+  "summary": {
+    "run_id": "mars-adaptive_risk_aware_astar-200000-e22de1296531",
+    "body": "mars",
+    "planner": "adaptive_risk_aware_astar",
+    "seed": 200000,
+    "termination": "success",
+    "success": true,
+    "science_return": 0.0,
+    "science_possible": 7.535182835696247,
+    "science_fraction": 0.0,
+    "targets_visited": 0,
+    "targets_total": 4,
+    "energy_spent": 214.6758977441397,
+    "energy_generated": 52.19246008804494,
+    "final_charge": 250.84989567723852,
+    "min_charge": 226.000815875361,
+    "steps": 56,
+    "distance_travelled": 26.485281374238575,
+    "interventions": 15,
+    "severe_slip_events": 1,
+    "mean_slip": 0.23776758107676166,
+    "planner_replans": 58,
+    "nodes_expanded": 30892,
+    "hazard_refusals": 0,
+    "final_distance_from_home": 0.0,
+    "home": [
+      20,
+      20
+    ],
+    "targets": [
+      {
+        "id": 0,
+        "row": 29,
+        "col": 51,
+        "value": 1.311468786420729,
+        "visited": false
+      },
+      {
+        "id": 1,
+        "row": 27,
+        "col": 39,
+        "value": 1.1198432103678038,
+        "visited": false
+      },
+      {
+        "id": 2,
+        "row": 17,
+        "col": 42,
+        "value": 2.8514312669954434,
+        "visited": false
+      },
+      {
+        "id": 3,
+        "row": 4,
+        "col": 7,
+        "value": 2.252439571912271,
+        "visited": false
+      }
+    ],
+    "true_class_slip": {
+      "0": 0.12,
+      "1": 0.14,
+      "2": 0.62,
+      "3": 0.06,
+      "4": 0.26
+    },
+    "n_frames": 40,
+    "n_decisions": 20,
+    "provenance": {
+      "run_id": "mars-adaptive_risk_aware_astar-200000-e22de1296531",
+      "config_digest": "13a9db163279",
+      "config": {
+        "body": "mars",
+        "planner": "adaptive_risk_aware_astar",
+        "size": 56,
+        "n_targets": 4,
+        "max_steps": 600,
+        "risk_budget": 0.2,
+        "fault_rate": 0.0,
+        "comm_delay": 0,
+        "terrain_uncertainty": 1.0,
+        "sensor_noise_scale": 1.0,
+        "sensing_radius": 6,
+        "solar_rate": 2.0,
+        "energy_reserve_fraction": 0.25,
+        "prior_body": "moon",
+        "engine": "v1"
+      },
+      "git_commit": "b37d0279c4a430fd78a3f8af349728539ebc01bc",
+      "git_dirty": true,
+      "engine_version": "0.2.0",
+      "planner": "adaptive_risk_aware_astar",
+      "planner_adaptive": true,
+      "seed": 200000,
+      "seed_split": "validation",
+      "seed_quarantined": false,
+      "seed_in_confirmatory_run": false,
+      "executed_utc": "2026-09-26T02:08:11+00:00"
+    }
+  }
+}

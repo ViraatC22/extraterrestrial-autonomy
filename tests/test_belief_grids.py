@@ -45,3 +45,21 @@ def test_risk_grid_matches_per_cell():
     for r in range(wm.size):
         for c in range(wm.size):
             assert np.isclose(grid[r, c], risk.cell_risk(wm, r, c), atol=1e-12)
+
+
+def test_routable_grid_matches_the_planners_own_test():
+    wm = _partly_observed_model()
+    wm.hazard_prob[3, 3] = 0.9  # make sure both branches are exercised
+    grid = wm.believed_traversable_grid(25.0, 0.5)
+    assert grid.any() and not grid.all()
+    for r in range(wm.size):
+        for c in range(wm.size):
+            assert bool(grid[r, c]) == wm.believed_traversable(r, c, 25.0, 0.5)
+
+
+def test_true_slip_grid_matches_the_simulators_draw():
+    terrain = make_environment("mars", seed=200001, size=24)
+    grid = terrain.true_slip_mean_grid()
+    for r in range(terrain.size):
+        for c in range(terrain.size):
+            assert grid[r, c] == terrain.true_slip_distribution(r, c)[0]

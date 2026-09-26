@@ -29,7 +29,7 @@ SWEEPABLE = {
 #: Reduced mission size so a sweep runs in about a minute. Deliberately not
 #: the confirmatory configuration, and labelled as such in the interface.
 SWEEP_BASE = {"size": 44, "n_targets": 4, "max_steps": 400}
-MAX_SEEDS = 20
+MAX_SEEDS = 40
 
 _POOL: ProcessPoolExecutor | None = None
 
