@@ -1,0 +1,28 @@
+name: v1 reproduction (Linux)
+
+# Study 1 was generated on macOS arm64. This re-runs all 750 committed
+# missions on Linux x86-64 with the pinned library versions, to measure
+# whether results are platform-independent. Manual, because it takes a while.
+on:
+  workflow_dispatch:
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-lock.txt || pip install -r requirements.txt
+          pip install -e .
+      - name: Re-run all committed Study 1 missions
+        run: python scripts/verify_v1_reproduction.py || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v1-reproduction-linux
+          path: data/results/v1_reproduction.json
