@@ -72,3 +72,15 @@ the planner's slope test; the Failure Analysis page computed an energy error
 in the browser; the Experiments verdict quoted typed audit percentages; the
 API recomputed true slip with a copied formula; and a layer group labelled
 "rover knows" contained ground-truth layers. All five are fixed as above.
+
+## Contract and shared artifacts (2026-09-26)
+
+- **Schema parity.** `tests/test_api_schema.py` parses `web/src/lib/types.ts` and requires
+  each wire interface to list exactly the fields of its pydantic model, so a field added or
+  renamed on one side cannot silently disappear from the interface.
+- **One artifact, two readers.** The Experiments page and the paper read the same committed
+  files: `/results` computes from `data/results/exonaut_main.csv` with
+  `experiments.analysis`, and `scripts/make_exonaut_paper_assets.py` generates the paper's
+  tables from the same file with the same functions (and verifies the locked contrast
+  tables rather than rewriting them). `/results` also reports which study the set belongs
+  to and re-checks Study 1's lock hashes on every request.

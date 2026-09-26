@@ -464,3 +464,10 @@ def test_unused_heldout_seeds_are_logged_and_spent_ones_are_not(client):
     after = path.read_text().splitlines()
     new = [json.loads(line) for line in after[len(before) :]]
     assert [(e["seed"], e["split"], e["endpoint"]) for e in new] == [(400321, "ood", "/terrain")]
+
+
+def test_results_say_which_study_and_verify_its_lock(client):
+    study = client.get("/results").json()["study"]
+    assert study["label"] == "Study 1" and study["engine_profile"] == "v1"
+    assert study["locked"] and study["lock_verified"]
+    assert study["reproduced"] == "750/750"

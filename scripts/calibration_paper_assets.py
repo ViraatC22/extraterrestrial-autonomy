@@ -54,10 +54,11 @@ def coverage_macros(prefix: str, cov: pd.DataFrame, names: dict) -> list[str]:
         if r["variant"] not in names:
             continue
         stem = f"{prefix}{names[r['variant']]}{BODY_NAMES[r['body']]}"
+        # three decimals: two would round e.g. 0.945 up to the 0.95 target
         for level, word in LEVEL_NAMES.items():
-            lines.append(macro(f"{stem}Cov{word}", f"{r[f'cov{level}']:.2f}"))
-        lines.append(macro(f"{stem}CovNinetyFiveLo", f"{r['cov95_lo']:.2f}"))
-        lines.append(macro(f"{stem}CovNinetyFiveHi", f"{r['cov95_hi']:.2f}"))
+            lines.append(macro(f"{stem}Cov{word}", f"{r[f'cov{level}']:.3f}"))
+        lines.append(macro(f"{stem}CovNinetyFiveLo", f"{r['cov95_lo']:.3f}"))
+        lines.append(macro(f"{stem}CovNinetyFiveHi", f"{r['cov95_hi']:.3f}"))
         lines.append(macro(f"{stem}MedianSd", f"{r['median_sd']:.3f}"))
         lines.append(macro(f"{stem}MedianError", f"{r['median_abs_error']:.3f}"))
         lines.append(macro(f"{stem}Missions", int(r["missions"])))

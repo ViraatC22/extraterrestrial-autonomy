@@ -1,4 +1,4 @@
-generated_at_commit: 2a82cb889bbf4c8b94be4f0108f6d7c1945662f5
+generated_at_commit: da5740240e5b62ae2234dd0261bdf7c36f88b9d1
 note: 'Every generated file the paper uses, with the script, inputs and hashes that produced it. Regenerate
   with: python scripts/build_all_figures.py'
 steps:
@@ -27,7 +27,7 @@ steps:
     paper/tables/exonaut_audit_macros.tex: f1e9dbb770b1ca6d5c9f984e64c7d4d57ad00c7911f728372e5b88c91a955d85
 - step: calibration
   command: python scripts/calibration_paper_assets.py
-  script_sha256: b92214b38fc602ee0673b9015a5eb7307af4bf53cfd29c50c54dded6af484ad2
+  script_sha256: ad53959bb543fe5409f984a3cfe52c2279ebbc0f8a5ac16cee88af82f543b7fc
   inputs:
     data/validation/calibration/diagnose_coverage.csv: a1268012473b77aae0e645c6fda5f411fa4f0f73d743176dd0465849dd5e2994
     data/validation/calibration/diagnose_predictive.csv: 94dc4f9d8d19efbeea1a6f74d3098d5f4d82313cb916b7da010a2761413bbcd0
@@ -38,7 +38,7 @@ steps:
     data/validation/calibration/evaluate_predictive.csv: 1d2381e2546861adde0e098f116491a43807eb86a1ab45ca81b133cc0da9eaf7
     data/validation/calibration/selection.json: b9017b39895f1bd8c936d5667e6843fbae56776324d918fc2ecb45d9f95405cd
   outputs:
-    paper/tables/exonaut_calibration_macros.tex: 8603b701710991e8894baa7b0e7bdc8f4059272fc9333e44865d07837b20c55e
+    paper/tables/exonaut_calibration_macros.tex: 68ea3ac50ccf999365cd1d97e06dc24cf747f23f170b4972c85a48a5c6b20f2e
     paper/figures/v2_calibration_curve.pdf: bab72b30193c58bd94362427f18d0bcb2bd982e5cd7ab396955cdfb396e5dd2b
     paper/figures/v2_calibration_by_class.pdf: b414e8b7e3e191cf35f6d83320fa8e7f6f9a9bcf6ccc1f9940dc4a15acf3e26b
     data/validation/calibration/RESULTS.md: 48fbca7a2051f980dc9638a06471d91c7ecc76eb8c7e4f3975f91daeadeb66fc

@@ -453,6 +453,27 @@ export default function Experiments() {
             </p>
           ) : payload ? (
             <>
+              <div className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[9px] tracking-[0.16em]">
+                <span className="rounded-sm border border-slate-400/40 px-1.5 py-[1px] text-slate-200">
+                  {payload.study.label.toUpperCase()} · ENGINE {payload.study.engine_profile.toUpperCase()}
+                </span>
+                {payload.study.locked ? (
+                  <span
+                    className={`rounded-sm border px-1.5 py-[1px] ${
+                      payload.study.lock_verified
+                        ? "border-emerald-400/40 text-emerald-300"
+                        : "border-rose-400/50 text-rose-300"
+                    }`}
+                    title="SHA-256 of every Study 1 artifact checked against data/results/v1_LOCK.json by the engine"
+                  >
+                    {payload.study.lock_verified ? "LOCKED · FILES VERIFIED" : "LOCK BROKEN: FILES CHANGED"}
+                    {payload.study.reproduced ? ` · ${payload.study.reproduced} MISSIONS REPRODUCED` : ""}
+                  </span>
+                ) : null}
+                <span className="tracking-normal text-slate-500">
+                  Study 2 is planned and has no results; nothing on this page is Study 2 data.
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-x-8 md:grid-cols-4">
                 <Readout label="Missions" value={payload.n_missions} />
                 <Readout

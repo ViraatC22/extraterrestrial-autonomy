@@ -227,6 +227,13 @@ export interface ResultsPayload {
   intervals: IntervalRow[];
   paired_points: PairedPoint[];
   audit: AuditSummary | null;
+  study: {
+    label: string;
+    engine_profile: string;
+    locked: boolean;
+    lock_verified?: boolean;
+    reproduced?: string;
+  };
 }
 
 /** Post-hoc fault-exposure audit (not confirmatory), from data/results. */

@@ -311,6 +311,34 @@ def results(name: str = Query("exonaut_main")) -> dict:
         "intervals": interval_table(frame).to_dict(orient="records"),
         "paired_points": paired_points(frame).to_dict(orient="records"),
         "audit": _audit_summary() if name == "exonaut_main" else None,
+        "study": _study_label(name),
+    }
+
+
+def _study_label(name: str) -> dict:
+    """Which study a result set belongs to, and whether its lock still holds.
+
+    Study 1's artifacts are hashed in data/results/v1_LOCK.json; the check is
+    done here so the interface states it rather than assumes it.
+    """
+    import hashlib
+
+    if name != "exonaut_main":
+        return {"label": "not a confirmatory result set", "engine_profile": "v1", "locked": False}
+    lock_path = RESULTS_DIR / "v1_LOCK.json"
+    if not lock_path.exists():
+        return {"label": "Study 1", "engine_profile": "v1", "locked": False}
+    lock = json.loads(lock_path.read_text())
+    verified = all(
+        hashlib.sha256((PROJECT_ROOT / rel).read_bytes()).hexdigest() == digest
+        for rel, digest in lock["sha256"].items()
+    )
+    return {
+        "label": "Study 1",
+        "engine_profile": lock["engine_profile"],
+        "locked": True,
+        "lock_verified": verified,
+        "reproduced": f"{lock['reproduction']['reproduced']}/{lock['reproduction']['missions']}",
     }
 
 
