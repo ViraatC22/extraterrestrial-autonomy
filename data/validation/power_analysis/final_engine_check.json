@@ -1,0 +1,11 @@
+{
+  "frozen_n": 230,
+  "validation_seeds": 200,
+  "only_adaptive": 24,
+  "only_fixed": 13,
+  "psi_hat": 0.185,
+  "psi_upper80": 0.22270315790780243,
+  "exact_power_at_n": 0.8875376044020906,
+  "meets_target": false,
+  "note": "verification of the frozen n with the final engine; n is not re-derived"
+}

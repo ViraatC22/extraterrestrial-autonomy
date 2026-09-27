@@ -81,9 +81,11 @@ def test_authorization_needs_the_frozen_plan_and_its_hash(monkeypatch, tmp_path)
     assert V2.authorized()
 
 
-def test_the_real_plan_does_not_exist_yet():
-    """Study 2 is not frozen: nothing may be authorized in this repository state."""
-    assert not V2.PREREGISTRATION_V2.exists()
+def test_the_plan_is_frozen_but_nothing_is_authorized_here(monkeypatch):
+    """Study 2 is frozen (the plan exists) but no run is authorized: the
+    authorization is an environment variable the owner sets for the single run."""
+    monkeypatch.delenv(V2.AUTH_ENV, raising=False)
+    assert V2.PREREGISTRATION_V2.exists()
     assert not V2.authorized()
 
 

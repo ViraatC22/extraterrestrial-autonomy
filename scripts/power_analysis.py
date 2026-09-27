@@ -378,5 +378,34 @@ def figure(grid: pd.DataFrame, summary: dict) -> None:
     plt.close(fig)
 
 
+def verify(n: int = 230) -> dict:
+    """Check, not re-size: exact power at the frozen n with the FINAL engine's
+    validation discordance (canonical-platform run of the numerical-
+    reproducibility harness, same 200 validation seeds, M3)."""
+    frame = pd.read_csv(ROOT / "data/validation/numerics/final_macos_arm64.csv.gz")
+    g = frame[frame.body == "mars"].pivot_table(index="seed", columns="planner", values="success")
+    a = g["adaptive_risk_aware_astar"].astype(bool)
+    f = g["risk_aware_astar"].astype(bool)
+    n10, n01, seeds = int((a & ~f).sum()), int((~a & f).sum()), len(g)
+    _, upper = wilson(n10 + n01, seeds, 0.80)
+    k = critical_counts(n)
+    out = {
+        "frozen_n": n,
+        "validation_seeds": seeds,
+        "only_adaptive": n10,
+        "only_fixed": n01,
+        "psi_hat": (n10 + n01) / seeds,
+        "psi_upper80": upper,
+        "exact_power_at_n": exact_power(n, MIN_EFFECT, upper, k),
+        "meets_target": exact_power(n, MIN_EFFECT, upper, k) >= TARGET_POWER,
+        "note": "verification of the frozen n with the final engine; n is not re-derived",
+    }
+    (OUT / "final_engine_check.json").write_text(json.dumps(out, indent=2) + "\n")
+    print(json.dumps(out, indent=2))
+    return out
+
+
 if __name__ == "__main__":
-    {"run": run, "analyze": analyze}[sys.argv[1] if len(sys.argv) > 1 else "analyze"]()
+    {"run": run, "analyze": analyze, "verify": verify}[
+        sys.argv[1] if len(sys.argv) > 1 else "analyze"
+    ]()

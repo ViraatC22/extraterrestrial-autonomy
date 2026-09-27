@@ -68,3 +68,12 @@ Two cautions. The validation differences (+0.07 for M3, +0.01 for M2a) were not 
 the study and are not evidence: they come from development seeds that also shaped the method.
 And the Moon condition (secondary) is not powered: success there is near ceiling for both
 planners, so it can only detect a large harm.
+
+## Verification with the final engine (2026-09-27)
+
+After the numerical-determinism changes (`NUMERICAL_REPRODUCIBILITY.md`), the frozen n was
+checked - not re-derived - against the final engine's discordance on the same 200 validation
+seeds (`final_engine_check.json`): 24 / 13 discordant pairs, upper bound 0.223, exact power at
+n = 230 of 0.888 (0.941 at the point estimate). Applying the sizing rule to the final engine
+would give n = 240 (power 0.901). The owner's decision was to freeze 230; the achieved power is
+recorded in the plan.
