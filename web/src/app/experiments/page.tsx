@@ -467,11 +467,15 @@ export default function Experiments() {
                     title="SHA-256 of every Study 1 artifact checked against data/results/v1_LOCK.json by the engine"
                   >
                     {payload.study.lock_verified ? "LOCKED · FILES VERIFIED" : "LOCK BROKEN: FILES CHANGED"}
-                    {payload.study.reproduced ? ` · ${payload.study.reproduced} MISSIONS REPRODUCED` : ""}
+                    {payload.study.reproduced
+                      ? ` · ${payload.study.reproduced} MISSIONS REPRODUCED EXACTLY ON THE GENERATING PLATFORM`
+                      : ""}
                   </span>
                 ) : null}
                 <span className="tracking-normal text-slate-500">
-                  Study 2 is planned and has no results; nothing on this page is Study 2 data.
+                  {payload.study.reproduced_on ? `Generating platform: ${payload.study.reproduced_on}. ` : ""}
+                  {payload.study.cross_platform ? `${payload.study.cross_platform}. ` : ""}
+                  Study 2 is frozen but not run; nothing on this page is Study 2 data.
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-8 md:grid-cols-4">

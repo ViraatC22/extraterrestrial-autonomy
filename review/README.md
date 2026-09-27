@@ -137,10 +137,12 @@ Found while building this interface. Each one is logged with numbers in
 
 The five engine defects are fixed in an engine profile `v2`, selectable in the
 interface. v1 stays the default and still reproduces all 750 committed
-missions. v2 has only been explored on validation seeds (`docs/EXPLORATION_V2.md`):
-the fixes work, and adaptation's survival advantage largely disappears. A v2
-confirmatory study is drafted but not frozen (`docs/V2_VALIDATION_PLAN.md`);
-the decisions it needs are listed there.
+missions exactly on the macOS/Apple-Silicon environment that generated them
+(on Linux, 672 of 750 are identical and the conclusions are unchanged). v2 has
+only been explored on validation seeds (`docs/EXPLORATION_V2.md`): the fixes
+work, and adaptation's survival advantage largely disappears. The v2
+confirmatory study (Study 2) is frozen but not run: `docs/PREREGISTRATION_V2.md`,
+`docs/V2_FREEZE_CHECKLIST.md`, tag `study2-freeze`.
 
 ## 6. Design rules the interface follows
 

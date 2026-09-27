@@ -6,6 +6,7 @@
 > Two things below are out of date: v2 now uses fresh confirmatory seeds from
 > `data/splits/v2/seed_manifest.json`, not the unused v1 held-out seeds (section 4), and comm
 > delay is removed from the confirmatory design. Kept as the record of the earlier draft.
+> The frozen plan is `PREREGISTRATION_V2.md` (2026-09-27).
 
 Status: **DRAFT. Not frozen. No v2 confirmatory run has been made or scheduled.**
 Sections 3 and 4 hold decisions that belong to the project owner. Nothing in this

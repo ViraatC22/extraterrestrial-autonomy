@@ -233,6 +233,8 @@ export interface ResultsPayload {
     locked: boolean;
     lock_verified?: boolean;
     reproduced?: string;
+    reproduced_on?: string;
+    cross_platform?: string | null;
   };
 }
 

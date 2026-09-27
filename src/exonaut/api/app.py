@@ -339,7 +339,21 @@ def _study_label(name: str) -> dict:
         "locked": True,
         "lock_verified": verified,
         "reproduced": f"{lock['reproduction']['reproduced']}/{lock['reproduction']['missions']}",
+        # exact reproduction holds on the generating platform only (RESEARCH_LOG 2026-09-26)
+        "reproduced_on": json.loads((RESULTS_DIR / "exonaut_main.metadata.json").read_text())[
+            "software"
+        ]["platform"],
+        "cross_platform": _cross_platform_summary(),
     }
+
+
+def _cross_platform_summary() -> str | None:
+    path = RESULTS_DIR / "cross_platform" / "summary.json"
+    if not path.exists():
+        return None
+    s = json.loads(path.read_text())
+    verdicts = "same verdicts" if s["same_significance_verdicts"] else "verdicts differ"
+    return f"Linux x86-64: {s['bit_identical']}/{s['missions']} identical, {verdicts}"
 
 
 def _audit_summary() -> dict | None:

@@ -474,3 +474,5 @@ def test_results_say_which_study_and_verify_its_lock(client):
     assert study["label"] == "Study 1" and study["engine_profile"] == "v1"
     assert study["locked"] and study["lock_verified"]
     assert study["reproduced"] == "750/750"
+    assert "arm64" in study["reproduced_on"]  # exact only on the generating platform
+    assert study["cross_platform"].startswith("Linux x86-64: 672/750 identical, same verdicts")

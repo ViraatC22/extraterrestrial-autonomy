@@ -3322,5 +3322,14 @@
     "DiscordantBoth": 1,
     "DiscordantNone": 5,
     "DiscordantMixed": 4
+  },
+  "study": {
+    "label": "Study 1",
+    "engine_profile": "v1",
+    "locked": true,
+    "lock_verified": true,
+    "reproduced": "750/750",
+    "reproduced_on": "macOS-26.1-arm64-arm-64bit-Mach-O",
+    "cross_platform": "Linux x86-64: 672/750 identical, same verdicts"
   }
 }
