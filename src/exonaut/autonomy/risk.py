@@ -57,7 +57,7 @@ def severe_slip_probability(world_model, row: int, col: int) -> float:
 
 
 def embedding_probability(world_model, row: int, col: int) -> float:
-    return float(severe_slip_probability(world_model, row, col) ** EMBED_LIMIT)
+    return float(numerics.power(severe_slip_probability(world_model, row, col), EMBED_LIMIT))
 
 
 #: P(mission-ending outcome | the robot tries to enter a cell that really is
@@ -132,7 +132,7 @@ def path_energy(
         total += energy
         # d/ds [1/(1-s)] = 1/(1-s)^2, so denergy/dslip = energy/(1-s)
         sensitivity = energy / max(1.0 - slip, 0.08)
-        variance += (sensitivity * sd) ** 2
+        variance += numerics.power(sensitivity * sd, 2)
         previous = cell
     return float(total), float(math.sqrt(variance))
 
@@ -212,6 +212,8 @@ def cell_risk_grid(world_model) -> np.ndarray:
     else:
         p_severe = 0.5 * erfc(z)
     p_severe = np.where(sd <= 1e-9, (mean >= SEVERE_SLIP_THRESHOLD).astype(float), p_severe)
-    p_embed = p_severe**EMBED_LIMIT
+    p_embed = (
+        p_severe * p_severe * p_severe if numerics.is_deterministic() else p_severe**EMBED_LIMIT
+    )
     p_hazard = world_model.hazard_prob * HAZARD_MISSION_RISK
     return np.clip(1.0 - (1.0 - p_embed) * (1.0 - p_hazard), 0.0, 1.0)

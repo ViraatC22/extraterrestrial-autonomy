@@ -105,6 +105,19 @@ STEPS = [
         ],
     },
     {
+        "id": "study2_numerics",
+        "script": "scripts/numerical_reproducibility.py",
+        "args": ["paper"],
+        "inputs": [
+            "data/validation/numerics/baseline_summary.json",
+            "data/validation/numerics/canonical_summary.json",
+            "data/validation/numerics/deterministic_summary.json",
+            "data/validation/numerics/fsum_summary.json",
+            "data/validation/numerics/final_summary.json",
+        ],
+        "outputs": ["paper/tables/exonaut_numerics_macros.tex"],
+    },
+    {
         "id": "exploration_v2",
         "script": "scripts/analyze_exploration.py",
         "args": [],
@@ -140,7 +153,7 @@ def undefined_paper_macros() -> list[str]:
     """Capitalised macros the paper uses that no generator defines (typos or stale)."""
     text = PAPER.read_text()
     local = set(re.findall(r"\\newcommand\{\\([A-Za-z]+)\}", text))
-    used = set(re.findall(r"\\((?:Main|Audit|Cal|Pow|Pilot|Xp)[A-Za-z]+)", text))
+    used = set(re.findall(r"\\((?:Main|Audit|Cal|Pow|Pilot|Xp|Num)[A-Za-z]+)", text))
     defined = set(paper_macros()) | local
     return sorted(used - defined)
 

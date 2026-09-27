@@ -170,3 +170,15 @@ def mean(values) -> float:
         flat = np.asarray(values, dtype=float).ravel().tolist()
         return math.fsum(flat) / len(flat)
     return float(np.mean(values))
+
+
+def power(x: float, n: int) -> float:
+    """x ** n for a small positive integer n. Python's float ** calls the
+    platform's pow(), which is not guaranteed to round the same everywhere;
+    under the v2 switch this is repeated multiplication instead."""
+    if _DETERMINISTIC.get():
+        result = float(x)
+        for _ in range(n - 1):
+            result = result * float(x)
+        return result
+    return x**n

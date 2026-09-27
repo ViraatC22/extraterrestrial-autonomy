@@ -268,7 +268,9 @@ class WorldModel:
         mix = self.class_mix()
         mean = self.unknown_slip_estimate()
         between = float(
-            np.sqrt(sum(w * (self.class_belief[k].mean - mean) ** 2 for k, w in mix.items()))
+            np.sqrt(
+                sum(w * numerics.power(self.class_belief[k].mean - mean, 2) for k, w in mix.items())
+            )
         )
         within = self.epistemic_scale * float(
             np.sqrt(sum(w * self.class_belief[k].variance for k, w in mix.items()))
@@ -462,7 +464,7 @@ class AdaptiveWorldModel(WorldModel):
                 slope_adjusted if self.class_assignment == "responsibility" else None,
             )
             for k, weight in enumerate(weights):
-                variance = self.aleatoric_sd[k] ** 2 + SLIP_OBS_VARIANCE
+                variance = numerics.power(self.aleatoric_sd[k], 2) + SLIP_OBS_VARIANCE
                 self.class_belief[k].update_weighted(slope_adjusted, float(weight), variance)
             self._invalidate()
             return
@@ -472,7 +474,8 @@ class AdaptiveWorldModel(WorldModel):
             # (v1) made one reading move the belief most of the way to itself.
             belief.update(
                 slope_adjusted,
-                obs_variance=self.aleatoric_sd[believed_class] ** 2 + SLIP_OBS_VARIANCE,
+                obs_variance=numerics.power(self.aleatoric_sd[believed_class], 2)
+                + SLIP_OBS_VARIANCE,
             )
         else:
             belief.update(slope_adjusted)

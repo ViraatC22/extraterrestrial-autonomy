@@ -67,3 +67,11 @@ def test_deterministic_sums_are_exactly_rounded():
     with deterministic(True):
         assert numerics.fsum(values) == 4.0
         assert numerics.mean([0.1] * 10) == math.fsum([0.1] * 10) / 10
+
+
+def test_power_is_repeated_multiplication_under_the_switch():
+    x = 0.123456789
+    with deterministic(True):
+        assert numerics.power(x, 3) == x * x * x
+        assert numerics.power(x, 2) == x * x
+    assert numerics.power(x, 3) == x**3
