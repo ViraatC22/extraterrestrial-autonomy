@@ -60,7 +60,8 @@ Tolerances were set from magnitudes, not outcomes: platform noise is ~1e-15 rela
 smallest physically meaningful differences are ~1 (slope-sensor noise 1.2 degrees) and utility
 gaps are percents. The move from 9 to 6 decimals followed a calculation of the chance that a
 value lies within platform noise of a rounding boundary (~2e-15 / 10^-d per value, ~16,000
-values per map: ~3% of maps at d = 9, which matched the 4 of 800 measured; ~3e-5 at d = 6).
+values per map: an upper bound of ~3% of maps at d = 9, consistent with the 4 of 800 (0.5%)
+measured; ~3e-5 at d = 6).
 
 **Stopping rule, written and committed before the final round's results were seen:** the
 final round is the last numerical iteration. More rounds would start to become their own source
