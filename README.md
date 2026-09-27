@@ -40,7 +40,9 @@ found the adaptive learner is about 7× overconfident. See `docs/RESEARCH_LOG.md
 
 **Engine v2 (exploratory).** Five engine defects found after the confirmatory run are fixed
 behind `engine="v2"`; the default stays v1, and all 750 committed missions still reproduce
-(`scripts/verify_v1_reproduction.py`). On validation seeds, the fixes work. But with them in place,
+exactly on the macOS/Apple-Silicon environment that generated them
+(`scripts/verify_v1_reproduction.py`). On Linux x86-64, 672 of 750 are identical and every
+conclusion is unchanged; no paired effect moves by more than 0.02 (`docs/RESEARCH_LOG.md`). On validation seeds, the fixes work. But with them in place,
 adaptation's survival advantage largely disappears. See `docs/EXPLORATION_V2.md`, which is
 generated from the data.
 

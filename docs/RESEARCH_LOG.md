@@ -501,3 +501,32 @@ The owner (communicating a reviewer's recommendation they adopted) decided:
 5. Before freezing: a numerical-reproducibility phase on validation seeds (macOS arm64 and
    Linux x86-64), with principled tolerances / deterministic tie-breaking where needed, or a
    declared canonical platform with a pre-specified robustness criterion.
+
+## 2026-09-27 - Numerical reproducibility phase and Study 2 freeze
+
+Validation seeds only (200000-200199; 800 missions per round, both bodies, both planners),
+Study 2 configuration, macOS arm64 against Linux x86-64. Full record:
+`docs/NUMERICAL_REPRODUCIBILITY.md`, `data/validation/numerics/`.
+
+- Five rounds (baseline, canonical terrain + tie rule, deterministic exp/erfc/hypot, exactly
+  rounded sums, integer powers). Fully identical missions 194 -> 608; same path 661 -> 772;
+  success flips 13 -> 3; terrain bit-identical 0 -> 800 of 800. All changes are behind engine
+  v2; v1 is untouched.
+- **Exact identity was not reached.** The last round changed almost nothing (607 -> 608
+  identical). Every mission's first decision is bit-identical on both platforms; the residual
+  divergence enters while driving and was not traced further.
+- The stopping rule and the Study 2 platform rule were committed (51ba075) before the final
+  round's results existed. Applied as written: macOS arm64 is canonical; the confirmatory run
+  is repeated once on Linux and the primary conclusion is called platform-robust if the H1
+  decision matches and the two estimates differ by at most 0.05.
+- Observation, not a guarantee: on validation seeds the Mars estimate was +0.055 on both
+  platforms, with the same 24 / 13 discordant pairs.
+- Power re-check with the final engine (canonical platform, same 200 validation seeds): 0.888
+  at n = 230 against the 0.90 target; the sizing rule would now give 240. The owner's decision
+  of n = 230 stands and the plan states the achieved power (`PREREGISTRATION_V2.md` section 7).
+- Full Study 1 reproduction after all engine changes: 750 / 750 exact on macOS arm64.
+- Held-out access log: does not exist, i.e. no confirmatory seed of either study has been
+  requested by any code path that logs.
+
+Study 2 is frozen (`docs/PREREGISTRATION_V2.md`, `docs/V2_FREEZE_CHECKLIST.md`, tag
+`study2-freeze`). It has not been authorised or run.

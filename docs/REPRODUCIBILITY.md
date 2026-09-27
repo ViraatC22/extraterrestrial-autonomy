@@ -59,7 +59,12 @@ execution agree.
 
 Determinism is *not* claimed across differing NumPy major versions or
 platforms; the recorded `software` block exists so such a difference is
-detectable rather than silent.
+detectable rather than silent. Measured: Study 1 reproduces exactly on the
+macOS/Apple-Silicon environment that generated it; on Linux x86-64, 672 of 750
+missions are identical, the conclusions are unchanged and no paired effect
+moves by more than 0.02 (`data/results/cross_platform/`). Study 2 declares
+macOS arm64 its canonical platform and pre-specifies a cross-platform
+robustness check (`NUMERICAL_REPRODUCIBILITY.md`).
 
 ## What "dirty worktree" means in a sidecar
 

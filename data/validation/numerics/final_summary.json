@@ -1,0 +1,55 @@
+{
+  "label": "final",
+  "platforms": [
+    "macos_arm64",
+    "linux_x86_64"
+  ],
+  "missions": 800,
+  "terrain_bytes_identical": 800,
+  "terrain_discrete_identical": 800,
+  "fully_identical": 608,
+  "same_path": 772,
+  "same_outcome": 796,
+  "success_flipped": 3,
+  "first_difference_counts": {
+    "none": 713,
+    "energy_value_only": 59,
+    "decision_choice": 16,
+    "path_only": 10,
+    "decision_count": 2
+  },
+  "effect": {
+    "mars": {
+      "macos_arm64": {
+        "success_adaptive": 0.58,
+        "success_fixed": 0.525,
+        "delta": 0.05499999999999994,
+        "only_adaptive": 24,
+        "only_fixed": 13
+      },
+      "linux_x86_64": {
+        "success_adaptive": 0.58,
+        "success_fixed": 0.525,
+        "delta": 0.05499999999999994,
+        "only_adaptive": 24,
+        "only_fixed": 13
+      }
+    },
+    "moon": {
+      "macos_arm64": {
+        "success_adaptive": 0.935,
+        "success_fixed": 0.915,
+        "delta": 0.020000000000000018,
+        "only_adaptive": 10,
+        "only_fixed": 6
+      },
+      "linux_x86_64": {
+        "success_adaptive": 0.94,
+        "success_fixed": 0.915,
+        "delta": 0.02499999999999991,
+        "only_adaptive": 10,
+        "only_fixed": 5
+      }
+    }
+  }
+}

@@ -25,6 +25,7 @@
 \input{tables/exonaut_calibration_macros.tex}
 \input{tables/exonaut_power_macros.tex}
 \input{tables/exonaut_crossplatform_macros.tex}
+\input{tables/exonaut_numerics_macros.tex}
 
 \title{\textbf{Adaptive Risk-Aware Autonomy for Robotic Exploration of\\
 Uncertain Extraterrestrial Terrain}}
@@ -136,7 +137,7 @@ Sections~\ref{sec:model}--\ref{sec:autonomy} describe the simulator and the
 autonomy stack. Section~\ref{sec:study1} reports Study~1 as run. Section~\ref{sec:audit}
 reports what was found after it --- simulator defects, their effect on
 Study~1, and a calibration audit of the terrain learner --- and
-Section~\ref{sec:study2} describes Study~2, which has not been run.
+Section~\ref{sec:study2} describes Study~2, whose plan is frozen and which has not been run.
 
 \section{Related work}
 \label{sec:related}
@@ -424,7 +425,9 @@ which is what makes the contrast interpretable.
 Study~1 ran on engine profile \emph{v1}. Its committed results are locked: a
 SHA-256 of every artifact is recorded in \texttt{data/results/v1\_LOCK.json},
 a test fails if any of them changes, and all \MainMissions{} missions were
-re-run and reproduced exactly before the lock. Defects found later
+re-run and reproduced exactly, on the macOS/Apple-Silicon environment that
+generated them, before the lock (on Linux the conclusions are unchanged but not
+every mission is identical; Section~\ref{sec:repro}). Defects found later
 (Section~\ref{sec:audit}) are reported, not repaired, in Study~1's results.
 
 \subsection{Seed protocol}
@@ -645,7 +648,7 @@ them should be read, and it shapes Study~2.
 
 Table~\ref{tab:defects} lists the defects found. Each is fixed in engine
 profile \emph{v2}, which is selected explicitly; v1 remains the default and
-still reproduces every Study~1 mission.
+still reproduces every Study~1 mission on the generating platform.
 
 \begin{table}[h]
 \centering\small
@@ -727,43 +730,46 @@ result.}
 \label{fig:calibration}
 \end{figure}
 
-\section{Study 2: planned, not executed}
+\section{Study 2: frozen, not yet executed}
 \label{sec:study2}
 
-Study~2 has not been run, and this section reports no result. Its purpose is a
-narrower, cleaner test of one question:
+Study~2 has not been run, and this section reports no result. Its analysis plan
+is frozen in \texttt{docs/PREREGISTRATION\_V2.md}; running it requires a
+separate, explicit authorisation. It asks one narrower question:
 
 \begin{quote}
-Does online adaptation of terrain slip beliefs improve safe mission completion
+Does online adaptation of terrain slip beliefs change safe mission completion
 under terrain-model shift, compared with an otherwise identical fixed
-risk-aware planner, and what does it cost in science return?
+risk-aware planner, and what does it do to science return?
 \end{quote}
 
-\paragraph{Design (draft).} The fixed and adaptive planners differ only in
-whether measured slip revises the class beliefs; both use the v2 engine, the
-same lunar prior and the same calibration settings. The confirmatory condition
-is Mars with a lunar prior. The Moon condition is secondary; higher dispersion
-and faults are exploratory; communication delay is dropped (above).
+\paragraph{Design.} The fixed and adaptive planners differ only in whether
+measured slip revises the class beliefs. Both use engine v2 (the Study~1 defect
+fixes and the numerical rules below), the same lunar prior, and the
+confusion-aware learner. The learner was chosen by the project owner after the
+calibration rule accepted no candidate (Section~\ref{sec:audit}); its known
+shortfall on Mars is stated in advance and measured on the confirmatory
+missions. The confirmatory condition is Mars with a lunar prior; the Moon is
+secondary; higher dispersion and faults are exploratory; communication delay
+is dropped. Each condition uses 230 matched seeds from pools disjoint from
+every Study~1 split.
 
-\paragraph{Outcomes and hypotheses (draft).} Primary: mission success in the
-Mars condition, tested two-sided with McNemar's exact test at $\alpha =
-\PowAlpha$ on matched seeds. No direction is hypothesised: Study~1 found an
-exact tie in Martian success and the validation exploration found differences
-whose intervals touched zero. Secondary: science fraction on Mars (two-sided
-paired $t$), and success and science fraction on the Moon, Holm-corrected as a
-family. Everything else is descriptive or exploratory
-(\texttt{docs/V2\_HYPOTHESES\_DRAFT.md}).
+\paragraph{Hypotheses and tests.} Primary: mission success in the Mars
+condition differs between the planners (two-sided McNemar exact test,
+$\alpha = \PowAlpha$, one test, no correction), estimated as a difference in
+proportions with Newcombe's hybrid score interval. Secondary, Holm-corrected as
+a family: Mars science fraction and Moon success and science fraction, all
+two-sided. No direction is hypothesised: Study~1 found an exact tie in Martian
+success.
 
-\paragraph{Sample size.} The power of McNemar's test depends on the effect to
-detect and on how often the two planners disagree (the discordance rate). The
-minimum effect of interest is fixed at $\PowMinEffect$ in success probability.
-The discordance rate was estimated on \PowMThreeValSeeds{} validation seeds per
-body for each of the two leading calibration candidates, and its one-sided
-90\% upper bound was used. The estimated effect itself was deliberately not
-used to size the study. Exact power calculations give, for power
-$\PowTarget$, \PowMThreeRecommendedN{} matched seeds with the confusion-aware
-learner and \PowMTwoARecommendedN{} with the scaled learner
-(Figure~\ref{fig:power}; \texttt{docs/POWER\_ANALYSIS.md}).
+\paragraph{Sample size.} The minimum effect of interest is $\PowMinEffect$ in
+success probability. Exact power calculations on \PowMThreeValSeeds{} validation
+seeds, using the upper bound of the planners' disagreement rate and deliberately
+ignoring the validation effect itself, gave \PowMThreeRecommendedN{} matched
+seeds for power $\PowTarget$ (Figure~\ref{fig:power}). Re-checked after the
+numerical changes below, the achieved power at that $n$ is slightly lower
+(\texttt{docs/POWER\_ANALYSIS.md}); the owner kept the frozen $n$ and the plan
+states the achieved power.
 
 \begin{figure}[t]
 \centering
@@ -775,18 +781,30 @@ calibration candidate. Planning quantities only.}
 \label{fig:power}
 \end{figure}
 
-\paragraph{Seeds and access control.} Study~2's confirmatory seeds are new: two
-pools of \PowPool{} drawn from a range disjoint from every Study~1 split, by a
-recorded algorithm and master seed. The terrain generator refuses them unless
-the frozen analysis plan exists and the run is authorised with that plan's
-hash, and it logs every attempt. At the time of writing no Study~2
-confirmatory terrain has been generated.
+\paragraph{Numerical reproducibility.} Because Study~1 reproduces exactly only
+on its own platform, the Study~2 engine was audited for platform-dependent
+arithmetic on validation seeds, run on both macOS (arm64) and Linux (x86-64).
+Continuous terrain values are rounded to six decimals after generation, near-tied
+target utilities go to the lower target number, and the planner's exponential,
+error-function, hypotenuse, integer-power and summation operations use
+implementations built from correctly rounded IEEE-754 operations, so they give
+the same bits everywhere. Over the \NumFinalMissions{} validation missions, the
+number following the same path on both platforms rose from \NumBaseSamePath{} to
+\NumFinalSamePath{}, success/failure flips fell from \NumBaseFlipped{} to
+\NumFinalFlipped{}, and the Mars effect estimate was \NumFinalMarsDeltaMac{} on
+macOS and \NumFinalMarsDeltaLinux{} on Linux. Terrain became bit-identical on every map and the first decision of every
+mission agreed exactly, but \NumFinalDiverged{} missions still diverged in the
+last bits while driving, so exact identity was not
+reached. By a rule written before the last measurement, macOS is
+the canonical platform and the Linux re-run is a pre-specified robustness check:
+the primary conclusion counts as platform-robust if the primary test's decision
+matches and the two estimates differ by at most 0.05
+(\texttt{docs/NUMERICAL\_REPRODUCIBILITY.md}).
 
-\paragraph{What must happen before it runs.} A freeze checklist
-(\texttt{docs/V2\_FREEZE\_CHECKLIST.md}) requires, among other items, an
-accepted calibration method, a passing simulator validation suite, frozen
-hypotheses, tests, multiplicity plan and sample size, and a clean access log.
-It is currently blocked on calibration.
+\paragraph{Protection.} The terrain generator refuses every Study~2
+confirmatory seed unless the frozen plan exists and the run is authorised with
+that plan's hash, and it logs every attempt. At the time of writing no Study~2
+confirmatory terrain has been generated.
 
 \section{Discussion}
 
@@ -901,6 +919,7 @@ claim.
 \end{enumerate}
 
 \section{Reproducibility}
+\label{sec:repro}
 
 Every reported number is a macro generated from a committed artifact; no result
 value is typed into this document. \texttt{paper/PROVENANCE.yaml} records, for
@@ -909,8 +928,9 @@ its input files and their hashes, and the commit; a test fails if any of them
 is stale or edited by hand, and continuous integration re-runs every
 generator.
 
-\paragraph{Cross-platform reproduction.} Study~1 reproduces bit for bit on the
-platform that generated it (macOS, arm64). Re-run on Linux x86-64 with the same
+\paragraph{Cross-platform reproduction.} Study~1 reproduces exactly on the
+environment that generated it (macOS, Apple Silicon/arm64, with the pinned
+libraries); this was re-checked after all later engine changes. Re-run on Linux x86-64 with the same
 code and pinned libraries, \XpIdentical{} of 750 missions are identical and
 \XpDiffer{} differ: last-bit floating-point differences between platforms change
 a route choice in some missions, and \XpFlipped{} change outcome between success

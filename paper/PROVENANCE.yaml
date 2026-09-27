@@ -1,4 +1,4 @@
-generated_at_commit: 7df4a157396fe70c28ad0f15aabbed0590197698
+generated_at_commit: eadd627107df3191ae1c7f1e59f6227337190d6b
 note: 'Every generated file the paper uses, with the script, inputs and hashes that produced it. Regenerate
   with: python scripts/build_all_figures.py'
 steps:
@@ -44,7 +44,7 @@ steps:
     data/validation/calibration/RESULTS.md: 48fbca7a2051f980dc9638a06471d91c7ecc76eb8c7e4f3975f91daeadeb66fc
 - step: power
   command: python scripts/power_analysis.py analyze
-  script_sha256: 4b858cd2808d380299c61270115188f7ca03344428c7316c94fdc1df908888d5
+  script_sha256: 9a174d94e3d43dbe224bfd3b81cc9e4049516b98f247695d8248b2a798d37367
   inputs:
     data/validation/power_analysis/validation_missions.csv: 981f62a8f8f6c061c180dc0bc2ea3eb74ae72f9765595adaabc3923d7b10f5c0
   outputs:
@@ -64,6 +64,17 @@ steps:
     paper/tables/exonaut_crossplatform_macros.tex: fd17ba3d84d0d53902ed1a49d7a5adb7086412b2033212528cc8daede36eb8fc
     data/results/cross_platform/summary.json: 375c49e6e9e20ca974f5d395e6c28f36665a4c506e5b07c6f93d20fcc563bb00
     data/results/cross_platform/primary_comparison.csv: c2277fa37aaf43c1ff3d114b8a9781a616d0d0d13a16070efc075230391719b8
+- step: study2_numerics
+  command: python scripts/numerical_reproducibility.py paper
+  script_sha256: 82c6bc2e81b540023ce905715da637d5e5b652f013babaf5f84fb0312c2abefd
+  inputs:
+    data/validation/numerics/baseline_summary.json: 19b39ee197c5f9afc59bd3a73fd3113d005ed3e6a074a6755cabac11cb27c85a
+    data/validation/numerics/canonical_summary.json: 6d57f87c07000813f45b0843fbcfe44c59927ebafe2e11898dcacc004c5a8bbb
+    data/validation/numerics/deterministic_summary.json: accf00439e73c1c7a7f75d570109925321e51aa4dfaaa096c3172da388fb489c
+    data/validation/numerics/fsum_summary.json: cfab93506c4dd912f0540280930436b16e01da2534bc4f9c7a00cfbd93be9686
+    data/validation/numerics/final_summary.json: 6612bb561510ab3d2bc2076b0a5f4c85a02ebd38bed1f14a80f9383c0fa022c5
+  outputs:
+    paper/tables/exonaut_numerics_macros.tex: d65ff1f38b6914a7f519e719c5c52fa172bceccd96f8d471fc8082e0e8935766
 - step: exploration_v2
   command: python scripts/analyze_exploration.py
   script_sha256: dedd10411112337c75410a70165922bc0f17fe3bb226fca333027dd8ac463788
@@ -131,12 +142,18 @@ paper_macros:
   MainPlanners: paper/tables/exonaut_main_macros.tex
   MainSeedsPerCondition: paper/tables/exonaut_main_macros.tex
   MainSplitChecksum: paper/tables/exonaut_main_macros.tex
+  NumBaseFlipped: paper/tables/exonaut_numerics_macros.tex
+  NumBaseSamePath: paper/tables/exonaut_numerics_macros.tex
+  NumFinalDiverged: paper/tables/exonaut_numerics_macros.tex
+  NumFinalFlipped: paper/tables/exonaut_numerics_macros.tex
+  NumFinalMarsDeltaLinux: paper/tables/exonaut_numerics_macros.tex
+  NumFinalMarsDeltaMac: paper/tables/exonaut_numerics_macros.tex
+  NumFinalMissions: paper/tables/exonaut_numerics_macros.tex
+  NumFinalSamePath: paper/tables/exonaut_numerics_macros.tex
   PowAlpha: paper/tables/exonaut_power_macros.tex
   PowMThreeRecommendedN: paper/tables/exonaut_power_macros.tex
   PowMThreeValSeeds: paper/tables/exonaut_power_macros.tex
-  PowMTwoARecommendedN: paper/tables/exonaut_power_macros.tex
   PowMinEffect: paper/tables/exonaut_power_macros.tex
-  PowPool: paper/tables/exonaut_power_macros.tex
   PowTarget: paper/tables/exonaut_power_macros.tex
   XpDiffer: paper/tables/exonaut_crossplatform_macros.tex
   XpFaultsDiffLinux: paper/tables/exonaut_crossplatform_macros.tex

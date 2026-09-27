@@ -54,7 +54,7 @@ Each round was measured on all 800 validation missions on both platforms
 | canonical | terrain rounded to 9 decimals; utility ties within 1e-9 (relative) go to the lower target id | 0 (harness then hashed raw terrain) | 731 | 795 | 4 |
 | deterministic | exp, erfc, hypot from IEEE-exact operations (`exonaut.numerics`) | 796 | 774 | 798 | 1 |
 | fsum | exactly rounded reductions (math.fsum); terrain rounded to 6 decimals | 800 | 772 | 796 | 3 |
-| final | integer powers by repeated multiplication (Python's `**` calls the platform `pow`) | see section 4 | | | |
+| final | integer powers by repeated multiplication (Python's `**` calls the platform `pow`) | 800 | 772 | 796 | 3 |
 
 Tolerances were set from magnitudes, not outcomes: platform noise is ~1e-15 relative; the
 smallest physically meaningful differences are ~1 (slope-sensor noise 1.2 degrees) and utility
@@ -67,6 +67,47 @@ measured; ~3e-5 at d = 6).
 final round is the last numerical iteration. More rounds would start to become their own source
 of researcher degrees of freedom. Whatever it shows, Study 2 is frozen with the rule in
 section 5.
+
+## 4. Final round: result
+
+`data/validation/numerics/final_summary.json` (macOS run: this machine; Linux run: GitHub
+workflow run 36328613638, same engine code - only a comment differs between the two commits).
+
+| | baseline | final |
+|---|---|---|
+| terrain maps bit-identical | 0 / 800 | **800 / 800** |
+| missions fully identical (path, every P(fail) bit, energy) | 194 | **608** |
+| same path | 661 | **772** |
+| same termination | 787 | **796** |
+| success flipped | 13 | **3** |
+| Mars effect (adaptive - fixed success), macOS / Linux | +0.070 / +0.060 | **+0.055 / +0.055** |
+| Mars discordant pairs (adaptive only / fixed only), macOS / Linux | | 24 / 13 and 24 / 13 |
+| Moon effect, macOS / Linux | | +0.020 / +0.025 |
+
+**Exact identity was not reached.** The final change (integer powers) made almost no
+difference: 608 fully identical missions against 607 in the previous round, the same 772 paths
+and the same 3 success flips. The three flips are all adaptive-planner Moon missions (seeds
+200020, 200089, 200119): their P(fail) values first differ in the last bits at the 5th, 4th
+and 5th decision, and the chosen target first differs at the 12th, 16th and 14th. One Mars
+mission (200018, adaptive) changed its kind of failure (energy exhausted on macOS,
+immobilised on Linux) without changing success.
+
+Where the residual differences start: in every non-identical mission the first decision is
+bit-identical on both platforms (the earliest differing P(fail) is at the 2nd decision or
+later; median the 15th), so the terrain, the prior and the initial plan agree exactly and the
+divergence enters through state updated while driving (slip draws, belief updates, energy).
+By the stopping rule these sources were not traced or changed further. One candidate, stated
+as unverified: numpy's normal sampler calls the platform `exp` (and `log1p` in the tail) in
+rare steps, which could yield a different draw on different platforms.
+
+What matters for Study 2: on these validation missions the primary estimate was the same on
+both platforms, with the same discordant pairs, so the robustness criterion of section 5 would
+have been met. That is an observation on validation seeds, not a guarantee for the
+confirmatory ones.
+
+**Decision (applying the rule committed before this result):** the numerical work stops here.
+Study 2 is frozen with macOS arm64 as the canonical platform and the cross-platform
+robustness check below.
 
 ## 5. Rule for Study 2 (pre-specified here, before the final round's results)
 

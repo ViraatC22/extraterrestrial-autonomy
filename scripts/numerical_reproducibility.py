@@ -213,6 +213,8 @@ def paper() -> None:
             ("success_flipped", "Flipped"),
         ):
             lines.append(rf"\newcommand{{\Num{word}{name}}}{{{s[key]}}}")
+        diverged = s["missions"] - s["fully_identical"]
+        lines.append(rf"\newcommand{{\Num{word}Diverged}}{{{diverged}}}")
         lines.append(rf"\newcommand{{\Num{word}MarsDeltaMac}}{{{m[a]['delta']:+.3f}}}")
         lines.append(rf"\newcommand{{\Num{word}MarsDeltaLinux}}{{{m[b]['delta']:+.3f}}}")
     (ROOT / "paper/tables/exonaut_numerics_macros.tex").write_text("\n".join(lines) + "\n")

@@ -1,8 +1,10 @@
 # Study 2 (v2): research question, hypotheses and outcomes — DRAFT
 
-Status: **draft for the project owner. Not frozen.** Nothing here is pre-specified
-until `docs/PREREGISTRATION_V2.md` exists and every item of
-`docs/V2_FREEZE_CHECKLIST.md` is checked. No v2 confirmatory seed has been used.
+Status: **superseded by `docs/PREREGISTRATION_V2.md`**, which is the frozen plan. This
+draft is kept as the record of how the plan was reached; where the two differ, the
+preregistration governs. The open points listed at the end of this draft were settled by the
+owner: two-sided H1 and H2 confirmed, the confusion-aware learner M3, a minimum effect of
+interest of 0.10, and n = 230 (`RESEARCH_LOG.md`, 2026-09-27).
 
 ## Research question
 

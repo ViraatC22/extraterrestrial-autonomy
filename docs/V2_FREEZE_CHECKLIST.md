@@ -5,28 +5,34 @@ committed, and `docs/PREREGISTRATION_V2.md` exists.** The terrain generator enfo
 part: it refuses every seed in the v2 confirmatory pools unless that file exists and the run is
 authorized with its SHA-256 (`EXONAUT_AUTHORIZE_V2_CONFIRMATORY`). Every attempt is logged.
 
-Status on 2026-09-26: **BLOCKED** (calibration not accepted; owner decisions pending).
+Status on 2026-09-27: **FROZEN, NOT AUTHORISED.** Every item is checked. The plan is
+`docs/PREREGISTRATION_V2.md`; the freeze commit is tagged `study2-freeze`. No Study 2
+confirmatory seed has been used, and the run has not been authorised.
 
-| # | Item | Status | Evidence / what is missing |
+| # | Item | Status | Evidence |
 |---|---|---|---|
-| 1 | **Calibration accepted** | ☐ blocked | Pre-specified rule: NOT ACCEPTED (`CALIBRATION_AUDIT.md` §4). Owner must choose option A, B or C (§5) and the choice must be logged. |
-| 2 | Simulator validation passed | ☑ | `SIMULATOR_VALIDATION.md`; all checklist tests pass. Re-run on the freeze commit. |
-| 3 | Hypotheses frozen | ☐ | Draft: `V2_HYPOTHESES_DRAFT.md`. Owner to confirm two-sided H1/H2 and the secondary family. |
-| 4 | Outcomes and tiers frozen | ☐ | Draft table in `V2_HYPOTHESES_DRAFT.md`. |
-| 5 | Statistical tests frozen | ☐ | McNemar exact (primary), paired t + Wilcoxon (secondary). The paired interval for the success difference must be chosen and, if not the v1 t interval, implemented and tested. |
-| 6 | Multiplicity plan frozen | ☐ | One primary test (no correction); Holm across the secondary family. |
-| 7 | Sample size frozen | ☐ | `POWER_ANALYSIS.md` gives n for each leading calibration candidate; the one matching item 1 applies. Owner to confirm the minimum effect of interest. |
-| 8 | Seed manifests frozen | ☑ | `data/splits/v2/seed_manifest.json`, checksum verified by `tests/test_v2_protocol.py`; confirmatory pools disjoint from every v1 split. |
-| 9 | Held-out access log clean | ☐ check at freeze | `data/splits/heldout_access_log.jsonl` must show no v2 confirmatory seed (and should show no unused v1 held-out seed used for development). As of this commit the file does not exist: nothing has been logged. |
-| 10 | Paper methods updated | ☐ | The paper's Study 2 section describes the planned design without results; it must be updated to the frozen choices. |
-| 11 | Code commit tagged | ☐ | Tag the freeze commit (e.g. `study2-freeze`); the run's metadata must record it. |
-| 12 | Configs checksummed | ☐ | A v2 design file (like `experiments/configs/exonaut_main.json`) with its digest recorded in the plan. |
-| 13 | Raw-output schema frozen | ☐ | Column list of the v2 results table fixed in the plan (the v1 schema plus `epistemic_scale`, `class_assignment`, and the calibration descriptives). |
-| 14 | v1 still reproduces | ☑ (re-run at freeze) | `scripts/verify_v1_reproduction.py`; `tests/test_v1_lock.py`. |
+| 1 | Calibration decided | ☑ | The pre-specified rule accepted **no** candidate (`CALIBRATION_AUDIT.md` §4); the owner chose option A, the confusion-aware learner M3 (§6; `RESEARCH_LOG.md` 2026-09-27). The rule was not changed; M3's Mars shortfall (95% coverage ≈ 0.72) is disclosed in the plan (§2) and measured descriptively. Commit ae44434. |
+| 2 | Simulator validation passed | ☑ | `SIMULATOR_VALIDATION.md`; full test suite passes on the freeze commit. |
+| 3 | Hypotheses frozen | ☑ | Plan §4: H1 primary (Mars success), H2, H3a, H3b secondary; all two-sided (owner decision). `V2_HYPOTHESES_DRAFT.md` is marked superseded. |
+| 4 | Outcomes and tiers frozen | ☑ | Plan §6 (primary / secondary / descriptive / exploratory / post-hoc). |
+| 5 | Statistical tests frozen | ☑ | Plan §5: McNemar exact (H1, H3a); paired t with Wilcoxon alongside (H2, H3b); success difference with Newcombe's hybrid score interval (`analysis.newcombe_paired_ci`, `tests/test_newcombe.py`). |
+| 6 | Multiplicity plan frozen | ☑ | Plan §5: one primary test, no correction; Holm across {H2, H3a, H3b}. |
+| 7 | Sample size frozen | ☑ | n = 230 per condition (minimum effect of interest 0.10; `POWER_ANALYSIS.md`). Final-engine check: exact power 0.888 at n = 230, below the 0.90 target; the rule would give 240. Owner kept 230; stated in plan §7 (`data/validation/power_analysis/final_engine_check.json`). |
+| 8 | Seed manifests frozen | ☑ | `data/splits/v2/seed_manifest.json`, checksum `2b24c27d…2479e` in plan header, verified by `tests/test_v2_protocol.py`; confirmatory pools disjoint from every v1 split. |
+| 9 | Held-out access log clean | ☑ | `data/splits/heldout_access_log.jsonl` does not exist on the freeze commit: no logged access to any held-out or confirmatory seed. Tests redirect their deliberate probes with `EXONAUT_HELDOUT_LOG`. |
+| 10 | Paper methods updated | ☑ | `paper/exonaut.tex` §"Study 2: frozen, not yet executed": design, hypotheses, tests, n and achieved power, numerical-reproducibility rule, protection. No result reported. |
+| 11 | Code commit tagged | ☑ | Tag `study2-freeze`. `scripts/run_study2.py` records commit, design digest and plan hash in the results sidecar. |
+| 12 | Configs checksummed | ☑ | `experiments/configs/study2.json`, design digest `f3c1df55de0c`, recorded in the plan header and checked by the runner. |
+| 13 | Raw-output schema frozen | ☑ | Plan §9: columns exactly `RESULT_COLUMNS` in `scripts/run_study2.py`; exercised by the validation dry run (`data/validation/study2_dry_run/`). |
+| 14 | v1 still reproduces | ☑ | `scripts/verify_v1_reproduction.py`: 750 / 750 exact on macOS arm64 after all engine changes (engine code identical to the freeze commit); `tests/test_v1_lock.py` passes. |
+| 15 | Numerical reproducibility | ☑ | `NUMERICAL_REPRODUCIBILITY.md`: five rounds on validation seeds, macOS arm64 vs Linux x86-64; exact identity **not** reached (608 / 800 missions fully identical, 3 success flips). By the rule committed before the final round (51ba075): canonical platform macOS arm64, plus a pre-specified Linux robustness check (same H1 decision, estimates within 0.05). |
 
-## After every box is checked
+## What happens next (not done here)
 
-1. Write `docs/PREREGISTRATION_V2.md` from the frozen drafts; commit and tag.
-2. Record the checklist evidence (commit hashes) in this file.
-3. Authorize the single run with the plan's hash, run it once, and report every pre-specified
-   outcome, whatever it shows.
+1. The owner decides whether to authorise the run. Authorising means setting
+   `EXONAUT_AUTHORIZE_V2_CONFIRMATORY` to the SHA-256 of `docs/PREREGISTRATION_V2.md`, for the
+   single run, and recording that in `RESEARCH_LOG.md`.
+2. Run once on the canonical platform from a clean checkout of `study2-freeze`
+   (`scripts/run_study2.py`, then `scripts/analyze_study2.py`).
+3. Repeat the run on Linux for the robustness check, and report every pre-specified outcome,
+   whatever it shows.
