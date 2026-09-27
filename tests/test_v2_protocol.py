@@ -99,7 +99,7 @@ def test_calibration_and_power_scripts_accept_only_development_seeds():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    for name in ("calibration_study", "power_analysis"):
+    for name in ("calibration_study", "power_analysis", "numerical_reproducibility"):
         spec = importlib.util.spec_from_file_location(name, root / "scripts" / f"{name}.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
