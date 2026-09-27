@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from .. import numerics
+
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
 
@@ -97,7 +99,7 @@ class Planner(ABC):
                 # it at all would silently drop targets.
                 if neighbour != goal and not self.passable(world_model, *neighbour):
                     continue
-                distance = float(np.hypot(dr, dc))
+                distance = float(numerics.hypot(dr, dc))
                 step = self.step_cost(world_model, current, neighbour, distance)
                 if step < 0:
                     raise ValueError(f"{self.name}: negative step cost {step}")

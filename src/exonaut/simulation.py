@@ -25,6 +25,7 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
+from . import numerics
 from .autonomy.mission_manager import MissionManager, generate_mission
 from .autonomy.world_model import AdaptiveWorldModel, WorldModel
 from .environments import TRUE_CLASS_PARAMS, make_environment
@@ -182,6 +183,20 @@ def _make_planner(name: str, config: MissionConfig, gravity: float):
 
 
 def run_mission(
+    config: MissionConfig,
+    seed: int,
+    prior: dict | None = None,
+    collect_history: bool = False,
+    collect_belief: bool = False,
+    belief_stride: int = 3,
+) -> MissionResult:
+    """Run one mission. Engine v2 runs under platform-deterministic maths
+    (exonaut.numerics); v1 uses the maths libraries exactly as Study 1 did."""
+    with numerics.deterministic(config.engine == "v2"):
+        return _run_mission(config, seed, prior, collect_history, collect_belief, belief_stride)
+
+
+def _run_mission(
     config: MissionConfig,
     seed: int,
     prior: dict | None = None,
@@ -401,7 +416,7 @@ def run_mission(
             slips.append(outcome["record"].slip)
 
         if outcome["moved"]:
-            distance_travelled += float(np.hypot(dr, dc))
+            distance_travelled += float(numerics.hypot(dr, dc))
             path_index += 1
             heading_deg = float(np.degrees(np.arctan2(dc, -dr)) % 360.0)
         else:
@@ -542,7 +557,7 @@ def run_mission(
         predicted_failure_prob=float(predicted_failure_prob),
         hazard_refusals=hazard_refusals,
         final_distance_from_home=float(
-            np.hypot(rover.row - mission.home[0], rover.col - mission.home[1])
+            numerics.hypot(rover.row - mission.home[0], rover.col - mission.home[1])
         ),
         belief_snapshot=world_model.snapshot(),
         history=history,

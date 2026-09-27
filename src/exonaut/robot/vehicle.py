@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .. import numerics
 from ..environments.base import TerrainField
 from .failures import FaultSchedule, FaultType
 from .power import PowerSystem, locomotion_cost
@@ -118,7 +119,7 @@ class Rover:
                 "record": None,
             }
 
-        distance = float(np.hypot(dr, dc))
+        distance = float(numerics.hypot(dr, dc))
         mean, dispersion = terrain.true_slip_distribution(*target)
         mean = min(0.985, mean + self.slip_bias)
         slip = float(np.clip(rng.normal(mean, max(dispersion, 1e-6)), 0.0, 0.995))

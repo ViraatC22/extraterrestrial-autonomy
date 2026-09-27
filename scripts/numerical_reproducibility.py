@@ -48,11 +48,12 @@ def _digest(*arrays) -> str:
 
 def _job(args):
     body, seed, planner = args
-    from exonaut.environments import make_environment
+    from exonaut.environments import canonicalize, make_environment
     from exonaut.simulation import MissionConfig, run_mission
 
     config = MissionConfig(**{**META["base_config"], **STUDY2, "body": body, "planner": planner})
-    t = make_environment(body, seed=seed, size=config.size)
+    # the terrain the v2 engine actually uses
+    t = canonicalize(make_environment(body, seed=seed, size=config.size))
     r = run_mission(config, seed=seed, collect_history=True)
     decisions = [
         {

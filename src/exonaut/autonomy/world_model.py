@@ -35,6 +35,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .. import numerics
 from ..environments.base import N_TERRAIN_CLASSES, TerrainClass
 
 # Assumed observation noise on a single slip measurement. Fixed and shared by
@@ -273,13 +274,13 @@ class WorldModel:
             np.sqrt(sum(w * self.class_belief[k].variance for k, w in mix.items()))
         )
         aleatoric = float(sum(w * self.aleatoric_sd[k] for k, w in mix.items()))
-        result = (float(np.hypot(between, within)), aleatoric)
+        result = (float(numerics.hypot(between, within)), aleatoric)
         self._cache["unknown_uncertainty"] = result
         return result
 
     def total_slip_sd(self, row: int, col: int) -> float:
         epistemic, aleatoric = self.slip_uncertainty(row, col)
-        return float(np.hypot(epistemic, aleatoric))
+        return float(numerics.hypot(epistemic, aleatoric))
 
     # -- whole-map views, for visualisation ------------------------------
     # Vectorised equivalents of the per-cell queries above. They exist so the
@@ -299,10 +300,10 @@ class WorldModel:
         )
         aleatoric = np.array([self.aleatoric_sd[k] for k in range(N_TERRAIN_CLASSES)])
         classes = self.terrain_class.astype(int)
-        observed_sd = np.hypot(epistemic[classes], aleatoric[classes])
+        observed_sd = numerics.hypot(epistemic[classes], aleatoric[classes])
         # every unobserved cell shares one estimate; row/col are ignored there
         unknown_epi, unknown_ale = self._unknown_uncertainty()
-        return np.where(self.observed, observed_sd, float(np.hypot(unknown_epi, unknown_ale)))
+        return np.where(self.observed, observed_sd, float(numerics.hypot(unknown_epi, unknown_ale)))
 
     def believed_energy_multiplier(self, row: int, col: int) -> float:
         if not self.observed[row, col]:
@@ -433,11 +434,11 @@ class AdaptiveWorldModel(WorldModel):
             means = np.array([self.class_belief[j].mean for j in range(k)])
             sds = np.array(
                 [
-                    np.hypot(self.class_belief[j].epistemic_sd, self.aleatoric_sd[j])
+                    numerics.hypot(self.class_belief[j].epistemic_sd, self.aleatoric_sd[j])
                     for j in range(k)
                 ]
             )
-            posterior = posterior * np.exp(-0.5 * ((reading - means) / sds) ** 2) / sds
+            posterior = posterior * numerics.exp(-0.5 * ((reading - means) / sds) ** 2) / sds
         total = posterior.sum()
         return posterior / total if total > 0 else np.full(k, 1.0 / k)
 

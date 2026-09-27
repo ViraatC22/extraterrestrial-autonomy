@@ -24,6 +24,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .. import numerics
 from ..environments.base import N_TERRAIN_CLASSES, TerrainField
 
 
@@ -53,7 +54,7 @@ class SensorSuite:
         c0, c1 = max(0, col - radius), min(terrain.size, col + radius + 1)
         for r in range(r0, r1):
             for c in range(c0, c1):
-                dist = float(np.hypot(r - row, c - col))
+                dist = float(numerics.hypot(r - row, c - col))
                 if dist > radius:
                     continue
                 # noise grows linearly with normalized range

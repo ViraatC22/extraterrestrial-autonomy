@@ -31,6 +31,7 @@ import heapq
 
 import numpy as np
 
+from .. import numerics
 from .base import NEIGHBOURS, Planner
 from .risk_aware import DEFAULT_WEIGHTS
 
@@ -100,7 +101,7 @@ class DStarLitePlanner(Planner):
                 continue
             if nb != self.goal and not self.passable(world_model, *nb):
                 continue
-            yield nb, float(np.hypot(dr, dc))
+            yield nb, float(numerics.hypot(dr, dc))
 
     def _update_vertex(self, world_model, node) -> None:
         if node != self.goal:

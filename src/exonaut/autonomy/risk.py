@@ -38,6 +38,7 @@ import math
 
 import numpy as np
 
+from .. import numerics
 from ..robot.vehicle import EMBED_LIMIT, SEVERE_SLIP_THRESHOLD
 
 
@@ -46,7 +47,7 @@ def _normal_sf(threshold: float, mean: float, sd: float) -> float:
     if sd <= 1e-9:
         return 1.0 if mean >= threshold else 0.0
     z = (threshold - mean) / sd
-    return 0.5 * math.erfc(z / math.sqrt(2.0))
+    return 0.5 * numerics.erfc(z / math.sqrt(2.0))
 
 
 def severe_slip_probability(world_model, row: int, col: int) -> float:
@@ -116,7 +117,7 @@ def path_energy(
         if previous is None:
             previous = cell
             continue
-        distance = float(np.hypot(cell[0] - previous[0], cell[1] - previous[1]))
+        distance = float(numerics.hypot(cell[0] - previous[0], cell[1] - previous[1]))
         if distance == 0:
             continue
         slip = world_model.expected_slip(*cell)
@@ -205,7 +206,11 @@ def cell_risk_grid(world_model) -> np.ndarray:
     mean = world_model.expected_slip_grid()
     sd = world_model.total_slip_sd_grid()
     safe_sd = np.where(sd <= 1e-9, 1.0, sd)
-    p_severe = 0.5 * erfc(((SEVERE_SLIP_THRESHOLD - mean) / safe_sd) / math.sqrt(2.0))
+    z = ((SEVERE_SLIP_THRESHOLD - mean) / safe_sd) / math.sqrt(2.0)
+    if numerics.is_deterministic():
+        p_severe = 0.5 * np.vectorize(numerics.det_erfc, otypes=[float])(z)
+    else:
+        p_severe = 0.5 * erfc(z)
     p_severe = np.where(sd <= 1e-9, (mean >= SEVERE_SLIP_THRESHOLD).astype(float), p_severe)
     p_embed = p_severe**EMBED_LIMIT
     p_hazard = world_model.hazard_prob * HAZARD_MISSION_RISK

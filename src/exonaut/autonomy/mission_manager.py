@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .. import numerics
 from . import risk
 
 
@@ -105,9 +106,9 @@ def generate_mission(
         c = int(rng.integers(2, size - 2))
         if not _free(r, c):
             continue
-        if np.hypot(r - home[0], c - home[1]) < size * 0.15:
+        if numerics.hypot(r - home[0], c - home[1]) < size * 0.15:
             continue
-        if any(np.hypot(r - t.row, c - t.col) < min_separation for t in targets):
+        if any(numerics.hypot(r - t.row, c - t.col) < min_separation for t in targets):
             continue
         targets.append(
             ScienceTarget(
