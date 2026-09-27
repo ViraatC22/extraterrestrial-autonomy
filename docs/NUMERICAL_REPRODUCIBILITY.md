@@ -43,16 +43,42 @@ comparison is.
   787 same termination; 13 success flips.
 - Mars effect (adaptive - fixed success): +0.070 on macOS, +0.060 on Linux.
 
-## 3. Changes (engine v2 only; v1 is untouched so Study 1 still reproduces)
+## 3. Changes, in the order made (engine v2 only; v1 untouched)
 
-1. **Canonical terrain.** Continuous terrain fields are rounded to 9 decimal places right
-   after generation (`environments.canonicalize`). Platform noise is ~1e-15; the smallest
-   physically meaningful difference (slope-sensor noise, 1.2 degrees) is ~1. Nine decimals
-   is about six orders of magnitude from each, so the rounding removes platform noise without
-   changing the terrain. The tolerance was set from these magnitudes, not tuned on results.
-2. **Deterministic candidate ranking.** Two targets whose utilities differ by less than a
-   relative 1e-9 are tied, and the lower target id wins (`MissionManager._better`). The same
-   reasoning sets 1e-9: far above floating-point noise, far below any utility difference that
-   could matter (utilities differ by percents).
+Each round was measured on all 800 validation missions on both platforms
+(`data/validation/numerics/<round>_summary.json`).
 
-Results after these changes: section 4.
+| Round | Change | Terrain bit-identical | Same path | Same outcome | Success flips |
+|---|---|---|---|---|---|
+| baseline | none | 0 | 661 | 787 | 13 |
+| canonical | terrain rounded to 9 decimals; utility ties within 1e-9 (relative) go to the lower target id | 0 (harness then hashed raw terrain) | 731 | 795 | 4 |
+| deterministic | exp, erfc, hypot from IEEE-exact operations (`exonaut.numerics`) | 796 | 774 | 798 | 1 |
+| fsum | exactly rounded reductions (math.fsum); terrain rounded to 6 decimals | 800 | 772 | 796 | 3 |
+| final | integer powers by repeated multiplication (Python's `**` calls the platform `pow`) | see section 4 | | | |
+
+Tolerances were set from magnitudes, not outcomes: platform noise is ~1e-15 relative; the
+smallest physically meaningful differences are ~1 (slope-sensor noise 1.2 degrees) and utility
+gaps are percents. The move from 9 to 6 decimals followed a calculation of the chance that a
+value lies within platform noise of a rounding boundary (~2e-15 / 10^-d per value, ~16,000
+values per map: ~3% of maps at d = 9, which matched the 4 of 800 measured; ~3e-5 at d = 6).
+
+**Stopping rule, written and committed before the final round's results were seen:** the
+final round is the last numerical iteration. More rounds would start to become their own source
+of researcher degrees of freedom. Whatever it shows, Study 2 is frozen with the rule in
+section 5.
+
+## 5. Rule for Study 2 (pre-specified here, before the final round's results)
+
+- **Canonical platform.** The confirmatory results of Study 2 are those produced on macOS,
+  arm64 (the development machine), Python 3.13, with the pinned libraries in
+  `requirements-lock.txt`. These are the numbers reported and tested.
+- **Cross-platform check.** The same confirmatory run is repeated once on Linux x86-64 (the
+  GitHub workflow), with the same code and libraries. The primary conclusion is declared
+  **platform-robust** if (a) the primary test's reject / do-not-reject decision is the same on
+  both platforms, and (b) the two primary estimates (difference in Mars success) differ by no
+  more than **0.05**, half the minimum effect of interest - a difference smaller than that
+  could not change the practical reading of the result. Mission-level identity is reported
+  descriptively. If either condition fails, the canonical result is still the one reported,
+  and the paper says plainly that it is not platform-robust.
+- The canonical-platform rule applies even if the final round reaches full identity, since
+  identity on validation missions does not guarantee it on new terrain.
