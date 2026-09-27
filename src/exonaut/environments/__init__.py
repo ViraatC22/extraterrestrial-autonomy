@@ -6,6 +6,8 @@ experiment runner, so a trial is fully specified by (body, seed, config).
 
 from __future__ import annotations
 
+import numpy as np
+
 from .base import (
     N_TERRAIN_CLASSES,
     TerrainClass,
@@ -26,6 +28,26 @@ TRUE_CLASS_PARAMS = {
     "moon": LUNAR_CLASS_PARAMS,
     "mars": MARS_CLASS_PARAMS,
 }
+
+
+#: Decimal places kept by `canonicalize`. Platform floating-point noise in the
+#: generators (sin, cos, arctan from different maths libraries) is ~1e-15;
+#: the smallest physically meaningful difference (slope sensor noise, 1.2
+#: degrees) is ~1e0. Nine decimals sits about six orders of magnitude from
+#: each, so rounding removes platform noise without changing the terrain.
+CANONICAL_DECIMALS = 9
+
+
+def canonicalize(terrain: TerrainField) -> TerrainField:
+    """Round the continuous terrain fields so every platform gets the same bits.
+
+    Used by engine v2 only (v1 keeps its terrain exactly as generated, so the
+    Study 1 missions reproduce). Discrete fields (class, hazard) are untouched;
+    they are already identical across platforms. See NUMERICAL_REPRODUCIBILITY.md.
+    """
+    for name in ("elevation", "slope", "roughness", "illumination"):
+        setattr(terrain, name, np.round(getattr(terrain, name), CANONICAL_DECIMALS))
+    return terrain
 
 
 def make_environment(body: str, seed: int, size: int = 64, **kwargs) -> TerrainField:

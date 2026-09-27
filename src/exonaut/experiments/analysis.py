@@ -349,3 +349,42 @@ def paired_points(
         }
     ).dropna()
     return out.reset_index()
+
+
+def newcombe_paired_ci(treatment, control, level: float = 0.95) -> tuple[float, float, float]:
+    """Difference of paired proportions with Newcombe's hybrid score interval.
+
+    (Newcombe 1998, method 10; recommended for paired binomial proportions by
+    Fagerland, Lydersen & Laake 2014.) With n11 = both succeed, n12 = only
+    treatment, n21 = only control, n22 = neither, p1 = (n11 + n12)/n,
+    p2 = (n11 + n21)/n, Wilson intervals (l1, u1), (l2, u2), and the phi
+    coefficient of the 2x2 table (0 if a margin is empty):
+
+        lower = (p1 - p2) - sqrt((p1-l1)^2 - 2 phi (p1-l1)(u2-p2) + (u2-p2)^2)
+        upper = (p1 - p2) + sqrt((u1-p1)^2 - 2 phi (u1-p1)(p2-l2) + (p2-l2)^2)
+
+    Returns (difference, lower, upper). Study 2's primary interval.
+    """
+    from scipy import stats as _stats
+
+    a = np.asarray(treatment, dtype=bool)
+    b = np.asarray(control, dtype=bool)
+    n = len(a)
+    n11 = int(np.sum(a & b))
+    n12 = int(np.sum(a & ~b))
+    n21 = int(np.sum(~a & b))
+    n22 = n - n11 - n12 - n21
+    p1, p2 = (n11 + n12) / n, (n11 + n21) / n
+
+    def wilson(k: int) -> tuple[float, float]:
+        ci = _stats.binomtest(k, n).proportion_ci(confidence_level=level, method="wilson")
+        return float(ci.low), float(ci.high)
+
+    l1, u1 = wilson(n11 + n12)
+    l2, u2 = wilson(n11 + n21)
+    margins = (n11 + n12) * (n21 + n22) * (n11 + n21) * (n12 + n22)
+    phi = (n11 * n22 - n12 * n21) / np.sqrt(margins) if margins > 0 else 0.0
+    d = p1 - p2
+    lower = d - np.sqrt(max((p1 - l1) ** 2 - 2 * phi * (p1 - l1) * (u2 - p2) + (u2 - p2) ** 2, 0.0))
+    upper = d + np.sqrt(max((u1 - p1) ** 2 - 2 * phi * (u1 - p1) * (p2 - l2) + (p2 - l2) ** 2, 0.0))
+    return float(d), float(max(lower, -1.0)), float(min(upper, 1.0))

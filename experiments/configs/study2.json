@@ -1,0 +1,26 @@
+{
+  "design_name": "exonaut-study2",
+  "study": "Study 2",
+  "planners": ["astar", "risk_aware_astar", "adaptive_risk_aware_astar"],
+  "n_seeds": 230,
+  "base_config": {
+    "size": 64,
+    "n_targets": 5,
+    "max_steps": 800,
+    "solar_rate": 2.0,
+    "energy_reserve_fraction": 0.25,
+    "engine": "v2",
+    "class_assignment": "responsibility",
+    "epistemic_scale": 1.0,
+    "prior_body": "moon"
+  },
+  "conditions": [
+    {"name": "mars", "role": "confirmatory", "body": "mars", "pool": "confirmatory_ood"},
+    {"name": "moon", "role": "secondary", "body": "moon", "pool": "confirmatory_id"},
+    {"name": "mars_high_uncertainty", "role": "exploratory", "body": "mars", "pool": "confirmatory_ood",
+     "overrides": {"terrain_uncertainty": 1.5}},
+    {"name": "mars_faults", "role": "exploratory", "body": "mars", "pool": "confirmatory_ood",
+     "overrides": {"fault_rate": 1.0}}
+  ],
+  "output": "study2_main"
+}

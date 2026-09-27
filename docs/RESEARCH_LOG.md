@@ -481,3 +481,23 @@ outcomes: no paired effect moves by more than 0.02 and every significance verdic
 same. Study 1's conclusions are not a platform artefact, but "reproduces exactly" is true
 only on the reference platform. Tests demanding bit-exact reproduction now run there and are
 skipped elsewhere with that reason (`tests/reference_platform.py`); the paper states it.
+
+## 2026-09-27 - Study 2 decisions by the project owner
+
+The owner (communicating a reviewer's recommendation they adopted) decided:
+
+1. **Calibration: option A, the confusion-aware learner M3.** Recorded precisely, because the
+   reviewer's note said M3 "wins under the rule": it does not. Under the pre-specified rule
+   **no candidate was accepted** (M3 reached 0.72 at the 95% level on Mars). The protocol
+   said that in that case the freeze is blocked and the owner decides; this is that
+   decision. M3 is chosen because it fixes the diagnosed defect (misclassification) with no
+   fitted parameter and is calibrated in distribution; its Mars shortfall - the lunar prior's
+   error on loose fines - is disclosed as a limitation and measured descriptively on the
+   confirmatory missions. The acceptance rule itself is not changed.
+2. **Minimum effect of interest 0.10**, hence **n = 230 matched seeds** per condition (the
+   power analysis for M3). Frozen; not to be revised after any confirmatory data exist.
+3. **Two-sided tests** for the primary (Mars success) and secondary science hypotheses.
+4. No Study 2 confirmatory seed is to be used yet.
+5. Before freezing: a numerical-reproducibility phase on validation seeds (macOS arm64 and
+   Linux x86-64), with principled tolerances / deterministic tie-breaking where needed, or a
+   declared canonical platform with a pre-specified robustness criterion.

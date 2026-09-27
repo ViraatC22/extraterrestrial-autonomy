@@ -207,6 +207,11 @@ def run_mission(
     terrain = make_environment(
         config.body, seed=seed, size=config.size, max_slope_deg=config.max_slope_deg
     )
+    if v2:
+        # identical terrain bits on every platform (NUMERICAL_REPRODUCIBILITY.md)
+        from .environments import canonicalize
+
+        terrain = canonicalize(terrain)
 
     # Inflate the true slip dispersion if the condition calls for a noisier
     # world. Applied to the terrain itself, so every planner faces it.
@@ -254,7 +259,9 @@ def run_mission(
     )
     fault_horizon = min(config.max_steps, config.fault_window) if v2 else config.max_steps
     faults = FaultSchedule.draw(fault_rng, fault_horizon, config.fault_rate)
-    manager = MissionManager(mission, planner, world_model, terrain.gravity)
+    manager = MissionManager(
+        mission, planner, world_model, terrain.gravity, tie_tolerance=1e-9 if v2 else 0.0
+    )
     manager.resume_charge_fraction = config.resume_charge_fraction
     base_hazard_threshold = planner.hazard_threshold
 

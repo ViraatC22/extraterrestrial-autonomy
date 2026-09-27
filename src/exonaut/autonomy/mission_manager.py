@@ -136,8 +136,15 @@ class MissionManager:
     within budget is abandoned rather than retried forever.
     """
 
-    def __init__(self, mission: Mission, planner, world_model, gravity: float):
+    def __init__(
+        self, mission: Mission, planner, world_model, gravity: float, tie_tolerance: float = 0.0
+    ):
         self.mission = mission
+        #: Relative difference in utility below which two targets are treated
+        #: as tied, the lower target id winning. 0 (v1) compares exactly, so a
+        #: last-bit floating-point difference can decide; v2 uses 1e-9, far
+        #: above platform noise and far below any meaningful utility gap.
+        self.tie_tolerance = tie_tolerance
         self.planner = planner
         self.world_model = world_model
         self.gravity = gravity
@@ -151,6 +158,13 @@ class MissionManager:
         self.failed_home_assessments = 0
         #: evaluation of every candidate at the most recent decision point
         self.last_candidates: list[dict] = []
+
+    def _better(self, utility: float, incumbent: float) -> bool:
+        """Strictly better by more than the tie tolerance. Candidates are
+        visited in target-id order, so on a tie the lower id is kept."""
+        if self.tie_tolerance <= 0.0:
+            return utility > incumbent
+        return utility > incumbent + self.tie_tolerance * max(abs(utility), abs(incumbent))
 
     def _round_trip_assessment(
         self,
@@ -286,7 +300,7 @@ class MissionManager:
             )
             if over_budget:
                 continue
-            if best is None or utility > best["utility"]:
+            if best is None or self._better(utility, best["utility"]):
                 best = {"target": target, "assessment": assessment, "utility": utility}
 
         if best is not None:
@@ -298,9 +312,10 @@ class MissionManager:
         # Rank among the candidates that passed the risk check, by utility
         # (1 = best, and the selected one). Recorded so an interface can show
         # the ordering without re-deriving it.
+        # the selected candidate first (it may win a tolerance tie), then utility
         feasible = sorted(
             (e for e in self.last_candidates if e["within_budget"]),
-            key=lambda e: -e["utility"],
+            key=lambda e: (not e["selected"], -e["utility"]),
         )
         for entry in self.last_candidates:
             entry["feasible_rank"] = None

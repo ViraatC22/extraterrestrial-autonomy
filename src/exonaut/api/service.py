@@ -276,6 +276,11 @@ def session_terrain(session: dict):
     if cached is None:
         request: MissionRequest = session["request"]
         cached = make_environment(request.body, seed=request.seed, size=request.size)
+        if request.engine == "v2":
+            # the terrain the v2 engine actually used (NUMERICAL_REPRODUCIBILITY.md)
+            from ..environments import canonicalize
+
+            cached = canonicalize(cached)
         session["_terrain"] = cached
     return cached
 

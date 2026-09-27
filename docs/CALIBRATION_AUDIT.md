@@ -197,3 +197,12 @@ and measured on the confirmatory missions as a descriptive outcome. It is the on
 that fixes a defect rather than covering it, and it keeps the planners' behaviour
 interpretable. But this is the owner's decision, and it must be made and logged before the
 freeze.
+
+## 6. Decision (2026-09-27)
+
+The project owner chose **option A: M3, the confusion-aware learner**, for Study 2. This is
+the owner decision the protocol required once no candidate met the rule; it is not a claim
+that M3 met the rule, and the rule is unchanged. Consequences written into the Study 2 plan:
+M3's in-distribution calibration is the basis for its use; its Mars shortfall (95% coverage
+0.72 on validation, driven by loose fines) is a stated limitation, and learner calibration on
+the confirmatory missions is reported as a descriptive outcome.

@@ -436,3 +436,30 @@ def test_v2_draws_from_separate_streams():
     a = mission(seed=200_007, fault_rate=0.0)
     b = mission(seed=200_007, fault_rate=3.0)
     assert layout(a) == layout(b)
+
+
+def test_v2_terrain_is_canonical_and_v1_terrain_is_untouched():
+    from exonaut.environments import CANONICAL_DECIMALS, canonicalize
+
+    raw = make_environment("mars", seed=200_012, size=32)
+    canon = canonicalize(make_environment("mars", seed=200_012, size=32))
+    for name in ("elevation", "slope", "roughness", "illumination"):
+        diff = np.abs(getattr(raw, name) - getattr(canon, name))
+        assert diff.max() <= 0.5 * 10.0**-CANONICAL_DECIMALS + 1e-15
+        assert np.array_equal(
+            np.round(getattr(canon, name), CANONICAL_DECIMALS), getattr(canon, name)
+        )
+    assert np.array_equal(raw.terrain_class, canon.terrain_class)
+    assert np.array_equal(raw.hazard, canon.hazard)
+
+
+def test_near_equal_utilities_are_a_tie_won_by_the_lower_target():
+    from exonaut.autonomy.mission_manager import MissionManager
+
+    v2 = MissionManager.__new__(MissionManager)
+    v2.tie_tolerance = 1e-9
+    assert not v2._better(0.0100000000001, 0.01)  # within tolerance: keep the incumbent
+    assert v2._better(0.0101, 0.01)
+    v1 = MissionManager.__new__(MissionManager)
+    v1.tie_tolerance = 0.0
+    assert v1._better(0.0100000000001, 0.01)  # v1 compares exactly
