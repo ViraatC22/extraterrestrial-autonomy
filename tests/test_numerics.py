@@ -60,3 +60,10 @@ def test_v2_missions_run_under_deterministic_maths(monkeypatch):
         MissionConfig(body="mars", size=24, n_targets=2, max_steps=60, engine="v2"), seed=200_000
     )
     assert calls
+
+
+def test_deterministic_sums_are_exactly_rounded():
+    values = [1e16, 1.0, -1e16, 3.0]  # naive left-to-right summation gives 3.0 or 4.0
+    with deterministic(True):
+        assert numerics.fsum(values) == 4.0
+        assert numerics.mean([0.1] * 10) == math.fsum([0.1] * 10) / 10

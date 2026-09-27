@@ -154,3 +154,19 @@ def hypot(a, b):
             return np.sqrt(a_arr * a_arr + b_arr * b_arr)
         return det_hypot(a, b)
     return np.hypot(a, b)
+
+
+def fsum(values) -> float:
+    """Sum of floats: exactly rounded (math.fsum) under the v2 switch, so the
+    order a vectorised reduction adds in cannot change the result; else numpy."""
+    if _DETERMINISTIC.get():
+        return math.fsum(np.asarray(values, dtype=float).ravel().tolist())
+    return float(np.sum(values))
+
+
+def mean(values) -> float:
+    """Mean with the same guarantee as `fsum`."""
+    if _DETERMINISTIC.get():
+        flat = np.asarray(values, dtype=float).ravel().tolist()
+        return math.fsum(flat) / len(flat)
+    return float(np.mean(values))

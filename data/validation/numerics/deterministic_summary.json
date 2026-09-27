@@ -1,0 +1,55 @@
+{
+  "label": "deterministic",
+  "platforms": [
+    "macos_arm64",
+    "linux_x86_64"
+  ],
+  "missions": 800,
+  "terrain_bytes_identical": 796,
+  "terrain_discrete_identical": 800,
+  "fully_identical": 612,
+  "same_path": 774,
+  "same_outcome": 798,
+  "success_flipped": 1,
+  "first_difference_counts": {
+    "none": 722,
+    "energy_value_only": 52,
+    "decision_choice": 14,
+    "path_only": 9,
+    "decision_count": 3
+  },
+  "effect": {
+    "mars": {
+      "macos_arm64": {
+        "success_adaptive": 0.585,
+        "success_fixed": 0.525,
+        "delta": 0.05999999999999994,
+        "only_adaptive": 22,
+        "only_fixed": 10
+      },
+      "linux_x86_64": {
+        "success_adaptive": 0.585,
+        "success_fixed": 0.525,
+        "delta": 0.05999999999999994,
+        "only_adaptive": 22,
+        "only_fixed": 10
+      }
+    },
+    "moon": {
+      "macos_arm64": {
+        "success_adaptive": 0.945,
+        "success_fixed": 0.93,
+        "delta": 0.014999999999999902,
+        "only_adaptive": 9,
+        "only_fixed": 6
+      },
+      "linux_x86_64": {
+        "success_adaptive": 0.95,
+        "success_fixed": 0.93,
+        "delta": 0.019999999999999907,
+        "only_adaptive": 9,
+        "only_fixed": 5
+      }
+    }
+  }
+}

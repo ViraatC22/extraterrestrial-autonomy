@@ -31,11 +31,15 @@ TRUE_CLASS_PARAMS = {
 
 
 #: Decimal places kept by `canonicalize`. Platform floating-point noise in the
-#: generators (sin, cos, arctan from different maths libraries) is ~1e-15;
-#: the smallest physically meaningful difference (slope sensor noise, 1.2
-#: degrees) is ~1e0. Nine decimals sits about six orders of magnitude from
-#: each, so rounding removes platform noise without changing the terrain.
-CANONICAL_DECIMALS = 9
+#: generators (sin, cos, arctan from different maths libraries) is ~1e-15
+#: relative. Rounding makes both platforms agree unless a value lies within
+#: that noise of a rounding boundary: probability ~ 2e-15 / 10^-d per value,
+#: times ~16,000 values per map. At d = 9 that is ~3% of maps (measured on
+#: validation: 4 of 800 maps); at d = 6, ~3e-5. Six decimals is still six
+#: orders of magnitude below the smallest physically meaningful difference
+#: (slope-sensor noise 1.2 degrees; roughness noise 0.05). Chosen from this
+#: calculation, not from mission outcomes.
+CANONICAL_DECIMALS = 6
 
 
 def canonicalize(terrain: TerrainField) -> TerrainField:

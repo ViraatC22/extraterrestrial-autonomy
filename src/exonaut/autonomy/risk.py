@@ -166,7 +166,7 @@ def expected_solar_income(
     if not path:
         return 0.0
     rate = NOMINAL_SOLAR_WH if solar_rate is None else solar_rate
-    illumination = float(np.mean([world_model.illumination[cell] for cell in path]))
+    illumination = numerics.mean([world_model.illumination[cell] for cell in path])
     return rate * illumination * solar_efficiency * len(path)
 
 

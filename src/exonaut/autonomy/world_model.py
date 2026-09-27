@@ -411,9 +411,9 @@ class AdaptiveWorldModel(WorldModel):
             return np.full(k, 1.0 / k)
         labels = self.terrain_class[self.observed].astype(int)
         freq = np.bincount(labels, minlength=k) / labels.size
-        c = float(np.mean(self._confusion_at(self.best_range[self.observed])))
+        c = numerics.mean(self._confusion_at(self.best_range[self.observed]))
         true = np.clip((freq - c / k) / max(1.0 - c, 1e-6), 1e-3, None)
-        return true / true.sum()
+        return true / numerics.fsum(true)
 
     def class_membership(self, row: int, col: int, reading: float | None = None) -> np.ndarray:
         """P(true class | the rover's label for this cell [, the slip reading]).
@@ -439,7 +439,7 @@ class AdaptiveWorldModel(WorldModel):
                 ]
             )
             posterior = posterior * numerics.exp(-0.5 * ((reading - means) / sds) ** 2) / sds
-        total = posterior.sum()
+        total = numerics.fsum(posterior)
         return posterior / total if total > 0 else np.full(k, 1.0 / k)
 
     def ingest_slip(self, record) -> None:
