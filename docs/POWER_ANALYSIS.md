@@ -58,7 +58,8 @@ Full tables: `data/validation/power_analysis/RESULTS.md` (generated). Key number
 | n for Δ = 0.05 (power 0.90) | 900 | more than 1,000 (not reachable with one pool) |
 | Science fraction: difference detectable with 80% power at that n | 0.012 | 0.013 |
 
-**Recommendation.** Freeze n at the value matching the calibration decision: 230 matched
+**Recommendation (earlier engine; for the final engine the same rule gives 240, see the last
+section).** Freeze n at the value matching the calibration decision: 230 matched
 seeds if M3 is chosen, 260 if M2a. Both fit comfortably in the 1,000-seed confirmatory pools.
 If the owner wants power for effects as small as 0.05, the study would need 900 seeds (M3)
 or cannot be run from one pool (M2a), and the plan should say which effect sizes it is not
@@ -69,11 +70,22 @@ the study and are not evidence: they come from development seeds that also shape
 And the Moon condition (secondary) is not powered: success there is near ceiling for both
 planners, so it can only detect a large harm.
 
-## Verification with the final engine (2026-09-27)
+## The rule applied to the final engine: n = 240 (2026-09-27)
 
-After the numerical-determinism changes (`NUMERICAL_REPRODUCIBILITY.md`), the frozen n was
-checked - not re-derived - against the final engine's discordance on the same 200 validation
-seeds (`final_engine_check.json`): 24 / 13 discordant pairs, upper bound 0.223, exact power at
-n = 230 of 0.888 (0.941 at the point estimate). Applying the sizing rule to the final engine
-would give n = 240 (power 0.901). The owner's decision was to freeze 230; the achieved power is
-recorded in the plan.
+After the numerical-determinism changes (`NUMERICAL_REPRODUCIBILITY.md`) the Mars discordance
+rate on the same 200 validation seeds moved, so the rule above was applied again to the final
+engine's canonical-platform run (`python scripts/power_analysis.py final`;
+`final_engine_sizing.json`): 24 / 13 discordant pairs, upper bound 0.223.
+
+| n | exact power (upper bound) |
+|---|---|
+| 220 | 0.872 |
+| 230 | 0.888 |
+| **240** | **0.901** (simulated 0.903; 0.951 at the point estimate) |
+| 250 | 0.913 |
+
+The smallest n reaching 0.90 is **240**, which the plan now uses. The recommendation of 230
+above came from the earlier engine; 230 was frozen briefly (plan revision 1) and then replaced,
+before any confirmatory seed was accessed, because with the final engine it falls short of the
+target. `tests/test_power_analysis.py` checks that the design file's n equals the rule's
+answer.

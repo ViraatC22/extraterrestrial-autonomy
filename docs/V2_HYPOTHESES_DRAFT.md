@@ -4,7 +4,8 @@ Status: **superseded by `docs/PREREGISTRATION_V2.md`**, which is the frozen plan
 draft is kept as the record of how the plan was reached; where the two differ, the
 preregistration governs. The open points listed at the end of this draft were settled by the
 owner: two-sided H1 and H2 confirmed, the confusion-aware learner M3, a minimum effect of
-interest of 0.10, and n = 230 (`RESEARCH_LOG.md`, 2026-09-27).
+interest of 0.10, and n = 230, later revised to 240 before any confirmatory access
+(`RESEARCH_LOG.md`, 2026-09-27).
 
 ## Research question
 

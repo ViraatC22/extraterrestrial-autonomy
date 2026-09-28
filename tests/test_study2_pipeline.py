@@ -45,14 +45,14 @@ def test_dry_run_uses_validation_seeds_and_real_run_uses_the_manifest(runner):
     assert all(200_000 <= s < 300_000 for seeds in dry.values() for s in seeds)
     real = runner.seeds_for(design, dry_run=False)  # seed numbers only; no terrain is built
     manifest = load_manifest()["splits"]
-    assert real["mars"] == manifest["confirmatory_ood"][:230]
-    assert real["moon"] == manifest["confirmatory_id"][:230]
+    assert real["mars"] == manifest["confirmatory_ood"][:240]
+    assert real["moon"] == manifest["confirmatory_id"][:240]
     assert real["mars_faults"] == real["mars"]  # exploratory conditions share the Mars seeds
 
 
 def test_design_matches_the_owner_decisions(runner):
     design = json.loads(runner.DESIGN.read_text())
-    assert design["n_seeds"] == 230
+    assert design["n_seeds"] == 240
     base = design["base_config"]
     assert base["engine"] == "v2" and base["class_assignment"] == "responsibility"
     assert base["epistemic_scale"] == 1.0

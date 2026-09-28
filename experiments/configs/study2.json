@@ -2,7 +2,7 @@
   "design_name": "exonaut-study2",
   "study": "Study 2",
   "planners": ["astar", "risk_aware_astar", "adaptive_risk_aware_astar"],
-  "n_seeds": 230,
+  "n_seeds": 240,
   "base_config": {
     "size": 64,
     "n_targets": 5,

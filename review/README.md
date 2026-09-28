@@ -142,7 +142,8 @@ missions exactly on the macOS/Apple-Silicon environment that generated them
 only been explored on validation seeds (`docs/EXPLORATION_V2.md`): the fixes
 work, and adaptation's survival advantage largely disappears. The v2
 confirmatory study (Study 2) is frozen but not run: `docs/PREREGISTRATION_V2.md`,
-`docs/V2_FREEZE_CHECKLIST.md`, tag `study2-freeze`.
+`docs/V2_FREEZE_CHECKLIST.md`, tag `study2-freeze-n240` (240 matched seeds per
+condition).
 
 ## 6. Design rules the interface follows
 

@@ -53,11 +53,11 @@ build until a frozen plan authorizes it. Preparation on development seeds only:
 `docs/CALIBRATION_AUDIT.md` (the learner was miscalibrated even in distribution, mostly from
 terrain misclassification; no pre-specified correction met the acceptance rule on Mars),
 `docs/POWER_ANALYSIS.md`, `docs/SIMULATOR_VALIDATION.md`, `docs/NUMERICAL_REPRODUCIBILITY.md`.
-**The plan is frozen** (`docs/PREREGISTRATION_V2.md`, tag `study2-freeze`; every item of
-`docs/V2_FREEZE_CHECKLIST.md` checked): the confusion-aware learner (the owner's choice after no
-candidate passed the calibration rule), 230 matched seeds per condition (achieved power 0.888 at
-the minimum effect of interest, 0.10), two-sided tests, macOS arm64 as the canonical platform with
-a pre-specified Linux robustness check. Study 2 has not been authorised or run.
+**The plan is frozen** (`docs/PREREGISTRATION_V2.md` revision 2, tag `study2-freeze-n240`; every
+item of `docs/V2_FREEZE_CHECKLIST.md` checked): the confusion-aware learner (the owner's choice
+after no candidate passed the calibration rule), 240 matched seeds per condition (exact power 0.901
+at the minimum effect of interest, 0.10), two-sided tests, macOS arm64 as the canonical platform
+with a pre-specified Linux robustness check. Study 2 has not been authorised or run.
 
 An unpredicted result: distance-only A* had the highest Martian success rate in three of four
 conditions while returning the least science, indicating that the risk formulation prices caution

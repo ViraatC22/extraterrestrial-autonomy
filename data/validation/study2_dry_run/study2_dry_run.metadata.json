@@ -1,8 +1,8 @@
 {
   "study": "Study 2 DRY RUN (validation seeds)",
-  "generated_utc": "2026-09-27T00:57:29+00:00",
+  "generated_utc": "2026-09-28T01:12:26+00:00",
   "design_file": "experiments/configs/study2.json",
-  "design_digest": "f3c1df55de0c",
+  "design_digest": "d3be0b9ce18a",
   "n_missions": 240,
   "platform": "macOS-26.1-arm64-arm-64bit-Mach-O",
   "software": {

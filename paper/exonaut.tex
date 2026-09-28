@@ -26,6 +26,7 @@
 \input{tables/exonaut_power_macros.tex}
 \input{tables/exonaut_crossplatform_macros.tex}
 \input{tables/exonaut_numerics_macros.tex}
+\input{tables/exonaut_power_final_macros.tex}
 
 \title{\textbf{Adaptive Risk-Aware Autonomy for Robotic Exploration of\\
 Uncertain Extraterrestrial Terrain}}
@@ -751,8 +752,8 @@ calibration rule accepted no candidate (Section~\ref{sec:audit}); its known
 shortfall on Mars is stated in advance and measured on the confirmatory
 missions. The confirmatory condition is Mars with a lunar prior; the Moon is
 secondary; higher dispersion and faults are exploratory; communication delay
-is dropped. Each condition uses 230 matched seeds from pools disjoint from
-every Study~1 split.
+is dropped. Each condition uses \PowFinalN{} matched seeds from pools disjoint
+from every Study~1 split.
 
 \paragraph{Hypotheses and tests.} Primary: mission success in the Mars
 condition differs between the planners (two-sided McNemar exact test,
@@ -763,13 +764,17 @@ two-sided. No direction is hypothesised: Study~1 found an exact tie in Martian
 success.
 
 \paragraph{Sample size.} The minimum effect of interest is $\PowMinEffect$ in
-success probability. Exact power calculations on \PowMThreeValSeeds{} validation
-seeds, using the upper bound of the planners' disagreement rate and deliberately
-ignoring the validation effect itself, gave \PowMThreeRecommendedN{} matched
-seeds for power $\PowTarget$ (Figure~\ref{fig:power}). Re-checked after the
-numerical changes below, the achieved power at that $n$ is slightly lower
-(\texttt{docs/POWER\_ANALYSIS.md}); the owner kept the frozen $n$ and the plan
-states the achieved power.
+success probability. The sample size is the smallest $n$, in steps of 10, whose
+exact power for the primary test reaches $\PowTarget$ at that effect, using the
+upper bound of the planners' disagreement rate on \PowMThreeValSeeds{}
+validation seeds and deliberately ignoring the validation effect itself
+(Figure~\ref{fig:power}). Applied to the final engine (\PowFinalOnlyAdaptive{}
+and \PowFinalOnlyFixed{} seeds where only one planner succeeded; upper bound
+\PowFinalPsiUpper), the rule gives $n = \PowFinalN$ matched seeds per
+condition, with exact power \PowFinalPower{}. An earlier application, before
+the numerical changes below, had given \PowMThreeRecommendedN{}; with the final
+engine that $n$ would have had power \PowFinalPrevPower{}, below the target, so
+the plan was revised to \PowFinalN{} before any confirmatory seed was accessed.
 
 \begin{figure}[t]
 \centering
@@ -777,7 +782,8 @@ states the achieved power.
 \caption{Exact power of the planned primary test against the number of matched
 seeds, for several effect sizes (solid: the minimum effect of interest), at the
 upper-bound discordance rate estimated on validation seeds for each leading
-calibration candidate. Planning quantities only.}
+calibration candidate, with the engine before the numerical changes (the final
+engine's rate is slightly higher; see text). Planning quantities only.}
 \label{fig:power}
 \end{figure}
 

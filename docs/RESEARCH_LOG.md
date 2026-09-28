@@ -530,3 +530,25 @@ Study 2 configuration, macOS arm64 against Linux x86-64. Full record:
 
 Study 2 is frozen (`docs/PREREGISTRATION_V2.md`, `docs/V2_FREEZE_CHECKLIST.md`, tag
 `study2-freeze`). It has not been authorised or run.
+
+## 2026-09-27 - Sample size revised to 240 before any confirmatory access (plan revision 2)
+
+The owner decided to switch Study 2 from 230 to 240 matched seeds per condition, with this
+reasoning: the pre-specified target was 90% power; with the final engine, 230 gives 0.888 and
+240 gives 0.901; no Study 2 confirmatory seed has been accessed, so this is the clean moment to
+correct it rather than knowingly freeze below target.
+
+- The sizing rule is unchanged; only its input changed (the final engine's validation
+  discordance instead of the pre-numerics engine's). `scripts/power_analysis.py final` applies
+  it: 24 / 13 discordant pairs of 200, upper bound 0.223, n = 240, exact power 0.901
+  (simulated 0.903). Output: `data/validation/power_analysis/final_engine_sizing.json`, which
+  replaces the earlier check-only `final_engine_check.json` (still in git history at tag
+  `study2-freeze`).
+- Design file `n_seeds` 230 -> 240; design digest f3c1df55de0c -> d3be0b9ce18a. A new test
+  fails if the design's n differs from the rule's answer.
+- The validation dry run was re-run with the revision-2 design on the final engine (validation
+  seeds 200000-200019). Its numbers differ from the earlier dry run because the engine changed
+  in between; it is a pipeline check, not evidence.
+- `PREREGISTRATION_V2.md` revision 2 (sections 3, 7, 9 and header); the revision-1 hash
+  (965815ca...) is void. Held-out access log: still does not exist.
+- Frozen as tag `study2-freeze-n240`. Not authorised, not run.

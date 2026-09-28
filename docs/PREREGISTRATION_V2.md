@@ -1,11 +1,15 @@
 # Study 2 (v2): pre-specified analysis plan
 
-Status: **FROZEN.** Written and committed before any Study 2 confirmatory seed was used.
-Authorising the run is a separate, explicit act by the project owner (section 10); this file
-existing does not authorise anything. Changing anything below after the run begins would make
-the study exploratory, and would have to be reported as such.
+Status: **FROZEN** (revision 2, 2026-09-27). Written and committed before any Study 2
+confirmatory seed was used. Authorising the run is a separate, explicit act by the project owner
+(section 10); this file existing does not authorise anything. Changing anything below after the
+run begins would make the study exploratory, and would have to be reported as such.
 
-Design digest: `f3c1df55de0c` (of `experiments/configs/study2.json`)
+Revision 2 changes one thing: n = 240 instead of 230 (section 7), made before any confirmatory
+seed was accessed. Revision 1 (tag `study2-freeze`) is superseded and its hash must not be used
+to authorise a run.
+
+Design digest: `d3be0b9ce18a` (of `experiments/configs/study2.json`)
 Seed manifest checksum: `2b24c27d2710a915bf0eacccf53219648dd47dc32dd80975c9a7ccc2ccf2479e`
 
 ## 1. Question
@@ -33,10 +37,10 @@ stated in advance and measured descriptively (section 6).
 
 | Condition | Role | Body | Overrides | Seeds |
 |---|---|---|---|---|
-| mars | **confirmatory** | Mars, lunar prior | - | first 230 of `confirmatory_ood` |
-| moon | secondary | Moon, lunar prior | - | first 230 of `confirmatory_id` |
-| mars_high_uncertainty | exploratory | Mars | slip dispersion x1.5 | same 230 as mars |
-| mars_faults | exploratory | Mars | fault rate 1.0 (v2: faults inside the mission) | same 230 as mars |
+| mars | **confirmatory** | Mars, lunar prior | - | first 240 of `confirmatory_ood` |
+| moon | secondary | Moon, lunar prior | - | first 240 of `confirmatory_id` |
+| mars_high_uncertainty | exploratory | Mars | slip dispersion x1.5 | same 240 as mars |
+| mars_faults | exploratory | Mars | fault rate 1.0 (v2: faults inside the mission) | same 240 as mars |
 
 Seeds come from `data/splits/v2/seed_manifest.json` (master seed 20260925), disjoint from every
 Study 1 split. Mission configuration: 64 x 64 map, 5 targets, 800 steps, solar harvest 2.0 Wh
@@ -78,17 +82,21 @@ data gave no basis for a direction.
 
 ## 7. Sample size
 
-n = **230** matched seeds per condition: the smallest n (in steps of 10) giving exact power
->= 0.90 for H1 at a minimum effect of interest of 0.10, using the upper one-sided 90% bound of
-the discordance rate estimated on 200 validation seeds with M3 (`POWER_ANALYSIS.md`). Fixed
-before any confirmatory data; no interim looks; no optional stopping.
+n = **240** matched seeds per condition. Rule (unchanged since `POWER_ANALYSIS.md`): the
+smallest n, in steps of 10, giving exact power >= 0.90 for H1 at a minimum effect of interest
+of 0.10, using the one-sided 90% upper Wilson bound of the Mars discordance rate on 200
+validation seeds with M3. The validation effect itself is not used.
 
-Verification with the final engine (after the numerical-determinism changes, same 200
-validation seeds, canonical platform; `data/validation/power_analysis/final_engine_check.json`):
-37 discordant pairs (24 / 13), discordance upper bound 0.223, exact power at n = 230 of
-**0.888** - slightly below the 0.90 target (0.94 at the point estimate). The same sizing rule
-applied to the final engine would give n = 240. The project owner decided to freeze 230 and not
-move it; the achieved power is stated here so the choice is visible.
+Applied to the final engine (after the numerical-determinism changes; canonical platform; the
+same 200 validation seeds; `data/validation/power_analysis/final_engine_sizing.json`): 37
+discordant pairs (24 / 13), upper bound 0.223, exact power **0.901** at n = 240 (simulated
+0.903; 0.951 at the point estimate).
+
+History, stated so the change is visible: the rule was first applied to validation missions
+from the engine before the numerical changes and gave n = 230, which revision 1 of this plan
+froze. With the final engine, 230 gives exact power 0.888, below the target. The owner switched
+to 240 on 2026-09-27, before any Study 2 confirmatory seed was accessed (`RESEARCH_LOG.md`). No
+interim looks; no optional stopping.
 
 ## 8. Exclusions and failures
 
@@ -98,7 +106,8 @@ is fixed and rerun in full, with the failure recorded in `RESEARCH_LOG.md`.
 ## 9. Execution, platform and output
 
 - Run once with `python scripts/run_study2.py` on the **canonical platform** (macOS arm64,
-  Python 3.13, `requirements-lock.txt`), from a clean worktree at a tagged commit. It writes
+  Python 3.13, `requirements-lock.txt`), from a clean worktree at tag `study2-freeze-n240` (or
+  a later commit that changes no engine, runner, analysis, design or plan file). It writes
   `data/results/study2_main.csv` (columns exactly `RESULT_COLUMNS` in that script) and a
   metadata sidecar recording commit, design digest, plan hash, platform and library versions,
   and refuses to overwrite existing results.

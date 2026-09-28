@@ -1,0 +1,26 @@
+{
+  "rule": "smallest n in steps of 10 with exact power >= 0.9 for delta = 0.1 at the one-sided 90% upper Wilson bound of the Mars discordance rate",
+  "engine": "final v2 engine, canonical platform (macOS arm64)",
+  "validation_seeds": 200,
+  "only_adaptive": 24,
+  "only_fixed": 13,
+  "psi_hat": 0.185,
+  "psi_upper80": 0.22270315790780243,
+  "n": 240,
+  "exact_power_at_n": 0.901081905373696,
+  "simulated_power_at_n": 0.90275,
+  "exact_power_at_n_psi_hat": 0.950831650447604,
+  "previous_n": 230,
+  "exact_power_at_previous_n": 0.8875376044020906,
+  "power_by_n": {
+    "200": 0.8352139783145617,
+    "210": 0.8548705726538608,
+    "220": 0.8722203011048139,
+    "230": 0.8875376044020906,
+    "240": 0.901081905373696,
+    "250": 0.9130884971299977,
+    "260": 0.9237576673679377,
+    "270": 0.9332463835787308,
+    "280": 0.9416694557382617
+  }
+}

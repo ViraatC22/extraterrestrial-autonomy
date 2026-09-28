@@ -91,6 +91,16 @@ STEPS = [
         ],
     },
     {
+        "id": "power_final_engine",
+        "script": "scripts/power_analysis.py",
+        "args": ["final"],
+        "inputs": ["data/validation/numerics/final_macos_arm64.csv.gz"],
+        "outputs": [
+            "paper/tables/exonaut_power_final_macros.tex",
+            "data/validation/power_analysis/final_engine_sizing.json",
+        ],
+    },
+    {
         "id": "study1_cross_platform",
         "script": "scripts/cross_platform_check.py",
         "args": [],

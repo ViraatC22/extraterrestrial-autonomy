@@ -46,3 +46,19 @@ def test_power_is_alpha_at_no_effect_and_grows_with_n(power):
 def test_impossible_effects_are_flagged(power):
     k = power.critical_counts(50)
     assert np.isnan(power.exact_power(50, 0.3, 0.2, k))  # delta cannot exceed discordance
+
+
+def test_the_frozen_design_uses_the_n_the_sizing_rule_gives_on_the_final_engine(power):
+    """study2.json's n must be the smallest n (steps of 10) that reaches the target."""
+    import json
+
+    sizing = json.loads(
+        (ROOT / "data/validation/power_analysis/final_engine_sizing.json").read_text()
+    )
+    design = json.loads((ROOT / "experiments/configs/study2.json").read_text())
+    assert design["n_seeds"] == sizing["n"]
+    k = power.critical_counts(int(power.N_GRID.max()))
+    at_n = power.exact_power(sizing["n"], power.MIN_EFFECT, sizing["psi_upper80"], k)
+    below = power.exact_power(sizing["n"] - 10, power.MIN_EFFECT, sizing["psi_upper80"], k)
+    assert at_n >= power.TARGET_POWER > below
+    assert at_n == pytest.approx(sizing["exact_power_at_n"], abs=1e-12)
